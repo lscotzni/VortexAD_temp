@@ -16,7 +16,7 @@ alpha = 5 # angle of attack in degrees
 mesh = gen_vlm_mesh(ns, nc, b, c)
 new_mesh = np.zeros((num_nodes,) + mesh.shape)
 
-mesh_2 = gen_vlm_mesh(ns, nc, b+1, c+1)
+mesh_2 = gen_vlm_mesh(ns+1, nc+1, b+1, c+1)
 new_mesh_2 = np.zeros((num_nodes,) + mesh_2.shape)
 
 for i in range(num_nodes):

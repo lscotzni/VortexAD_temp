@@ -71,13 +71,19 @@ def setup_linear_system(num_nodes, mesh_dict, V_inf):
             # VECTORIZE AND EXPAND EVERYTHING TO SHAPE (num_nodes, np_surf_j*np_surf_i) (+ (3,) if needed)
             num_interactions = np_surf_i*np_surf_j
 
-            p1_bd = csdl.expand(bound_vortex_mesh_j[:, :-1, :-1, :], (num_nodes, nc_j-1, ns_j-1, np_surf_i, 3), 'ijkl->ijkal')
-            p2_bd = csdl.expand(bound_vortex_mesh_j[:, :-1, 1:, :], (num_nodes, nc_j-1, ns_j-1, np_surf_i, 3), 'ijkl->ijkal')
-            p3_bd = csdl.expand(bound_vortex_mesh_j[:, 1:, 1:, :], (num_nodes, nc_j-1, ns_j-1, np_surf_i, 3), 'ijkl->ijkal')
-            p4_bd = csdl.expand(bound_vortex_mesh_j[:, 1:, :-1, :], (num_nodes, nc_j-1, ns_j-1, np_surf_i, 3), 'ijkl->ijkal')
+            p1_bd_grid = bound_vortex_mesh_j[:, :-1, :-1, :]
+            p2_bd_grid = bound_vortex_mesh_j[:, :-1, 1:, :]
+            p3_bd_grid = bound_vortex_mesh_j[:, 1:, 1:, :]
+            p4_bd_grid = bound_vortex_mesh_j[:, 1:, :-1, :]
+
+            p1_bd = csdl.expand(p1_bd_grid, (num_nodes, nc_j-1, ns_j-1, np_surf_i, 3), 'ijkl->ijkal')
+            p2_bd = csdl.expand(p2_bd_grid, (num_nodes, nc_j-1, ns_j-1, np_surf_i, 3), 'ijkl->ijkal')
+            p3_bd = csdl.expand(p3_bd_grid, (num_nodes, nc_j-1, ns_j-1, np_surf_i, 3), 'ijkl->ijkal')
+            p4_bd = csdl.expand(p4_bd_grid, (num_nodes, nc_j-1, ns_j-1, np_surf_i, 3), 'ijkl->ijkal')
 
             interaction_shape = (num_nodes, num_interactions, 3)
 
+            # reshape starts with the right-most dimensions. So, this vectorizes panel 0 np_surf_i times, then panel 1, ...
             p1_bd_vec = p1_bd.reshape(interaction_shape)
             p2_bd_vec = p2_bd.reshape(interaction_shape)
             p3_bd_vec = p3_bd.reshape(interaction_shape)
@@ -101,13 +107,61 @@ def setup_linear_system(num_nodes, mesh_dict, V_inf):
 
             v_induced_grid = v_induced.reshape((num_nodes, np_surf_j, np_surf_i, 3))
 
+            # NOTE: ADD THE WAKE INFLUENCE HERE TO RESOLVE KUTTA CONDITION
+            # WAKE IS ACCESSED WITH mesh_dict[surface_name]['wake_vortex_mesh']
+            # treat exactly like the bound vortices of loop j
+            wake_vortex_mesh_j  = mesh_dict[surface_name_j]['wake_vortex_mesh']
+            nc_w_j, ns_w_j = wake_vortex_mesh_j.shape[1], wake_vortex_mesh_j.shape[2]
+            np_wake_j = (nc_w_j-1)*(ns_w_j-1)
+
+            num_wake_interactions = np_surf_i*np_wake_j
+            wake_interaction_shape = (num_nodes, num_wake_interactions, 3)
+
+            p1_w_grid = wake_vortex_mesh_j[:, :-1, :-1, :]
+            p2_w_grid = wake_vortex_mesh_j[:, :-1, 1:, :]
+            p3_w_grid = wake_vortex_mesh_j[:, 1:, 1:, :]
+            p4_w_grid = wake_vortex_mesh_j[:, 1:, :-1, :]
+
+            p1_w = csdl.expand(p1_w_grid, (num_nodes, nc_w_j-1, ns_w_j-1, np_surf_i, 3), 'ijkl->ijkal')
+            p2_w = csdl.expand(p2_w_grid, (num_nodes, nc_w_j-1, ns_w_j-1, np_surf_i, 3), 'ijkl->ijkal')
+            p3_w = csdl.expand(p3_w_grid, (num_nodes, nc_w_j-1, ns_w_j-1, np_surf_i, 3), 'ijkl->ijkal')
+            p4_w = csdl.expand(p4_w_grid, (num_nodes, nc_w_j-1, ns_w_j-1, np_surf_i, 3), 'ijkl->ijkal')
+
+            p1_w_vec = p1_w.reshape(wake_interaction_shape)
+            p2_w_vec = p2_w.reshape(wake_interaction_shape)
+            p3_w_vec = p3_w.reshape(wake_interaction_shape)
+            p4_w_vec = p4_w.reshape(wake_interaction_shape)
+
+            coll_point_i_wake_exp = csdl.Variable(shape=(num_nodes, np_wake_j, nc_i-1, ns_i-1, 3), value=0.)
+            for k in csdl.frange((np_wake_j)):
+                coll_point_i_wake_exp = coll_point_i_wake_exp.set(csdl.slice[:,k,:,:,:], value=collocation_points_i)
+
+            coll_point_i_wake_exp_vec = coll_point_i_wake_exp.reshape(wake_interaction_shape)
+
+            v_i_12_w = compute_induced_velocity(p1_w_vec, p2_w_vec, coll_point_i_wake_exp_vec)
+            v_i_23_w = compute_induced_velocity(p2_w_vec, p3_w_vec, coll_point_i_wake_exp_vec)
+            v_i_34_w = compute_induced_velocity(p3_w_vec, p4_w_vec, coll_point_i_wake_exp_vec)
+            v_i_41_w = compute_induced_velocity(p4_w_vec, p1_w_vec, coll_point_i_wake_exp_vec)
+
+            v_induced_wake = v_i_12_w + v_i_23_w + v_i_34_w + v_i_41_w
+            v_induced_wake_grid = v_induced_wake.reshape((num_nodes, np_wake_j, np_surf_i, 3))
+            wake_influence_grid = csdl.Variable(shape=v_induced_grid.shape, value=0.)
+            stop_panel_counter_j += np_surf_j
+            start_wake_ind = stop_panel_counter_j - np_wake_j
+            wake_influence_grid = wake_influence_grid.set(csdl.slice[:,start_wake_ind:stop_panel_counter_j,start_panel_counter:stop_panel_counter], value=v_induced_wake_grid)
+
             bd_normal_vec_i_exp_grid = bd_normal_vec_i_exp.reshape((num_nodes, np_surf_j, np_surf_i, 3))
 
-            normal_induced_vel = csdl.sum(v_induced_grid*bd_normal_vec_i_exp_grid, axes=(3,))
+            total_v_induced_grid = v_induced_grid+wake_influence_grid
 
-            # normal_induced_vel = csdl.sum(v_induced_grid, bd_vortex_normals_i, ([3], [3]))
+            normal_induced_vel = csdl.sum(total_v_induced_grid*bd_normal_vec_i_exp_grid, axes=(3,)) # (num_nodes, num_panels_j, num_panels_i)
 
-            stop_panel_counter_j += np_surf_j
+            
+
+            
+
+
+            
             AIC = AIC.set(csdl.slice[:, start_panel_counter_j:stop_panel_counter_j, start_panel_counter:stop_panel_counter], value=normal_induced_vel)
             # AIC[:, start_panel_counter_j:stop_panel_counter_j, start_panel_counter:stop_panel_counter] = normal_induced_vel
             start_panel_counter_j += np_surf_j

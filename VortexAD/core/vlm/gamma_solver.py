@@ -5,7 +5,7 @@ from VortexAD.core.vlm.setup_linear_system import setup_linear_system
 
 def gamma_solver(num_nodes, mesh_dict, V_inf, alpha):
 
-    mesh_dict = fixed_wake_representation(mesh_dict, V_inf, num_panels=2)
+    mesh_dict = fixed_wake_representation(mesh_dict, V_inf, num_panels=1)
     # mesh dict now has a 'wake_vortex_mesh' key that is used to compute interactions 
 
     # we want to solve A*\gamma = b, where b = -dot(V_inf, bd_vortex_normal)
