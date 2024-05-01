@@ -20,10 +20,10 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name='lsdo_project_template',
-    version=get_version('lsdo_project_template/__init__.py'),
-    author='Author name',
-    author_email='author@gmail.com',
+    name='VortexAD',
+    version=get_version('VortexAD/__init__.py'),
+    author='Luca Scotzniovsky',
+    author_email='lscotzni@ucsd.edu',
     license='LGPLv3+',
     keywords='python project template repository package',
     url='http://github.com/LSDOlab/lsdo_project_template',
