@@ -30,6 +30,6 @@ def vlm_solver(orig_mesh_dict, ac_states):
 
     gamma = gamma_solver(num_nodes, mesh_dict, V_inf, alpha)
 
-    post_processor(num_nodes, mesh_dict, gamma)
+    output_dict = post_processor(num_nodes, mesh_dict, gamma, V_inf, alpha)
 
-    return 1
+    return output_dict

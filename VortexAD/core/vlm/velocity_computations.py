@@ -29,5 +29,4 @@ def compute_induced_velocity(p1, p2, p_eval, gamma=1.):
 
     induced_vel = gamma/(4*np.pi)*r1r2_cross/(r1r2_cross_norm_exp + 1.e-8)**2 * dot_prod_term_exp
 
-
     return induced_vel

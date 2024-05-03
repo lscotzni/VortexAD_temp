@@ -27,6 +27,9 @@ def pre_processor(mesh_dict, alpha):
         collocation_points = (p1_bd + p2_bd + p3_bd + p4_bd)/4.
         mesh_dict[key]['collocation_points'] = collocation_points
 
+        force_eval_pts = (p1_bd + p2_bd)/2.
+        mesh_dict[key]['force_eval_points'] = force_eval_pts
+
         # panel area and normal vector computation (NOTE: CHECK IF WE NEED TO USE THE MESH OR BOUND VORTEX GRID)
         p1 = mesh[:, :-1, :-1, :]
         p2 = mesh[:, :-1, 1:, :]
@@ -48,7 +51,7 @@ def pre_processor(mesh_dict, alpha):
         wetted_area = csdl.sum(panel_area, axes=(1,2))
         mesh_dict[key]['wetted_area'] = wetted_area
 
-        # NOTE: ADD BOUND VECTOR COMPUTATION FOR WHERE THE FORCE IS APPLIED
-        # THIS IS AT THE LEADING EDGE OF THE BOUND VORTEX GRID
+        bound_vec = p2_bd - p1_bd
+        mesh_dict[key]['bound_vec'] = bound_vec # NO NEED TO NORMALIZE BECAUSE WE NEED THE MAGNITUDE
 
     return mesh_dict

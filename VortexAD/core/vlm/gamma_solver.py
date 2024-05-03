@@ -1,7 +1,7 @@
 import numpy as np 
 import csdl_alpha as csdl
 from VortexAD.core.vlm.fixed_wake_representation import fixed_wake_representation
-from VortexAD.core.vlm.setup_linear_system import setup_linear_system
+from VortexAD.core.vlm.setup_linear_system import setup_linear_system, setup_linear_system_old
 
 def gamma_solver(num_nodes, mesh_dict, V_inf, alpha):
 
@@ -12,9 +12,7 @@ def gamma_solver(num_nodes, mesh_dict, V_inf, alpha):
     AIC, RHS = setup_linear_system(num_nodes, mesh_dict, V_inf)
 
     surface_names = list(mesh_dict.keys())
-    print(surface_names)
     num_surfaces = len(surface_names)
-    print(num_surfaces)
     num_total_panels = 0
     for key in mesh_dict.keys():
         ns, nc = mesh_dict[key]['ns'], mesh_dict[key]['nc']
@@ -26,10 +24,5 @@ def gamma_solver(num_nodes, mesh_dict, V_inf, alpha):
     
 
     # csdl.get_current_recorder().print_graph_structure()
-
-    
-    
-    
-
 
     return gamma_vec

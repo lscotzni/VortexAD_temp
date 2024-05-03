@@ -4,7 +4,7 @@ import csdl_alpha as csdl
 from VortexAD.core.geometry.gen_vlm_mesh import gen_vlm_mesh
 from VortexAD.core.vlm.vlm_solver import vlm_solver
 
-ns = 5
+ns = 3
 nc = 3
 b = 10
 c = 1
@@ -24,10 +24,10 @@ for i in range(num_nodes):
     new_mesh_2[i,:,:,:] = mesh_2
 mesh_dict = {}
 mesh_dict['wing'] = new_mesh # (num_nodes, nc, ns, 3)
-mesh_dict['wing_2'] = new_mesh_2
+# mesh_dict['wing_2'] = new_mesh_2
 
 recorder = csdl.Recorder(inline=True)
 recorder.start()
 
-vlm_solver(mesh_dict, alpha)
+output_dict = vlm_solver(mesh_dict, alpha)
 recorder.stop()
