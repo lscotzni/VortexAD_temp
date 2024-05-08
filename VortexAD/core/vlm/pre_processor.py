@@ -1,7 +1,7 @@
 import numpy as np 
 import csdl_alpha as csdl
 
-def pre_processor(mesh_dict, alpha):
+def pre_processor(mesh_dict):
     mesh_names = mesh_dict.keys()
 
     for key in mesh_names:
@@ -12,9 +12,9 @@ def pre_processor(mesh_dict, alpha):
         mesh_dict[key]['ns'] = mesh.shape[2]
 
         # bound vortex grid computation
-        bound_vortex_mesh = csdl. Variable(shape=mesh.shape, value=0.)
+        bound_vortex_mesh = csdl.Variable(shape=mesh.shape, value=0.)
         bound_vortex_mesh = bound_vortex_mesh.set(csdl.slice[:,:-1,:,:], value=(3*mesh[:,:-1,:,:] + mesh[:,1:,:,:])/4)
-        bound_vortex_mesh = bound_vortex_mesh.set(csdl.slice[:,-1,:,:],value=mesh[:,-1,:,:] + (mesh[:,-1,:,:] - mesh[:,-2,:,:])/4)
+        bound_vortex_mesh = bound_vortex_mesh.set(csdl.slice[:,-1,:,:], value=mesh[:,-1,:,:] + (mesh[:,-1,:,:] - mesh[:,-2,:,:])/4)
 
         mesh_dict[key]['bound_vortex_mesh'] = bound_vortex_mesh
 
@@ -43,7 +43,7 @@ def pre_processor(mesh_dict, alpha):
         panel_area = csdl.norm(normal_dir, axes=(3,)) / 2.
 
         # vector normalization
-        normal_vec = normal_dir/(csdl.expand(panel_area, out_shape=normal_dir.shape, action='ijk->ijka') + 1.e-12)
+        normal_vec = normal_dir/(csdl.expand(panel_area*2, out_shape=normal_dir.shape, action='ijk->ijka') + 1.e-12)
 
         mesh_dict[key]['panel_area'] = panel_area
         mesh_dict[key]['bd_normal_vec'] = normal_vec

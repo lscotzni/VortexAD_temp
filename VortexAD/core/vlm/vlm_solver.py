@@ -12,7 +12,7 @@ class VLMSolver(object):
 
 
 
-def vlm_solver(orig_mesh_dict, ac_states):
+def vlm_solver(orig_mesh_dict, ac_states, V_inf, alpha):
     '''
     VLM solver (add description)
     '''
@@ -24,12 +24,17 @@ def vlm_solver(orig_mesh_dict, ac_states):
 
     # parse ac_states
     # u, v, w, alpha = parse_ac_states(ac_states)
-    alpha = 1.
-    V_inf = csdl.Variable(value=np.array([10., 0., 0.]))
-    mesh_dict = pre_processor(exp_orig_mesh_dict, alpha)
+    mesh_dict = pre_processor(exp_orig_mesh_dict)
 
-    gamma = gamma_solver(num_nodes, mesh_dict, V_inf, alpha)
+    V_rot_mat = np.zeros((3,3))
+    V_rot_mat[1,1] = 1.
+    V_rot_mat[0,0] = V_rot_mat[2,2] = np.cos(alpha)
+    V_rot_mat[2,0] = np.sin(alpha)
+    V_rot_mat[0,2] = -np.sin(alpha)
+    V_inf_rot = np.matmul(V_rot_mat, V_inf)
 
-    output_dict = post_processor(num_nodes, mesh_dict, gamma, V_inf, alpha)
+    gamma = gamma_solver(num_nodes, mesh_dict, V_inf_rot)
+
+    output_dict = post_processor(num_nodes, mesh_dict, gamma, V_inf_rot, alpha)
 
     return output_dict

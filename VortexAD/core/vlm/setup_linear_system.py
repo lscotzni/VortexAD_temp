@@ -22,12 +22,12 @@ def setup_linear_system(num_nodes, mesh_dict, V_inf):
         surface_name = surface_names[i] # THIS IS THE SURFACE OF INTEREST
         ns_i, nc_i = mesh_dict[surface_name]['ns'], mesh_dict[surface_name]['nc']
         np_surf_i = (ns_i-1)*(nc_i-1)
-        bd_vortex_normals_i = mesh_dict[surface_name]['bd_normal_vec'] # (num_nodes, ns-1, nc-1, 3)
+        bd_vortex_normals_i = mesh_dict[surface_name]['bd_normal_vec'] # (num_nodes, nc-1, ns-1, 3)
 
         # SETTING BOUNDARY CONDITION
         stop_panel_counter += np_surf_i
         surface_bc = compute_normal_velocity(V_inf, bd_vortex_normals_i)
-        RHS = RHS.set(csdl.slice[:, start_panel_counter:stop_panel_counter], csdl.reshape(surface_bc, (num_nodes, np_surf_i)))
+        RHS = RHS.set(csdl.slice[:, start_panel_counter:stop_panel_counter], csdl.reshape(-surface_bc, (num_nodes, np_surf_i)))
         start_panel_counter += np_surf_i
 
     return AIC, RHS

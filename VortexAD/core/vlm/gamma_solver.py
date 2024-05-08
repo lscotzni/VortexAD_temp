@@ -3,7 +3,7 @@ import csdl_alpha as csdl
 from VortexAD.core.vlm.fixed_wake_representation import fixed_wake_representation
 from VortexAD.core.vlm.setup_linear_system import setup_linear_system, setup_linear_system_old
 
-def gamma_solver(num_nodes, mesh_dict, V_inf, alpha):
+def gamma_solver(num_nodes, mesh_dict, V_inf):
 
     mesh_dict = fixed_wake_representation(mesh_dict, V_inf, num_panels=1)
     # mesh dict now has a 'wake_vortex_mesh' key that is used to compute interactions 
@@ -20,7 +20,7 @@ def gamma_solver(num_nodes, mesh_dict, V_inf, alpha):
     
     gamma_vec = csdl.Variable(shape=(num_nodes, num_total_panels), value=0.)
     for i in csdl.frange(num_nodes):
-        gamma_vec = gamma_vec.set(csdl.slice[i,:], value=csdl.solve_linear(AIC[i,:,:], -RHS[i,:]))
+        gamma_vec = gamma_vec.set(csdl.slice[i,:], value=csdl.solve_linear(AIC[i,:,:], RHS[i,:]))
     
 
     # csdl.get_current_recorder().print_graph_structure()
