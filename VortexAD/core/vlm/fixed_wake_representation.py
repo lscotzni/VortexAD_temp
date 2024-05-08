@@ -16,7 +16,7 @@ def fixed_wake_representation(mesh_dict, V_inf, num_panels=1):
         wake_vortex_mesh = csdl.Variable(shape=(num_nodes, num_panels+1, ns, 3), value=0.)
         wake_vortex_mesh = wake_vortex_mesh.set(csdl.slice[:,0,:,:], value=bd_vortex_grid_TE) 
         for i in csdl.frange(num_panels):
-            dx_i = csdl.expand(V_inf*dt*(i+1), (num_nodes, ns, 3), 'i->abi') + bd_vortex_grid_TE
+            dx_i = csdl.expand(V_inf*dt*(i+1), (num_nodes, ns, 3), 'ij->ibj') + bd_vortex_grid_TE
             wake_vortex_mesh = wake_vortex_mesh.set(csdl.slice[:,i+1,:,:], value=dx_i) 
 
         mesh_dict[key]['wake_vortex_mesh'] = wake_vortex_mesh # bound vortex TE is included here so we keep track of the PANELS

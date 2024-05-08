@@ -24,10 +24,9 @@ def post_processor(num_nodes, mesh_dict, gamma, V_inf, alpha):
         num_total_panels += (ns-1)*(nc-1)
     induced_vel_force_points = csdl.Variable(shape=(num_nodes, num_total_panels, 3), value=0.)
     for i in csdl.frange(num_nodes):
-        for j in csdl.frange(3): # NOTE: IN THE FUTURE, CHANGE TO MAKE MORE EFFICIENT
+        for j in csdl.frange(3): # NOTE: IN THE FUTURE, CHANGE TO MAKE MORE EFFICIENT.
             induced_vel_force_points = induced_vel_force_points.set(csdl.slice[i,:,j], value=csdl.matvec(AIC_force_eval_pts[i,:,:,j], gamma[i,:]))
-    # NOTE: FIX THIS BECAUSE WE SHOULD BE GETTING VELOCITY COMPONENTS AND THIS ONLY GETS A PROJECTION 
-    1.
+
     start, stop = 0, 0
     for key in mesh_dict.keys():
         nc, ns = mesh_dict[key]['nc'], mesh_dict[key]['ns']

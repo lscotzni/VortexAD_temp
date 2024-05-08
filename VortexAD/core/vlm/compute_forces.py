@@ -14,7 +14,7 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf, alpha, ref_point='d
 
         target_shape = (num_nodes, nc-1, ns-1, 3)
 
-        V_inf_exp = csdl.expand(V_inf, target_shape, 'i->abci')
+        V_inf_exp = csdl.expand(V_inf, target_shape, 'ij->iabj')
         net_gamma_exp = csdl.expand(net_gamma, target_shape, 'ijk->ijka')
         panel_area_exp = csdl.expand(panel_area, target_shape, 'ijk->ijka')
         v_total = V_inf_exp + v_induced
@@ -29,8 +29,10 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf, alpha, ref_point='d
         panel_forces_z = panel_forces[:,:,:,2]
 
         surface_area = csdl.sum(panel_area, axes=(1,2))
-        cosa = csdl.expand(csdl.cos(alpha), panel_forces_x.shape)
-        sina = csdl.expand(csdl.sin(alpha), panel_forces_x.shape)
+        cosa = csdl.expand(csdl.cos(alpha), panel_forces_x.shape, 'i->iab')
+        sina = csdl.expand(csdl.sin(alpha), panel_forces_x.shape, 'i->iab')
+        # cosa = csdl.expand(csdl.cos(alpha), panel_forces_x.shape)
+        # sina = csdl.expand(csdl.sin(alpha), panel_forces_x.shape)
 
         panel_lift = panel_forces_z*cosa - panel_forces_x*sina
         panel_drag = panel_forces_z*sina + panel_forces_x*cosa
@@ -41,8 +43,8 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf, alpha, ref_point='d
         surface_lift = csdl.sum(spanwise_sec_lift, axes=(1,)) # summing across spanwise direction 
         surface_drag = csdl.sum(spanwise_sec_drag, axes=(1,)) # summing across spanwise direction 
 
-        CL = surface_lift/(0.5*rho*csdl.norm(V_inf)**2*surface_area)
-        CDi = surface_drag/(0.5*rho*csdl.norm(V_inf)**2*surface_area)
+        CL = surface_lift/(0.5*rho*csdl.norm(V_inf, axes=(1,))**2*surface_area)
+        CDi = surface_drag/(0.5*rho*csdl.norm(V_inf, axes=(1,))**2*surface_area)
 
         output_dict[surface_name]['L'] = surface_lift
         output_dict[surface_name]['Di'] = surface_drag
