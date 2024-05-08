@@ -10,9 +10,22 @@ class VLMSolver(object):
     def __init__(self):
         pass
 
+'''
+inputs:
+- list of meshes
+- list of mesh velocities
+
+MeshParameters
+- .nodal_coordinates
+- .nodal_velocities
+
+AVOID asdict() method in data classes (VERY SLOW)
 
 
-def vlm_solver(orig_mesh_dict, ac_states, V_inf, alpha):
+add surface 1, surface 2, etc. within the function
+'''
+
+def vlm_solver(orig_mesh_dict, V_inf, alpha):
     '''
     VLM solver (add description)
     '''

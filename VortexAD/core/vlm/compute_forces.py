@@ -29,10 +29,12 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf, alpha, ref_point='d
         panel_forces_z = panel_forces[:,:,:,2]
 
         surface_area = csdl.sum(panel_area, axes=(1,2))
-        cosa = csdl.expand(csdl.cos(alpha), panel_forces_x.shape, 'i->iab')
-        sina = csdl.expand(csdl.sin(alpha), panel_forces_x.shape, 'i->iab')
-        # cosa = csdl.expand(csdl.cos(alpha), panel_forces_x.shape)
-        # sina = csdl.expand(csdl.sin(alpha), panel_forces_x.shape)
+        if num_nodes == 1:
+            cosa = csdl.expand(csdl.cos(alpha), panel_forces_x.shape)
+            sina = csdl.expand(csdl.sin(alpha), panel_forces_x.shape)
+        else:
+            cosa = csdl.expand(csdl.cos(alpha), panel_forces_x.shape, 'i->iab')
+            sina = csdl.expand(csdl.sin(alpha), panel_forces_x.shape, 'i->iab')
 
         panel_lift = panel_forces_z*cosa - panel_forces_x*sina
         panel_drag = panel_forces_z*sina + panel_forces_x*cosa

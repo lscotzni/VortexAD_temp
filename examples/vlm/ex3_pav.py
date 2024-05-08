@@ -36,8 +36,10 @@ recorder = csdl.Recorder(inline=True)
 recorder.start()
 
 ac_states_dummy  = 0.
-output_dict = vlm_solver(mesh_dict, ac_states_dummy, V_inf, alpha_rad)
+output_dict = vlm_solver(mesh_dict, V_inf, alpha_rad)
 recorder.stop()
+recorder.print_graph_structure()
+recorder.visualize_graph(filename='ex3_pav_graph')
 
 wing_CL = output_dict['pav']['CL'].value
 
