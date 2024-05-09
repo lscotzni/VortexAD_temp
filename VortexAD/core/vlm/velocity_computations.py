@@ -2,9 +2,10 @@ import numpy as np
 import csdl_alpha as csdl
 
 def compute_normal_velocity(velocity, normal_vectors):
-    velocity_expanded = csdl.expand(velocity, normal_vectors.shape, 'ij->iabj')
-    proj = csdl.sum(normal_vectors*velocity_expanded, axes=(3,))
-    # proj = csdl.tensordot(normal_vectors, velocity, ([3], [0]))
+    # velocity_expanded = csdl.expand(velocity, normal_vectors.shape, 'ij->iabj')
+    # proj = csdl.sum(normal_vectors*velocity_expanded, axes=(3,))
+    
+    proj = csdl.sum(normal_vectors*velocity, axes=(3,))
 
     return proj
 

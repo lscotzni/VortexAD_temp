@@ -72,11 +72,14 @@ def compute_AIC(num_nodes, mesh_dict, eval_pt_name):
             p4_bd_vec = p4_bd.reshape(interaction_shape)
 
             # use csdl for loop to iteratively expand over one variable (different expansion from csdl.expand) -> NOTE: you can use expand you idiot
-            eval_pt_i_exp = csdl.Variable(shape=(num_nodes,  nc_i-1, ns_i-1, np_surf_j, 3), value=0.)
-            bd_normal_vec_i_exp = csdl.Variable(shape=(num_nodes, nc_i-1, ns_i-1, np_surf_j, 3), value=0.)
-            for k in csdl.frange((np_surf_j)):
-                eval_pt_i_exp = eval_pt_i_exp.set(csdl.slice[:,:,:,k,:], value=eval_pt_i)
-                bd_normal_vec_i_exp = bd_normal_vec_i_exp.set(csdl.slice[:,:,:,k,:], value=bd_vortex_normals_i)
+            eval_pt_i_exp = csdl.expand(eval_pt_i, (num_nodes,  nc_i-1, ns_i-1, np_surf_j, 3), 'ijkl->ijkal')
+            bd_normal_vec_i_exp = csdl.expand(bd_vortex_normals_i, (num_nodes,  nc_i-1, ns_i-1, np_surf_j, 3), 'ijkl->ijkal')
+
+            # eval_pt_i_exp = csdl.Variable(shape=(num_nodes,  nc_i-1, ns_i-1, np_surf_j, 3), value=0.)
+            # bd_normal_vec_i_exp = csdl.Variable(shape=(num_nodes, nc_i-1, ns_i-1, np_surf_j, 3), value=0.)
+            # for k in csdl.frange((np_surf_j)):
+            #     eval_pt_i_exp = eval_pt_i_exp.set(csdl.slice[:,:,:,k,:], value=eval_pt_i)
+            #     bd_normal_vec_i_exp = bd_normal_vec_i_exp.set(csdl.slice[:,:,:,k,:], value=bd_vortex_normals_i)
 
             eval_pt_i_exp_vec = eval_pt_i_exp.reshape((num_nodes, num_interactions, 3))
 
@@ -125,9 +128,10 @@ def compute_AIC(num_nodes, mesh_dict, eval_pt_name):
             p3_w_vec = p3_w.reshape(wake_interaction_shape)
             p4_w_vec = p4_w.reshape(wake_interaction_shape)
 
-            eval_pt_i_wake_exp = csdl.Variable(shape=(num_nodes, nc_i-1, ns_i-1, np_wake_j, 3), value=0.)
-            for k in csdl.frange((np_wake_j)):
-                eval_pt_i_wake_exp = eval_pt_i_wake_exp.set(csdl.slice[:,:,:,k,:], value=eval_pt_i)
+            eval_pt_i_wake_exp = csdl.expand(eval_pt_i, (num_nodes, nc_i-1, ns_i-1, np_wake_j, 3), 'ijkl->ijkal')
+            # eval_pt_i_wake_exp = csdl.Variable(shape=(num_nodes, nc_i-1, ns_i-1, np_wake_j, 3), value=0.)
+            # for k in csdl.frange((np_wake_j)):
+            #     eval_pt_i_wake_exp = eval_pt_i_wake_exp.set(csdl.slice[:,:,:,k,:], value=eval_pt_i)
 
             eval_pt_i_wake_exp_vec = eval_pt_i_wake_exp.reshape(wake_interaction_shape)
 

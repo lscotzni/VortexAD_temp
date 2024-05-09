@@ -54,4 +54,15 @@ def pre_processor(mesh_dict):
         bound_vec = p2_bd - p1_bd
         mesh_dict[key]['bound_vec'] = bound_vec # NO NEED TO NORMALIZE BECAUSE WE NEED THE MAGNITUDE
 
+        # VELOCITY COMPUTATIONS FOR COLLOCATION POINT AND BOUND VECTORS
+        nodal_velocity = mesh_dict[key]['nodal_velocity'] # at the nodes of the mesh
+
+        v1 = nodal_velocity[:, :-1, :-1, :]
+        v2 = nodal_velocity[:, :-1, 1:, :]
+        v3 = nodal_velocity[:, 1:, 1:, :]
+        v4 = nodal_velocity[:, 1:, :-1, :]
+
+        mesh_dict[key]['collocation_velocity'] = 0.75*(v1+v2)/2. + 0.25*(v3+v4)/2.
+        mesh_dict[key]['bound_vector_velocity'] = 0.25*(v1+v2)/2. + 0.75*(v3+v4)/2.
+
     return mesh_dict

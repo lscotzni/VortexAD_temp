@@ -3,7 +3,7 @@ import csdl_alpha as csdl
 from VortexAD.core.vlm.velocity_computations import compute_normal_velocity, compute_induced_velocity
 from VortexAD.core.vlm.compute_AIC import compute_AIC
 
-def setup_linear_system(num_nodes, mesh_dict, V_inf):
+def setup_linear_system(num_nodes, mesh_dict):
 
     AIC = compute_AIC(num_nodes, mesh_dict, eval_pt_name='collocation_points')
 
@@ -23,10 +23,12 @@ def setup_linear_system(num_nodes, mesh_dict, V_inf):
         ns_i, nc_i = mesh_dict[surface_name]['ns'], mesh_dict[surface_name]['nc']
         np_surf_i = (ns_i-1)*(nc_i-1)
         bd_vortex_normals_i = mesh_dict[surface_name]['bd_normal_vec'] # (num_nodes, nc-1, ns-1, 3)
+        collocation_velocity = mesh_dict[surface_name]['collocation_velocity'] # (num_nodes, nc-1, ns-1, 3)
 
         # SETTING BOUNDARY CONDITION
         stop_panel_counter += np_surf_i
-        surface_bc = compute_normal_velocity(V_inf, bd_vortex_normals_i)
+        # surface_bc = compute_normal_velocity(V_inf, bd_vortex_normals_i)
+        surface_bc = compute_normal_velocity(collocation_velocity, bd_vortex_normals_i)
         RHS = RHS.set(csdl.slice[:, start_panel_counter:stop_panel_counter], csdl.reshape(-surface_bc, (num_nodes, np_surf_i)))
         start_panel_counter += np_surf_i
 
