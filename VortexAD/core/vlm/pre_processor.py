@@ -5,7 +5,8 @@ def pre_processor(mesh_dict):
     mesh_names = mesh_dict.keys()
 
     for key in mesh_names:
-        mesh = csdl.Variable(name=key+'_mesh', value=mesh_dict[key]['mesh'])
+        # mesh = csdl.Variable(name=key+'_mesh', value=mesh_dict[key]['mesh'])
+        mesh = mesh_dict[key]['mesh']
         # NOTE: mesh has shape (num_nodes, nc, ns, 3)
 
         mesh_dict[key]['nc'] = mesh.shape[1]
