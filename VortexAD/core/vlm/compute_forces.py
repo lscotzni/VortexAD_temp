@@ -5,13 +5,21 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha=None, re
     surface_names = list(mesh_dict.keys())
     num_surfaces = len(surface_names)
 
-    surface_force = csdl.Variable(shape=(num_nodes, num_surfaces, 3), value=0.)
-    surface_moment = csdl.Variable(shape=(num_nodes, num_surfaces, 3), value=0.) 
-    surface_lift = csdl.Variable(shape=(num_nodes, num_surfaces), value=0.) 
-    surface_drag = csdl.Variable(shape=(num_nodes, num_surfaces), value=0.) 
+    surface_force = []
+    surface_moment = []
+    surface_lift = []
+    surface_drag = []
 
-    surface_CL = csdl.Variable(shape=(num_nodes, num_surfaces), value=0.)
-    surface_CDi = csdl.Variable(shape=(num_nodes, num_surfaces), value=0.)
+    surface_panel_forces = []
+    surface_sectional_cop = []
+    surface_cop = [] 
+    surface_CL = []
+    surface_CDi = []
+
+    total_force = csdl.Variable(shape=(num_nodes, 3), value=0.)
+    total_moment = csdl.Variable(shape=(num_nodes, 3), value=0.)
+    total_lift = csdl.Variable(shape=(num_nodes, ), value=0.)
+    total_drag = csdl.Variable(shape=(num_nodes, ), value=0.)
 
     for i in range(num_surfaces):
         surface_name = surface_names[i]
@@ -96,28 +104,36 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha=None, re
         normal_force_exp = csdl.expand(normal_force, normal_vec.shape, 'ijk->ijkl')
         normal_force_sum_exp = csdl.sum(csdl.expand(normal_force, normal_force.shape + (3,), 'ijk->ijka'), axes=(1,2)) # shape (num_nodes, 3)
     
-        cp = csdl.sum(moment_arm_surf*normal_force_exp, axes=(1,2))/normal_force_sum_exp
+        cop = csdl.sum(moment_arm_surf*normal_force_exp, axes=(1,2))/normal_force_sum_exp
 
-        surface_force = surface_force.set(csdl.slice[:,i,:], value=total_force_surf)
-        surface_moment = surface_moment.set(csdl.slice[:,i,:], value=total_moment_surf)
-        surface_lift = surface_lift.set(csdl.slice[:,i], value=lift_surf)
-        surface_drag = surface_drag.set(csdl.slice[:,i], value=drag_surf)
-        surface_CL = surface_CL.set(csdl.slice[:,i], value=CL)
-        surface_CDi = surface_CDi.set(csdl.slice[:,i], value=CDi)
-    
-    total_force = csdl.sum(surface_force, axes=(1,))
-    total_moment = csdl.sum(surface_moment, axes=(1,))
-    total_lift = csdl.sum(surface_lift, axes=(1,))
-    total_drag = csdl.sum(surface_drag, axes=(1,))
+        sectional_cop = csdl.sum(moment_arm_surf*normal_force_exp, axes=(1,)) / csdl.sum(csdl.expand(normal_force, normal_force.shape + (3,), 'ijk->ijka'), axes=(1,))
 
+        surface_panel_forces.append(panel_forces)
+        surface_force.append(total_force_surf)
+        surface_moment.append(total_moment_surf)
+        surface_lift.append(lift_surf)
+        surface_drag.append(drag_surf)
+
+        surface_CL.append(CL)
+        surface_CDi.append(CDi)
+        surface_cop.append(cop)
+        surface_sectional_cop.append(sectional_cop)
+
+        total_force = total_force + total_force_surf
+        total_moment = total_moment + total_moment_surf
+        total_lift = total_lift + lift_surf
+        total_drag = total_drag + drag_surf
 
     surface_output_dict = {
+        'surface_panel_forces': surface_panel_forces,
         'surface_force': surface_force,
         'surface_moment': surface_moment,
         'surface_lift': surface_lift,
         'surface_drag': surface_drag,
         'surface_CL': surface_CL,
         'surface_CDi': surface_CDi, 
+        'surface_cop': surface_cop,
+        'surface_sectional_cop': surface_sectional_cop
     }
 
     total_output_dict = {
@@ -127,14 +143,6 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha=None, re
         'total_drag': total_drag,
     }
     
-    '''
-    stuff to add:
-    - delta_p computation 
-    - center of pressure computation
-    NOTE: ADD csdl.frange() loop here to find total force and moment of system
-    '''
-        
-
     return surface_output_dict, total_output_dict
 
 

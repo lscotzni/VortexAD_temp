@@ -12,7 +12,7 @@ c = 1
 
 num_nodes = 1
 alpha = np.array([5.]).reshape((num_nodes,)) * np.pi/180.
-V_inf = np.array([248.136, 0., 0.])
+V_inf = np.array([-248.136, 0., 0.])
 
 V_rot_mat = np.zeros((3,3))
 V_rot_mat[1,1] = 1.
@@ -21,7 +21,7 @@ V_rot_mat[2,0] = np.sin(alpha)
 V_rot_mat[0,2] = -np.sin(alpha)
 V_inf_rot = np.matmul(V_rot_mat, V_inf)
 
-mesh_orig = gen_vlm_mesh(ns, nc, b, c, frame='default')
+mesh_orig = gen_vlm_mesh(ns, nc, b, c, frame='caddee')
 mesh = np.zeros((num_nodes,) + mesh_orig.shape)
 for i in range(num_nodes):
     mesh[i,:,:,:] = mesh_orig
@@ -44,8 +44,8 @@ recorder.stop()
 wing_CL = output_vg.surface_CL.value
 wing_CDi = output_vg.surface_CDi.value
 
-wing_CL_OAS = np.array([0.4426841725811703])
-wing_CDi_OAS = np.array([0.005878842561184834])
+wing_CL_OAS = np.array([-0.4426841725811703])
+wing_CDi_OAS = np.array([-0.005878842561184834])
 
 CL_error = (wing_CL_OAS - wing_CL)/(wing_CL_OAS) * 100
 CDi_error = (wing_CDi_OAS - wing_CDi)/(wing_CDi_OAS) * 100

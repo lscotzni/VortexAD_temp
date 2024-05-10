@@ -37,7 +37,7 @@ def vlm_solver(mesh_list, mesh_velocity_list):
         surface_name = f'surface_{surface_counter}'
         exp_orig_mesh_dict[surface_name] = {}
         exp_orig_mesh_dict[surface_name]['mesh'] = mesh_list[i]
-        exp_orig_mesh_dict[surface_name]['nodal_velocity'] = mesh_velocity_list[i]
+        exp_orig_mesh_dict[surface_name]['nodal_velocity'] = mesh_velocity_list[i] * -1.
 
         num_nodes = mesh_list[i].shape[0] # NOTE: CHECK THIS LINE
         surface_counter += 1
@@ -76,6 +76,7 @@ def vlm_solver(mesh_list, mesh_velocity_list):
         total_drag: csdl.Variable
         total_force: csdl.Variable
         total_moment: csdl.Variable
+        
 
         surface_CL: csdl.Variable
         surface_CDi: csdl.Variable
@@ -83,6 +84,10 @@ def vlm_solver(mesh_list, mesh_velocity_list):
         surface_drag: csdl.Variable
         surface_force: csdl.Variable
         surface_moment: csdl.Variable
+
+        surface_panel_forces: list
+        surface_sectional_cop: list
+        surface_cop: csdl.Variable
 
     output_vg = Outputs(
         total_lift = total_output_dict['total_lift'],
@@ -96,6 +101,9 @@ def vlm_solver(mesh_list, mesh_velocity_list):
         surface_drag = surface_output_dict['surface_drag'],
         surface_force = surface_output_dict['surface_force'],
         surface_moment = surface_output_dict['surface_moment'],
+        surface_panel_forces = surface_output_dict['surface_panel_forces'],
+        surface_sectional_cop = surface_output_dict['surface_sectional_cop'],
+        surface_cop = surface_output_dict['surface_cop']
     )
 
     
