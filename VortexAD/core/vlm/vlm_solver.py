@@ -1,6 +1,6 @@
 import numpy as np 
 import csdl_alpha as csdl 
-
+from dataclasses import dataclass
 # from VortexAD.core.parse_ac_states import parse_ac_states
 from VortexAD.core.vlm.pre_processor import pre_processor
 from VortexAD.core.vlm.gamma_solver import gamma_solver
@@ -70,17 +70,34 @@ def vlm_solver(mesh_list, mesh_velocity_list):
     print('running post-processing')
     surface_output_dict, total_output_dict = post_processor(num_nodes, mesh_dict, gamma)
 
-    output_vg = csdl.VariableGroup()
-    output_vg.total_lift = total_output_dict['total_lift']
-    output_vg.total_drag = total_output_dict['total_drag']
-    output_vg.total_force = total_output_dict['total_force']
-    output_vg.total_moment = total_output_dict['total_moment']
+    @dataclass
+    class Outputs(csdl.VariableGroup):
+        total_lift: csdl.Variable
+        total_drag: csdl.Variable
+        total_force: csdl.Variable
+        total_moment: csdl.Variable
 
-    output_vg.surface_CL = surface_output_dict['surface_CL']
-    output_vg.surface_CDi = surface_output_dict['surface_CDi']
-    output_vg.surface_lift = surface_output_dict['surface_lift']
-    output_vg.surface_drag = surface_output_dict['surface_drag']
-    output_vg.surface_force = surface_output_dict['surface_force']
-    output_vg.surface_moment = surface_output_dict['surface_moment']
+        surface_CL: csdl.Variable
+        surface_CDi: csdl.Variable
+        surface_lift: csdl.Variable
+        surface_drag: csdl.Variable
+        surface_force: csdl.Variable
+        surface_moment: csdl.Variable
+
+    output_vg = Outputs(
+        total_lift = total_output_dict['total_lift'],
+        total_drag = total_output_dict['total_drag'],
+        total_force = total_output_dict['total_force'],
+        total_moment = total_output_dict['total_moment'],
+
+        surface_CL = surface_output_dict['surface_CL'],
+        surface_CDi = surface_output_dict['surface_CDi'],
+        surface_lift = surface_output_dict['surface_lift'],
+        surface_drag = surface_output_dict['surface_drag'],
+        surface_force = surface_output_dict['surface_force'],
+        surface_moment = surface_output_dict['surface_moment'],
+    )
+
+    
 
     return output_vg
