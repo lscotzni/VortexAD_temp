@@ -11,6 +11,7 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha=None, re
     surface_drag = []
 
     surface_panel_forces = []
+    surface_panel_force_points = []
     surface_sectional_cop = []
     surface_cop = [] 
     surface_CL = []
@@ -109,6 +110,7 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha=None, re
         sectional_cop = csdl.sum(moment_arm_surf*normal_force_exp, axes=(1,)) / csdl.sum(csdl.expand(normal_force, normal_force.shape + (3,), 'ijk->ijka'), axes=(1,))
 
         surface_panel_forces.append(panel_forces)
+        surface_panel_force_points.append(force_eval_pts)
         surface_force.append(total_force_surf)
         surface_moment.append(total_moment_surf)
         surface_lift.append(lift_surf)
@@ -126,6 +128,7 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha=None, re
 
     surface_output_dict = {
         'surface_panel_forces': surface_panel_forces,
+        'surface_panel_force_points': surface_panel_force_points,
         'surface_force': surface_force,
         'surface_moment': surface_moment,
         'surface_lift': surface_lift,
