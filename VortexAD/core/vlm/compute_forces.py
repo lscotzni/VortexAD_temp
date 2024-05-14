@@ -1,7 +1,7 @@
 import numpy as np
 import csdl_alpha as csdl 
 
-def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha=None, ref_point='default'):
+def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha_ML=None, ref_point='default'):
     surface_names = list(mesh_dict.keys())
     num_surfaces = len(surface_names)
 
@@ -31,8 +31,18 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha=None, re
         normal_vec = mesh_dict[surface_name]['bd_normal_vec']
 
         V_inf = csdl.sum(bound_vec_velocity[:,0,:,:], axes=(1,)) / (ns-1) # AXIS 1 HERE BECAUSE THE SHAPE LENGTH DECREASES BY 1 B/C THE ORIGINAL AXIS 1 DISAPPEARS
-        alpha = csdl.arctan(V_inf[:,2]/V_inf[:,0])
+        alpha_surf = csdl.arctan(V_inf[:,2]/V_inf[:,0])
 
+        if num_nodes == 1:
+            alpha_surf_exp = csdl.expand(alpha_surf, normal_vec.shape[:-1])
+        else:
+            alpha_surf_exp = csdl.expand(alpha_surf, normal_vec.shape[:-1], 'i->iab')
+
+        if alpha_ML is not None: # alpha_ML would come in with shape (num_nodes, ns); need to expand to (num_nodes, nc, ns)
+            alpha_ML_exp = csdl.expand(alpha_ML, alpha_surf_exp.shape, 'ij->iaj')
+            alpha_tot = alpha_surf_exp - alpha_ML_exp
+        else:
+            alpha_tot = alpha_surf_exp
         net_gamma = output_dict[surface_name]['net_gamma'] # (num_nodes, nc-1, ns-1)
         v_induced = output_dict[surface_name]['force_pts_v_induced']
 
@@ -54,12 +64,8 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha=None, re
         panel_forces_z = panel_forces[:,:,:,2]
 
         surface_area = csdl.sum(panel_area, axes=(1,2))
-        if num_nodes == 1:
-            cosa = csdl.expand(csdl.cos(alpha), panel_forces_x.shape)
-            sina = csdl.expand(csdl.sin(alpha), panel_forces_x.shape)
-        else:
-            cosa = csdl.expand(csdl.cos(alpha), panel_forces_x.shape, 'i->iab')
-            sina = csdl.expand(csdl.sin(alpha), panel_forces_x.shape, 'i->iab')
+        cosa = csdl.cos(alpha_tot)
+        sina = csdl.sin(alpha_tot)
 
         panel_lift = panel_forces_z*cosa - panel_forces_x*sina
         panel_drag = panel_forces_z*sina + panel_forces_x*cosa
