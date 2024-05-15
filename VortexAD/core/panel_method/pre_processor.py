@@ -5,10 +5,14 @@ from VortexAD.utils.atan2_switch import atan2_switch
 
 def pre_processor(mesh_dict):
     surface_names = list(mesh_dict.keys())
-    for i, key in enumerate(mesh_dict.keys()): # looping over surface names
+    for i, key in enumerate(surface_names): # looping over surface names
         mesh = mesh_dict[key]['mesh']
         mesh_shape = mesh.shape
         nc, ns = mesh_shape[-3], mesh_shape[-2]
+
+        mesh_dict[key]['num_panels'] = (nc-1)*(ns-1)
+        mesh_dict[key]['nc'] = nc
+        mesh_dict[key]['ns'] = ns
 
         if i == 0:
             num_dim = len(mesh.shape) # last 3 dimensions are nc, ns, 3; ones before are either (nn,) or (nn, nt)
@@ -44,6 +48,10 @@ def pre_processor(mesh_dict):
         panel_y_dir = panel_y_vec / csdl.expand(csdl.norm(panel_y_vec, axes=(4,)), panel_y_vec.shape, 'ijkl->ijkla')
         panel_normal = panel_normal_vec / csdl.expand(csdl.norm(panel_normal_vec, axes=(4,)), panel_normal_vec.shape, 'ijkl->ijkla')
 
+        mesh_dict[key]['panel_x_dir'] = panel_x_dir
+        mesh_dict[key]['panel_y_dir'] = panel_y_dir
+        mesh_dict[key]['panel_normal'] = panel_normal
+
         # global unit vectors
         # +x points from tail to nose of aircraft
         # +y points to the left of the aircraft (facing from the front)
@@ -70,16 +78,25 @@ def pre_processor(mesh_dict):
         dpij = dpij.set(csdl.slice[:,:,:,:,2,:], value=p4[:,:,:,:,:2]-p3[:,:,:,:,:2])
         dpij = dpij.set(csdl.slice[:,:,:,:,3,:], value=p1[:,:,:,:,:2]-p4[:,:,:,:,:2])
 
+        mesh_dict[key]['dpij'] = dpij
+
         dij = csdl.Variable(value=np.zeros((panel_center.shape[:-1] + (4,))))
         dij = dij.set(csdl.slice[:,:,:,:,0], value=csdl.norm(dpij[:,:,:,:,0,:]))
         dij = dij.set(csdl.slice[:,:,:,:,1], value=csdl.norm(dpij[:,:,:,:,1,:]))
         dij = dij.set(csdl.slice[:,:,:,:,2], value=csdl.norm(dpij[:,:,:,:,2,:]))
         dij = dij.set(csdl.slice[:,:,:,:,3], value=csdl.norm(dpij[:,:,:,:,3,:]))
 
+        mesh_dict[key]['dij'] = dij
+
         mij = csdl.Variable(shape=dij.shape, value=0.)
         mij = mij.set(csdl.slice[:,:,:,:,0], value=(dpij[:,:,:,:,0,1])/(dpij[:,:,:,:,0,0]+1.e-12))
         mij = mij.set(csdl.slice[:,:,:,:,1], value=(dpij[:,:,:,:,1,1])/(dpij[:,:,:,:,1,0]+1.e-12))
         mij = mij.set(csdl.slice[:,:,:,:,2], value=(dpij[:,:,:,:,2,1])/(dpij[:,:,:,:,2,0]+1.e-12))
         mij = mij.set(csdl.slice[:,:,:,:,3], value=(dpij[:,:,:,:,3,1])/(dpij[:,:,:,:,3,0]+1.e-12))
+
+        mesh_dict[key]['mij'] = mij
+
+        nodal_vel = mesh_dict[key]['nodal_velocity']
+        mesh_dict[key]['coll_point_velocity'] = (nodal_vel[:,:,:-1,:-1,:]+nodal_vel[:,:,:-1,1:,:]+nodal_vel[:,:,1:,1:,:]+nodal_vel[:,:,1:,:-1,:]) / 4.
 
     return mesh_dict

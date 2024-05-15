@@ -17,7 +17,8 @@ vnv_scaler =  1.
 
 num_nodes = 2
 alpha = np.array([5.,]) * np.pi/180.
-V_inf = np.array([-248.136, 0., 0.])
+# V_inf = np.array([-248.136, 0., 0.])
+V_inf = np.array([-60, 0., 0.])
 if frame == 'caddee':
     V_inf *= -1.
 
@@ -41,6 +42,9 @@ mesh_velocity[:,:,:,2] = V_inf_rot[2]
 
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocity]
+
+print(mesh_velocity)
+# exit()
 
 # alpha_ML = np.ones((num_nodes, ns-1)) * -5*np.pi/180.
 alpha_ML = None

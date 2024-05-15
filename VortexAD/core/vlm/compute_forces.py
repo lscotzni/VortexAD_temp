@@ -32,12 +32,17 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha_ML=None,
 
         V_inf = csdl.sum(bound_vec_velocity[:,0,:,:], axes=(1,)) / (ns-1) # AXIS 1 HERE BECAUSE THE SHAPE LENGTH DECREASES BY 1 B/C THE ORIGINAL AXIS 1 DISAPPEARS
         alpha_surf = csdl.arctan(V_inf[:,2]/V_inf[:,0])
+        # print(V_inf.value)
+        # print(alpha_surf.value)
+        # exit()
 
         if num_nodes == 1:
             alpha_surf_exp = csdl.expand(alpha_surf, normal_vec.shape[:-1])
         else:
             alpha_surf_exp = csdl.expand(alpha_surf, normal_vec.shape[:-1], 'i->iab')
 
+        # NOTE: ADJUST alpha_ML INPUT TO BE A LIST CORRESPONDING TO THE NUMBER OF SURFACES
+        # NOTE: ADJUST V_inf ABOVE BY ROTATING IT BY alpha_ML AT THE BEGINNING OF THE SOLVER (needed for no-penetration condition)
         if alpha_ML is not None: # alpha_ML would come in with shape (num_nodes, ns); need to expand to (num_nodes, nc, ns)
             alpha_ML_exp = csdl.expand(alpha_ML, alpha_surf_exp.shape, 'ij->iaj')
             alpha_tot = alpha_surf_exp - alpha_ML_exp
@@ -53,11 +58,18 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha_ML=None,
         panel_area_exp = csdl.expand(panel_area, target_shape, 'ijk->ijka')
         # v_total = V_inf_exp + v_induced
         v_total = bound_vec_velocity + v_induced
+        # print('v_induced:')
+        # print(v_induced.value)
+        # print(v_total.value)
+        # exit()
 
         rho=1.225
 
         panel_forces = net_gamma_exp*csdl.cross(v_total, bound_vec, axis=3) * rho
         output_dict[surface_name]['total_forces'] = panel_forces
+        # print('panel_forces:')
+        # print(panel_forces.value)
+        # exit()
 
         panel_forces_x = panel_forces[:,:,:,0]
         panel_forces_y = panel_forces[:,:,:,1]

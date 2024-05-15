@@ -23,6 +23,9 @@ def fixed_wake_representation(mesh_dict, num_panels=1):
             dx_i = TE_nodal_velocity*dt*(i+1) + bd_vortex_grid_TE
             wake_vortex_mesh = wake_vortex_mesh.set(csdl.slice[:,i+1,:,:], value=dx_i) 
 
+        # print(bd_vortex_grid_TE.value)
+        # print(wake_vortex_mesh.value)
+        # exit()
         mesh_dict[key]['wake_vortex_mesh'] = wake_vortex_mesh # bound vortex TE is included here so we keep track of the PANELS
 
     return mesh_dict
