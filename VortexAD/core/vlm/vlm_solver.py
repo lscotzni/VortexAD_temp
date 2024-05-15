@@ -24,30 +24,7 @@ AVOID asdict() method in data classes (VERY SLOW)
 
 add surface 1, surface 2, etc. within the function
 '''
-
-# def vlm_solver(orig_mesh_dict, V_inf, alpha):
-def vlm_solver(mesh_list, mesh_velocity_list, alpha_ML=None):
-    '''
-    VLM solver (add description)
-    '''
-    exp_orig_mesh_dict = {}
-    surface_counter = 0
-
-    for i in range(len(mesh_list)):
-        surface_name = f'surface_{surface_counter}'
-        exp_orig_mesh_dict[surface_name] = {}
-        exp_orig_mesh_dict[surface_name]['mesh'] = mesh_list[i]
-        exp_orig_mesh_dict[surface_name]['nodal_velocity'] = mesh_velocity_list[i] * -1.
-
-        num_nodes = mesh_list[i].shape[0] # NOTE: CHECK THIS LINE
-        surface_counter += 1
-
-    # parse ac_states
-    # u, v, w, alpha = parse_ac_states(ac_states)
-    print('running pre-processing')
-    mesh_dict = pre_processor(exp_orig_mesh_dict)
-
-    # V_inf_rot = csdl.Variable(value=np.zeros((num_nodes,3)))
+# V_inf_rot = csdl.Variable(value=np.zeros((num_nodes,3)))
     # alpha = csdl.Variable(value=alpha)
     # V_inf = csdl.Variable(value=V_inf)
     # V_rot_mat = csdl.Variable(value=np.zeros((num_nodes, 3,3)))
@@ -63,6 +40,22 @@ def vlm_solver(mesh_list, mesh_velocity_list, alpha_ML=None):
     #     # V_rot_mat[2,0] = csdl.sin(alpha[i])
     #     # V_rot_mat[0,2] = -csdl.sin(alpha[i])
     #     V_inf_rot = V_inf_rot.set(csdl.slice[i,:], value=csdl.matvec(V_rot_mat[i,:,:], V_inf[i,:]))
+
+
+def vlm_solver(mesh_list, mesh_velocity_list, alpha_ML=None):
+    orig_mesh_dict = {}
+    surface_counter = 0
+
+    for i in range(len(mesh_list)):
+        surface_name = f'surface_{surface_counter}'
+        orig_mesh_dict[surface_name] = {}
+        orig_mesh_dict[surface_name]['mesh'] = mesh_list[i]
+        orig_mesh_dict[surface_name]['nodal_velocity'] = mesh_velocity_list[i] * -1.
+        num_nodes = mesh_list[i].shape[0] # NOTE: CHECK THIS LINE
+        surface_counter += 1
+
+    print('running pre-processing')
+    mesh_dict = pre_processor(orig_mesh_dict)
 
     print('solving for circulation strengths')
     gamma = gamma_solver(num_nodes, mesh_dict)

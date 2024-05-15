@@ -32,15 +32,15 @@ def compute_source_influence(dij, mij, dpij, dx, dy, dz, rk, ek, hk, sigma=1., m
         #     csdl.arctan((mij[:,3]*ek[:,3]-hk[:,3])/(dk[:,3,2]*rk[:,3]+1.e-12)) - csdl.arctan((mij[:,3]*ek[:,0]-hk[:,0])/(dk[:,3,2]*rk[:,0]+1.e-12))
         # )) # note that dk[:,i,2] is the same for all i
         source_AIC_vec = -sigma/4/np.pi*(( # CHANGE TO USE dx, dy, dz
-            ((dk[:,0,0]*dpij[:,0,1] - dk[:,0,1]*dpij[:,0,0])/dij[:,0]*csdl.log((rk[:,0] + rk[:,1] + dij[:,0])/(rk[:,0] + rk[:,1] - dij[:,0]))) + 
-            ((dk[:,1,0]*dpij[:,1,1] - dk[:,1,1]*dpij[:,1,0])/dij[:,1]*csdl.log((rk[:,1] + rk[:,2] + dij[:,1])/(rk[:,1] + rk[:,2] - dij[:,1]))) + 
-            ((dk[:,2,0]*dpij[:,2,1] - dk[:,2,1]*dpij[:,2,0])/dij[:,2]*csdl.log((rk[:,2] + rk[:,3] + dij[:,2])/(rk[:,2] + rk[:,3] - dij[:,2]))) + 
-            ((dk[:,3,0]*dpij[:,3,1] - dk[:,3,1]*dpij[:,3,0])/dij[:,3]*csdl.log((rk[:,3] + rk[:,0] + dij[:,3])/(rk[:,3] + rk[:,0] - dij[:,3])))
-        ) - (dk[:,0,2]**2)**0.5 * (
-            csdl.arctan((mij[:,0]*ek[:,0]-hk[:,0])/(dk[:,0,2]*rk[:,0]+1.e-12)) - csdl.arctan((mij[:,0]*ek[:,1]-hk[:,1])/(dk[:,0,2]*rk[:,1]+1.e-12)) + 
-            csdl.arctan((mij[:,1]*ek[:,1]-hk[:,1])/(dk[:,1,2]*rk[:,1]+1.e-12)) - csdl.arctan((mij[:,1]*ek[:,2]-hk[:,2])/(dk[:,1,2]*rk[:,2]+1.e-12)) + 
-            csdl.arctan((mij[:,2]*ek[:,2]-hk[:,2])/(dk[:,2,2]*rk[:,2]+1.e-12)) - csdl.arctan((mij[:,2]*ek[:,3]-hk[:,3])/(dk[:,2,2]*rk[:,3]+1.e-12)) + 
-            csdl.arctan((mij[:,3]*ek[:,3]-hk[:,3])/(dk[:,3,2]*rk[:,3]+1.e-12)) - csdl.arctan((mij[:,3]*ek[:,0]-hk[:,0])/(dk[:,3,2]*rk[:,0]+1.e-12))
+            ((dx[:,:,:,0]*dpij[:,:,:,0,1] - dy[:,:,:,0]*dpij[:,:,:,0,0])/dij[:,:,:,0]*csdl.log((rk[:,:,:,0] + rk[:,:,:,1] + dij[:,:,:,0])/(rk[:,:,:,0] + rk[:,:,:,1] - dij[:,:,:,0]))) + 
+            ((dx[:,:,:,1]*dpij[:,:,:,1,1] - dy[:,:,:,1]*dpij[:,:,:,1,0])/dij[:,:,:,1]*csdl.log((rk[:,:,:,1] + rk[:,:,:,2] + dij[:,:,:,1])/(rk[:,:,:,1] + rk[:,:,:,2] - dij[:,:,:,1]))) + 
+            ((dx[:,:,:,2]*dpij[:,:,:,2,1] - dy[:,:,:,2]*dpij[:,:,:,2,0])/dij[:,:,:,2]*csdl.log((rk[:,:,:,2] + rk[:,:,:,3] + dij[:,:,:,2])/(rk[:,:,:,2] + rk[:,:,:,3] - dij[:,:,:,2]))) + 
+            ((dx[:,:,:,3]*dpij[:,:,:,3,1] - dy[:,:,:,3]*dpij[:,:,:,3,0])/dij[:,:,:,3]*csdl.log((rk[:,:,:,3] + rk[:,:,:,0] + dij[:,:,:,3])/(rk[:,:,:,3] + rk[:,:,:,0] - dij[:,:,:,3])))
+        ) - (dz[:,:,:,0]**2)**0.5 * (
+            csdl.arctan((mij[:,:,:,0]*ek[:,:,:,0]-hk[:,:,:,0])/(dz[:,:,:,0]*rk[:,:,:,0]+1.e-12)) - csdl.arctan((mij[:,:,:,0]*ek[:,:,:,1]-hk[:,:,:,1])/(dz[:,:,:,0]*rk[:,:,:,1]+1.e-12)) + 
+            csdl.arctan((mij[:,:,:,1]*ek[:,:,:,1]-hk[:,:,:,1])/(dz[:,:,:,1]*rk[:,:,:,1]+1.e-12)) - csdl.arctan((mij[:,:,:,1]*ek[:,:,:,2]-hk[:,:,:,2])/(dz[:,:,:,1]*rk[:,:,:,2]+1.e-12)) + 
+            csdl.arctan((mij[:,:,:,2]*ek[:,:,:,2]-hk[:,:,:,2])/(dz[:,:,:,2]*rk[:,:,:,2]+1.e-12)) - csdl.arctan((mij[:,:,:,2]*ek[:,:,:,3]-hk[:,:,:,3])/(dz[:,:,:,2]*rk[:,:,:,3]+1.e-12)) + 
+            csdl.arctan((mij[:,:,:,3]*ek[:,:,:,3]-hk[:,:,:,3])/(dz[:,:,:,3]*rk[:,:,:,3]+1.e-12)) - csdl.arctan((mij[:,:,:,3]*ek[:,:,:,0]-hk[:,:,:,0])/(dz[:,:,:,3]*rk[:,:,:,0]+1.e-12))
         )) # note that dk[:,i,2] is the same for all i
         return source_AIC_vec
         # source_AIC = np.reshape(source_AIC_vec, (num_panels, num_panels))
@@ -84,8 +84,6 @@ def compute_source_AIC(mesh_dict, num_nodes, nt, num_tot_panels):
             mij_j = mesh_dict[surf_j_name]['mij']
 
             num_interactions = num_panels_i*num_panels_j
-            interaction_shape = (num_nodes, nt, num_interactions, )
-
 
             coll_point_i_exp = csdl.expand(coll_point_i, (num_nodes, nt, nc_i-1, ns_i-1, num_panels_j, 4, 3), 'ijklm->ijklabm')
             coll_point_i_exp_vec = coll_point_i_exp.reshape((num_nodes, nt, num_interactions, 4, 3))
@@ -93,36 +91,33 @@ def compute_source_AIC(mesh_dict, num_nodes, nt, num_tot_panels):
             panel_corners_j_exp = csdl.expand(panel_corners_j, (num_nodes, nt, num_panels_i, nc_j-1, ns_j-1, 4, 3), 'ijklmn->ijaklmn')
             panel_corners_j_exp_vec = panel_corners_j_exp.reshape((num_nodes, nt, num_interactions, 4, 3))
 
-            panel_x_dir_j_exp = csdl.expand(panel_x_dir_j, (num_nodes, nt, num_panels_i, nc_j-1, ns_j-1, 4, 3), 'ijklmn->ijaklmn')
+            panel_x_dir_j_exp = csdl.expand(panel_x_dir_j, (num_nodes, nt, num_panels_i, nc_j-1, ns_j-1, 4, 3), 'ijklm->ijaklbm')
             panel_x_dir_j_exp_vec = panel_x_dir_j_exp.reshape((num_nodes, nt, num_interactions, 4, 3))
-            panel_y_dir_j_exp = csdl.expand(panel_y_dir_j, (num_nodes, nt, num_panels_i, nc_j-1, ns_j-1, 4, 3), 'ijklmn->ijaklmn')
+            panel_y_dir_j_exp = csdl.expand(panel_y_dir_j, (num_nodes, nt, num_panels_i, nc_j-1, ns_j-1, 4, 3), 'ijklm->ijaklbm')
             panel_y_dir_j_exp_vec = panel_y_dir_j_exp.reshape((num_nodes, nt, num_interactions, 4, 3))
-            panel_normal_j_exp = csdl.expand(panel_normal_j, (num_nodes, nt, num_panels_i, nc_j-1, ns_j-1, 4, 3), 'ijklmn->ijaklmn')
+            panel_normal_j_exp = csdl.expand(panel_normal_j, (num_nodes, nt, num_panels_i, nc_j-1, ns_j-1, 4, 3), 'ijklm->ijaklbm')
             panel_normal_j_exp_vec = panel_normal_j_exp.reshape((num_nodes, nt, num_interactions, 4, 3))
 
 
-            dpij_j_exp = csdl.expand(dpij_j, (num_nodes, nt, num_panels_i, nc_j-1, ns_j-1, 4, 3), 'ijklmn->ijaklmn')
-            dpij_j_exp_vec = dpij_j_exp.reshape((num_nodes, nt, num_interactions, 4, 3))
-            dij_j_exp = csdl.expand(dij_j, (num_nodes, nt, num_panels_i, nc_j-1, ns_j-1, 4, 3), 'ijklmn->ijaklmn')
-            dij_j_exp_vec = dij_j_exp.reshape((num_nodes, nt, num_interactions, 4, 3))
-            mij_j_exp = csdl.expand(mij_j, (num_nodes, nt, num_panels_i, nc_j-1, ns_j-1, 4, 3), 'ijklmn->ijaklmn')
-            mij_j_exp_vec = mij_j_exp.reshape((num_nodes, nt, num_interactions, 4, 3))
+            dpij_j_exp = csdl.expand(dpij_j, (num_nodes, nt, num_panels_i, nc_j-1, ns_j-1, 4, 2), 'ijklmn->ijaklmn')
+            dpij_j_exp_vec = dpij_j_exp.reshape((num_nodes, nt, num_interactions, 4, 2))
+            dij_j_exp = csdl.expand(dij_j, (num_nodes, nt, num_panels_i, nc_j-1, ns_j-1, 4), 'ijklm->ijaklm')
+            dij_j_exp_vec = dij_j_exp.reshape((num_nodes, nt, num_interactions, 4))
+            mij_j_exp = csdl.expand(mij_j, (num_nodes, nt, num_panels_i, nc_j-1, ns_j-1, 4), 'ijklm->ijaklm')
+            mij_j_exp_vec = mij_j_exp.reshape((num_nodes, nt, num_interactions, 4))
 
             dp = coll_point_i_exp_vec - panel_corners_j_exp_vec
             # NOTE: consider changing dx,dy,dz and store in just dk with a dimension for x,y,z
-            dx = csdl.sum(dp*panel_x_dir_j_exp_vec, axes=(-1,))
-            dy = csdl.sum(dp*panel_y_dir_j_exp_vec, axes=(-1,))
-            dz = csdl.sum(dp*panel_normal_j_exp_vec, axes=(-1,))
+            sum_ind = dp.shape[-1]
+            dx = csdl.sum(dp*panel_x_dir_j_exp_vec, axes=(sum_ind,))
+            dy = csdl.sum(dp*panel_y_dir_j_exp_vec, axes=(sum_ind,))
+            dz = csdl.sum(dp*panel_normal_j_exp_vec, axes=(sum_ind,))
             rk = (dx**2 + dy**2 + dz**2)**0.5
             ek = dx**2 + dz**2
             hk = dx*dy
 
             source_influence_vec = compute_source_influence(dij_j_exp_vec, mij_j_exp_vec, dpij_j_exp_vec, dx, dy, dz, rk, ek, hk)
-
             source_influence = source_influence_vec.reshape((num_nodes, nt, num_panels_i, num_panels_j))
-            ...
-            ...
-            ...
 
             AIC = AIC.set(csdl.slice[:,:,start_i:stop_i, start_j:stop_j], value=source_influence)
             start_j += num_panels_j

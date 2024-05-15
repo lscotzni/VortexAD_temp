@@ -8,13 +8,13 @@ from VortexAD.core.panel_method.transient_solver import transient_solver
 def mu_sigma_solver(num_nodes, nt, mesh_dict, free_wake=False):
 
     surface_names = list(mesh_dict.keys())
-    num_tot_panels = 0.
+    num_tot_panels = 0
     for surface in surface_names:
         num_tot_panels += mesh_dict[surface]['num_panels']
 
     wake_mesh_dict = initialize_unsteady_wake(mesh_dict, panel_fraction=0.25)
 
-    sigma = compute_source_strengths(mesh_dict, num_nodes, nt, num_tot_panels) # shape=(num_nodes, nt, num_surf_panels)
+    sigma = compute_source_strengths(mesh_dict, surface_names, num_nodes, nt, num_tot_panels) # shape=(num_nodes, nt, num_surf_panels)
 
     sigma_AIC = compute_source_AIC(mesh_dict, num_nodes, nt, num_tot_panels) # shape=(num_nodes, nt, num_surf_panels, num_surf_panels)
 
