@@ -31,6 +31,9 @@ def gen_panel_mesh(nc, ns, chord, span, airfoil='naca0012', frame='default', plo
         mesh[:,i,0] = c_mesh_interp * chord
         mesh[:,i,1] = y
         mesh[:,i,2] = thickness_interp * chord
+    
+    mesh[0,:,:] = (mesh[0,:,:] + mesh[-1,:,:])/2.
+    mesh[-1,:,:] = mesh[0,:,:]
 
     airfoil_data['x'][:zero_ind] *= -1
 
@@ -49,7 +52,7 @@ def gen_panel_mesh(nc, ns, chord, span, airfoil='naca0012', frame='default', plo
 
         import matplotlib.pyplot as plt
         fig = plt.figure()
-        plt.plot(airfoil_data['x'], airfoil_data['z'], label='upper')
+        plt.plot(airfoil_data['x'], airfoil_data['z'], '*',label='upper')
         plt.plot(c_mesh_interp, thickness_interp, label='upper interpolated')
         plt.axis('equal')
         if frame == 'caddee':

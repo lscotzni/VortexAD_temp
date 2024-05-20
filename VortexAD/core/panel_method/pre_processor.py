@@ -44,13 +44,16 @@ def pre_processor(mesh_dict):
         panel_area = csdl.norm(panel_normal_vec, axes=(4,)) / 2.
         mesh_dict[key]['panel_area'] = panel_area
 
-        panel_x_dir = panel_x_vec / csdl.expand(csdl.norm(panel_x_vec, axes=(4,)), panel_x_vec.shape, 'ijkl->ijkla')
-        panel_y_dir = panel_y_vec / csdl.expand(csdl.norm(panel_y_vec, axes=(4,)), panel_y_vec.shape, 'ijkl->ijkla')
-        panel_normal = panel_normal_vec / csdl.expand(csdl.norm(panel_normal_vec, axes=(4,)), panel_normal_vec.shape, 'ijkl->ijkla')
+        panel_x_dir = panel_x_vec / csdl.expand((csdl.norm(panel_x_vec, axes=(4,))), panel_x_vec.shape, 'ijkl->ijkla')
+        panel_y_dir = panel_y_vec / csdl.expand((csdl.norm(panel_y_vec, axes=(4,))), panel_y_vec.shape, 'ijkl->ijkla')
+        panel_normal = panel_normal_vec / csdl.expand((csdl.norm(panel_normal_vec, axes=(4,))), panel_normal_vec.shape, 'ijkl->ijkla')
 
         mesh_dict[key]['panel_x_dir'] = panel_x_dir
         mesh_dict[key]['panel_y_dir'] = panel_y_dir
         mesh_dict[key]['panel_normal'] = panel_normal
+
+        panel_center_mod = panel_center - panel_normal*0.00001
+        mesh_dict[key]['panel_center'] = panel_center_mod
 
         # global unit vectors
         # +x points from tail to nose of aircraft
@@ -64,27 +67,44 @@ def pre_processor(mesh_dict):
         Py_normal = csdl.tensordot(panel_normal, y_dir, axes=([4],[0]))
         Pz_normal = csdl.tensordot(panel_normal, z_dir, axes=([4],[0]))
 
-        theta_x = atan2_switch(Py_normal, Pz_normal, scale=100.) # roll angle
-        theta_y = atan2_switch(-Px_normal, Pz_normal, scale=100.) # pitch angle
+        # theta_x = atan2_switch(Py_normal, Pz_normal, scale=100.) # roll angle
+        # theta_y = atan2_switch(-Px_normal, Pz_normal, scale=100.) # pitch angle
 
         Px_x_dir = csdl.tensordot(panel_x_dir, x_dir, axes=([4],[0]))
         Py_x_dir = csdl.tensordot(panel_x_dir, y_dir, axes=([4],[0]))
 
-        theta_z = atan2_switch(Py_x_dir, Px_x_dir, scale=100.)
-        
+        # theta_z = atan2_switch(Py_x_dir, Px_x_dir, scale=100.)
+
+        dpij_global = csdl.Variable(value=np.zeros((panel_center.shape[:-1] + (4,3))))
+        dpij_global = dpij_global.set(csdl.slice[:,:,:,:,0,:], value=p2[:,:,:,:,:]-p1[:,:,:,:,:])
+        dpij_global = dpij_global.set(csdl.slice[:,:,:,:,1,:], value=p3[:,:,:,:,:]-p2[:,:,:,:,:])
+        dpij_global = dpij_global.set(csdl.slice[:,:,:,:,2,:], value=p4[:,:,:,:,:]-p3[:,:,:,:,:])
+        dpij_global = dpij_global.set(csdl.slice[:,:,:,:,3,:], value=p1[:,:,:,:,:]-p4[:,:,:,:,:])
+
+        local_coord_vec = csdl.Variable(shape=(panel_center.shape[:-1] + (3,3)), value=0.) # last two indices are for 3 vectors, 3 dimensions
+        local_coord_vec = local_coord_vec.set(csdl.slice[:,:,:,:,0,:], value=panel_x_dir)
+        local_coord_vec = local_coord_vec.set(csdl.slice[:,:,:,:,1,:], value=panel_y_dir)
+        local_coord_vec = local_coord_vec.set(csdl.slice[:,:,:,:,2,:], value=panel_normal)
+
+        dpij_local = csdl.einsum(dpij_global, local_coord_vec, action='ijklma,ijklba->ijklmb')  # THIS IS CORRECT
+
         dpij = csdl.Variable(value=np.zeros((panel_center.shape[:-1] + (4,2))))
-        dpij = dpij.set(csdl.slice[:,:,:,:,0,:], value=p2[:,:,:,:,:2]-p1[:,:,:,:,:2])
-        dpij = dpij.set(csdl.slice[:,:,:,:,1,:], value=p3[:,:,:,:,:2]-p2[:,:,:,:,:2])
-        dpij = dpij.set(csdl.slice[:,:,:,:,2,:], value=p4[:,:,:,:,:2]-p3[:,:,:,:,:2])
-        dpij = dpij.set(csdl.slice[:,:,:,:,3,:], value=p1[:,:,:,:,:2]-p4[:,:,:,:,:2])
+        dpij = dpij.set(csdl.slice[:,:,:,:,0,:], value=dpij_local[:,:,:,:,0,:2])
+        dpij = dpij.set(csdl.slice[:,:,:,:,1,:], value=dpij_local[:,:,:,:,1,:2])
+        dpij = dpij.set(csdl.slice[:,:,:,:,2,:], value=dpij_local[:,:,:,:,2,:2])
+        dpij = dpij.set(csdl.slice[:,:,:,:,3,:], value=dpij_local[:,:,:,:,3,:2])
+        # dpij = dpij.set(csdl.slice[:,:,:,:,0,:], value=p2[:,:,:,:,:2]-p1[:,:,:,:,:2])
+        # dpij = dpij.set(csdl.slice[:,:,:,:,1,:], value=p3[:,:,:,:,:2]-p2[:,:,:,:,:2])
+        # dpij = dpij.set(csdl.slice[:,:,:,:,2,:], value=p4[:,:,:,:,:2]-p3[:,:,:,:,:2])
+        # dpij = dpij.set(csdl.slice[:,:,:,:,3,:], value=p1[:,:,:,:,:2]-p4[:,:,:,:,:2])
 
         mesh_dict[key]['dpij'] = dpij
 
         dij = csdl.Variable(value=np.zeros((panel_center.shape[:-1] + (4,))))
-        dij = dij.set(csdl.slice[:,:,:,:,0], value=csdl.norm(dpij[:,:,:,:,0,:]))
-        dij = dij.set(csdl.slice[:,:,:,:,1], value=csdl.norm(dpij[:,:,:,:,1,:]))
-        dij = dij.set(csdl.slice[:,:,:,:,2], value=csdl.norm(dpij[:,:,:,:,2,:]))
-        dij = dij.set(csdl.slice[:,:,:,:,3], value=csdl.norm(dpij[:,:,:,:,3,:]))
+        dij = dij.set(csdl.slice[:,:,:,:,0], value=csdl.norm(dpij[:,:,:,:,0,:], axes=(4,)))
+        dij = dij.set(csdl.slice[:,:,:,:,1], value=csdl.norm(dpij[:,:,:,:,1,:], axes=(4,)))
+        dij = dij.set(csdl.slice[:,:,:,:,2], value=csdl.norm(dpij[:,:,:,:,2,:], axes=(4,)))
+        dij = dij.set(csdl.slice[:,:,:,:,3], value=csdl.norm(dpij[:,:,:,:,3,:], axes=(4,)))
 
         mesh_dict[key]['dij'] = dij
 

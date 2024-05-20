@@ -3,8 +3,9 @@ import csdl_alpha as csdl
 
 from VortexAD.core.panel_method.pre_processor import pre_processor
 from VortexAD.core.panel_method.mu_sigma_solver import mu_sigma_solver
+from VortexAD.core.panel_method.post_processor import post_processor
 
-def unsteady_panel_solver(mesh_list, mesh_velocity_list):
+def unsteady_panel_solver(mesh_list, mesh_velocity_list, dt, free_wake=False):
 
     exp_orig_mesh_dict = {}
     surface_counter = 0
@@ -23,11 +24,8 @@ def unsteady_panel_solver(mesh_list, mesh_velocity_list):
     mesh_dict = pre_processor(exp_orig_mesh_dict)
 
     print('solving for doublet strengths and propagating the wake')
-    mu, sigma = mu_sigma_solver(num_nodes, nt, mesh_dict)
+    mu, sigma = mu_sigma_solver(num_nodes, nt, mesh_dict, dt, free_wake=free_wake)
 
+    output_dict = post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt)
 
-
-
-
-
-    return mesh_dict
+    return output_dict, mesh_dict

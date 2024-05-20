@@ -41,6 +41,8 @@ mesh_velocity[:,:,:,0] = V_inf_rot[0]
 mesh_velocity[:,:,:,2] = V_inf_rot[2]
 
 # solver input setup
+recorder = csdl.Recorder(inline=True)
+recorder.start()
 mesh = csdl.Variable(value=mesh)
 mesh_velocity = csdl.Variable(value=mesh_velocity)
 mesh_list = [mesh]
@@ -49,8 +51,7 @@ mesh_velocity_list = [mesh_velocity]
 # alpha_ML = np.ones((num_nodes, ns-1)) * -5*np.pi/180.
 # alpha_ML = None
 
-recorder = csdl.Recorder(inline=True)
-recorder.start()
+
 output_vg = vlm_solver(mesh_list, mesh_velocity_list)
 recorder.stop()
 
