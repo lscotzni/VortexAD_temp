@@ -37,8 +37,8 @@ def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive = False, plot_m
         draw_scalarbar = True
         color = wake_color
         mesh_points = mesh[:, :, :] # does not vary with time here
-        nx = mesh_points.shape[0]
-        ny = mesh_points.shape[1]
+        nx = mesh_points.shape[2]
+        ny = mesh_points.shape[3]
         connectivity = []
         for k in range(nx-1):
             for j in range(ny-1):
@@ -46,19 +46,20 @@ def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive = False, plot_m
             vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=.5).linecolor('black')
         vp += vps
         vp += __doc__
-        wake_points = wake_mesh[:i,:,:]
+        wake_points = wake_mesh[:,i,:(i+1),:]
         # mu_w = np.reshape(sim['system_model.wig.wig.wig.operation.prob.' + 'op_' + surface_name+'_mu_w'][i, 0:i, :], (-1,1))
         # if absolute:
         #     mu_w = np.absolute(mu_w)
-        wake_points = np.concatenate((np.reshape(mesh_points[-1,:,:],(1,ny,3)), wake_points))
-        nx = wake_points.shape[0]
-        ny = wake_points.shape[1]
+        # wake_points = np.concatenate((np.reshape(mesh_points[-1,:,:],(1,ny,3)), wake_points))
+        nx = wake_points.shape[1]
+        ny = wake_points.shape[2]
         connectivity = []
         for k in range(nx-1):
             for j in range(ny-1):
                 connectivity.append([k*ny+j,(k+1)*ny+j,(k+1)*ny+j+1,k*ny+j+1])
         vps = Mesh([np.reshape(wake_points, (-1, 3)), connectivity], c=color, alpha=1)
-        # vps.cmap(cmap, mu_w, on='cells', vmin=min_mu, vmax=max_mu)
+        mu_wake_color = np.reshape(mu_wake[:,i,:(i)*(ny-1)], (-1,1))
+        vps.cmap(cmap, mu_wake_color, on='cells', vmin=min_mu, vmax=max_mu)
         if draw_scalarbar:
             vps.add_scalarbar()
             draw_scalarbar = False

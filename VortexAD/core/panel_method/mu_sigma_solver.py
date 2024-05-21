@@ -19,11 +19,11 @@ def mu_sigma_solver(num_nodes, nt, mesh_dict, dt, free_wake=False):
     if free_wake:
         mu, sigma, induced_vel = transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt, free_wake=free_wake)
     
-        return mu, sigma, induced_vel
+        return mu, sigma, wake_mesh_dict, induced_vel
     else:
-        mu, sigma = transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt)
+        mu, sigma, mu_wake = transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt)
     
-        return mu, sigma
+        return mu, sigma, mu_wake, wake_mesh_dict
 
     
 

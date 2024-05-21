@@ -2,13 +2,14 @@ import csdl_alpha as csdl
 import numpy as np 
 from VortexAD.core.geometry.gen_panel_mesh import gen_panel_mesh
 from VortexAD.core.panel_method.unsteady_panel_solver import unsteady_panel_solver
+import matplotlib.pyplot as plt
 
-from VortexAD.utils.plot import plot_wireframe
+# from VortexAD.utils.plot import plot_wireframe
 
 b = 10
 c = 1.564
-ns = 11
-nc = 45
+ns = 15
+nc = 55
 
 alpha = np.deg2rad(0.) # aoa
 
@@ -18,7 +19,7 @@ V_inf = np.array([sos*mach, 0., 0.])
 nt = 3
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, frame='default', plot_mesh=False)
+mesh_orig = gen_panel_mesh(nc, ns, c, b, frame='default', plot_mesh=True)
 
 mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
 for i in range(num_nodes):
@@ -181,15 +182,19 @@ Gregory_data = np.array([
 [1.0009, 0.173854],
 ])
 
-import matplotlib.pyplot as plt
+params = {'mathtext.default': 'regular' }          
+plt.rcParams.update(params)
+
 plt.plot(chord_station/chord, Cp_station, 'k-*', label='CSDL panel code')
 plt.plot(LHJ_data_Re9[:,0], LHJ_data_Re9[:,1], '^g', label='Ladson et al. ')
 plt.plot(Gregory_data[:,0], Gregory_data[:,1], '>r', label='Gregory et al. ')
 plt.gca().invert_yaxis()
+plt.xlabel('Normalized chord')
+plt.ylabel('$C_p$')
 plt.legend()
 plt.grid()
 plt.show()
 
-
-if False:
-    plot_wireframe(mesh, wake_mesh, mu_b, mu_wake, nt, interactive=False)
+1
+# if False:
+#     plot_wireframe(mesh, wake_mesh, mu_b, mu_wake, nt, interactive=False)

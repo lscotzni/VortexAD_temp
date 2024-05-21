@@ -264,4 +264,4 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
 
         
 
-    return mu, sigma
+    return mu, sigma, mu_wake
