@@ -9,17 +9,17 @@ import matplotlib.pyplot as plt
 b = 10
 c = 1.564
 ns = 15
-nc = 55
+nc = 9
 
 alpha = np.deg2rad(0.) # aoa
 
 mach = 0.25
 sos = 340.3
 V_inf = np.array([sos*mach, 0., 0.])
-nt = 3
+nt = 10
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, frame='default', plot_mesh=True)
+mesh_orig = gen_panel_mesh(nc, ns, c, b, frame='default', plot_mesh=False)
 
 mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
 for i in range(num_nodes):
@@ -47,8 +47,13 @@ mesh_velocities = csdl.Variable(value=mesh_velocities)
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.01)
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.01)
 recorder.stop()
+
+recorder.print_graph_structure()
+recorder.visualize_graph(filename='test_graph')
+
+exit()
 
 mesh = mesh_dict['surface_0']['mesh'].value
 coll_points = mesh_dict['surface_0']['panel_center'].value

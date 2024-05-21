@@ -4,19 +4,19 @@ from VortexAD.core.geometry.gen_panel_mesh import gen_panel_mesh
 from VortexAD.core.panel_method.unsteady_panel_solver import unsteady_panel_solver
 import matplotlib.pyplot as plt
 
-from VortexAD.utils.plot import plot_wireframe
+from VortexAD.utils.plot import plot_wireframe, plot_pressure_distribution
 
 b = 10
 c = 1.564
 ns = 15
-nc = 8
+nc = 31
 
-alpha = np.deg2rad(5.) # aoa
+alpha = np.deg2rad(0.) # aoa
 
 mach = 0.25
 sos = 340.3
 V_inf = np.array([sos*mach, 0., 0.])
-nt = 10
+nt = 4
 num_nodes = 1
 
 mesh_orig = gen_panel_mesh(nc, ns, c, b, frame='default', plot_mesh=False)
@@ -56,7 +56,7 @@ Cp = output_dict['surface_0']['Cp'].value
 
 
 
-verif = False
+verif = True
 if verif:
 
     chord_station = coll_points[0,0,:,int((ns-1)/2),0]
@@ -203,6 +203,8 @@ if verif:
 1
 wake_mesh = wake_mesh_dict['surface_0']['mesh'].value
 
-
 if True:
-    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False)
+    plot_pressure_distribution(mesh, Cp, interactive=True)
+
+if False:
+    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='imageio')
