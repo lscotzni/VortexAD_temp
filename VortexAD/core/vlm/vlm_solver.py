@@ -87,6 +87,7 @@ def vlm_solver(mesh_list, mesh_velocity_list):
 
         surface_panel_forces: list
         surface_panel_force_points: list
+        surface_panel_areas: list
         surface_sectional_cop: list
         surface_cop: csdl.Variable
 
@@ -104,6 +105,7 @@ def vlm_solver(mesh_list, mesh_velocity_list):
         surface_moment = surface_output_dict['surface_moment'],
         surface_panel_forces = surface_output_dict['surface_panel_forces'],
         surface_panel_force_points = surface_output_dict['surface_panel_force_points'],
+        surface_panel_areas = [surface['panel_area'] for surface in mesh_dict.values()],
         surface_sectional_cop = surface_output_dict['surface_sectional_cop'],
         surface_cop = surface_output_dict['surface_cop']
     )
