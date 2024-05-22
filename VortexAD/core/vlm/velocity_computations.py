@@ -10,8 +10,11 @@ def compute_normal_velocity(velocity, normal_vectors):
     return proj
 
 def compute_induced_velocity(p1, p2, p_eval, gamma=1.):
-    r1 = p1-p_eval
-    r2 = p2-p_eval
+    # r1 = p1-p_eval
+    # r2 = p2-p_eval
+
+    r1 = p_eval-p1
+    r2 = p_eval-p2
     input_shape = r1.shape
     xyz_dim = len(input_shape) - 1
 

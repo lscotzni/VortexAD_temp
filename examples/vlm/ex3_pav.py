@@ -35,7 +35,6 @@ V_inf[:,0] = 248.136
 recorder = csdl.Recorder(inline=True)
 recorder.start()
 
-ac_states_dummy  = 0.
 output_dict = vlm_solver(mesh_dict, V_inf, alpha_rad)
 recorder.stop()
 recorder.print_graph_structure()

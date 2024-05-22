@@ -24,30 +24,7 @@ AVOID asdict() method in data classes (VERY SLOW)
 
 add surface 1, surface 2, etc. within the function
 '''
-
-# def vlm_solver(orig_mesh_dict, V_inf, alpha):
-def vlm_solver(mesh_list, mesh_velocity_list):
-    '''
-    VLM solver (add description)
-    '''
-    exp_orig_mesh_dict = {}
-    surface_counter = 0
-
-    for i in range(len(mesh_list)):
-        surface_name = f'surface_{surface_counter}'
-        exp_orig_mesh_dict[surface_name] = {}
-        exp_orig_mesh_dict[surface_name]['mesh'] = mesh_list[i]
-        exp_orig_mesh_dict[surface_name]['nodal_velocity'] = mesh_velocity_list[i] * -1.
-
-        num_nodes = mesh_list[i].shape[0] # NOTE: CHECK THIS LINE
-        surface_counter += 1
-
-    # parse ac_states
-    # u, v, w, alpha = parse_ac_states(ac_states)
-    print('running pre-processing')
-    mesh_dict = pre_processor(exp_orig_mesh_dict)
-
-    # V_inf_rot = csdl.Variable(value=np.zeros((num_nodes,3)))
+# V_inf_rot = csdl.Variable(value=np.zeros((num_nodes,3)))
     # alpha = csdl.Variable(value=alpha)
     # V_inf = csdl.Variable(value=V_inf)
     # V_rot_mat = csdl.Variable(value=np.zeros((num_nodes, 3,3)))
@@ -64,33 +41,59 @@ def vlm_solver(mesh_list, mesh_velocity_list):
     #     # V_rot_mat[0,2] = -csdl.sin(alpha[i])
     #     V_inf_rot = V_inf_rot.set(csdl.slice[i,:], value=csdl.matvec(V_rot_mat[i,:,:], V_inf[i,:]))
 
+
+def vlm_solver(mesh_list, mesh_velocity_list, alpha_ML=None):
+    orig_mesh_dict = {}
+    surface_counter = 0
+
+    for i in range(len(mesh_list)):
+        surface_name = f'surface_{surface_counter}'
+        orig_mesh_dict[surface_name] = {}
+        orig_mesh_dict[surface_name]['mesh'] = mesh_list[i]
+        orig_mesh_dict[surface_name]['nodal_velocity'] = mesh_velocity_list[i] * -1.
+        num_nodes = mesh_list[i].shape[0] # NOTE: CHECK THIS LINE
+        surface_counter += 1
+
+    print('running pre-processing')
+    mesh_dict = pre_processor(orig_mesh_dict)
+
     print('solving for circulation strengths')
     gamma = gamma_solver(num_nodes, mesh_dict)
 
     print('running post-processing')
-    surface_output_dict, total_output_dict = post_processor(num_nodes, mesh_dict, gamma)
+    surface_output_dict, total_output_dict = post_processor(num_nodes, mesh_dict, gamma, alpha_ML=alpha_ML)
+
+    surface_names = mesh_dict.keys()
+    surface_panel_force_points = []
+    for surface_name in surface_names:
+        surface_panel_force_points.append(mesh_dict[surface_name]['force_eval_points'])
+
+
+    print('setting up outputs')
 
     @dataclass
     class Outputs(csdl.VariableGroup):
-        total_lift: csdl.Variable
-        total_drag: csdl.Variable
-        total_force: csdl.Variable
-        total_moment: csdl.Variable
+        total_lift: csdl.Variable # total lift force
+        total_drag: csdl.Variable # total drag force
+        total_force: csdl.Variable # total force (x,y,z)
+        total_moment: csdl.Variable # total moment w.r.t the input reference point
         
 
-        surface_CL: csdl.Variable
-        surface_CDi: csdl.Variable
-        surface_lift: csdl.Variable
-        surface_drag: csdl.Variable
-        surface_force: csdl.Variable
-        surface_moment: csdl.Variable
+        surface_CL: csdl.Variable # CL of each lifting surface
+        surface_CDi: csdl.Variable # CDi of each lifting surface
+        surface_lift: csdl.Variable # lift of each lifting surface
+        surface_drag: csdl.Variable # drag of each lifting surface
+        surface_force: csdl.Variable # total force of lifting surface
+        surface_moment: csdl.Variable # total moment of lifting surface w.r.t the input reference point
 
-        surface_panel_forces: list
+        surface_panel_forces: list # individual panel forces of each lifting surface
         surface_panel_force_points: list
         surface_panel_areas: list
-        surface_sectional_cop: list
-        surface_cop: csdl.Variable
+        surface_panel_force_points: list # location of panel forces of each lifting surface (1/4 chord of the mesh panels)
+        surface_sectional_cop: list # span-wise sectional center of pressure for each lifting surface
+        surface_cop: csdl.Variable # center of pressure for each lifting surface
 
+    
     output_vg = Outputs(
         total_lift = total_output_dict['total_lift'],
         total_drag = total_output_dict['total_drag'],
@@ -103,11 +106,13 @@ def vlm_solver(mesh_list, mesh_velocity_list):
         surface_drag = surface_output_dict['surface_drag'],
         surface_force = surface_output_dict['surface_force'],
         surface_moment = surface_output_dict['surface_moment'],
+        
         surface_panel_forces = surface_output_dict['surface_panel_forces'],
-        surface_panel_force_points = surface_output_dict['surface_panel_force_points'],
         surface_panel_areas = [surface['panel_area'] for surface in mesh_dict.values()],
+        surface_panel_force_points = surface_panel_force_points,
         surface_sectional_cop = surface_output_dict['surface_sectional_cop'],
-        surface_cop = surface_output_dict['surface_cop']
+        surface_cop = surface_output_dict['surface_cop'],
+
     )
 
     
