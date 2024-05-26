@@ -14,7 +14,7 @@ def compute_source_strengths(mesh_dict, surface_names, num_nodes, nt, num_panels
 
         vel_projection = csdl.einsum(coll_point_velocity, panel_normal, action='ijklm,ijklm->ijkl')
 
-        sigma = sigma.set(csdl.slice[:,:,start:stop], value=-csdl.reshape(vel_projection, shape=(num_nodes, nt, num_surf_panels)))
+        sigma = sigma.set(csdl.slice[:,:,start:stop], value=csdl.reshape(vel_projection, shape=(num_nodes, nt, num_surf_panels)))
 
     return sigma # VECTORIZED in shape=(num_nodes, nt, num_surf_panels)
 
@@ -38,7 +38,8 @@ def compute_source_influence(dij, mij, dpij, dx, dy, dz, rk, ek, hk, sigma=1., m
             ((dx[:,:,:,2]*dpij[:,:,:,2,1] - dy[:,:,:,2]*dpij[:,:,:,2,0])/(dij[:,:,:,2]+1.e-12)*csdl.log((rk[:,:,:,2] + rk[:,:,:,3] + dij[:,:,:,2]+1.e-12)/(rk[:,:,:,2] + rk[:,:,:,3] - dij[:,:,:,2] + 1.e-12))) + 
             ((dx[:,:,:,3]*dpij[:,:,:,3,1] - dy[:,:,:,3]*dpij[:,:,:,3,0])/(dij[:,:,:,3]+1.e-12)*csdl.log((rk[:,:,:,3] + rk[:,:,:,0] + dij[:,:,:,3]+1.e-12)/(rk[:,:,:,3] + rk[:,:,:,0] - dij[:,:,:,3] + 1.e-12)))
         )
-        - (dz[:,:,:,0]**2)**0.5 * (
+        # - (dz[:,:,:,0]**2)**0.5 * (
+        - dz[:,:,:,0] * (
             csdl.arctan((mij[:,:,:,0]*ek[:,:,:,0]-hk[:,:,:,0])/(dz[:,:,:,0]*rk[:,:,:,0]+1.e-12)) - csdl.arctan((mij[:,:,:,0]*ek[:,:,:,1]-hk[:,:,:,1])/(dz[:,:,:,0]*rk[:,:,:,1]+1.e-12)) + 
             csdl.arctan((mij[:,:,:,1]*ek[:,:,:,1]-hk[:,:,:,1])/(dz[:,:,:,1]*rk[:,:,:,1]+1.e-12)) - csdl.arctan((mij[:,:,:,1]*ek[:,:,:,2]-hk[:,:,:,2])/(dz[:,:,:,1]*rk[:,:,:,2]+1.e-12)) + 
             csdl.arctan((mij[:,:,:,2]*ek[:,:,:,2]-hk[:,:,:,2])/(dz[:,:,:,2]*rk[:,:,:,2]+1.e-12)) - csdl.arctan((mij[:,:,:,2]*ek[:,:,:,3]-hk[:,:,:,3])/(dz[:,:,:,2]*rk[:,:,:,3]+1.e-12)) + 

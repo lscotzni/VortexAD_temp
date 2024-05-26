@@ -3,20 +3,20 @@ import numpy as np
 from VortexAD.core.geometry.gen_panel_mesh import gen_panel_mesh
 from VortexAD.core.panel_method.unsteady_panel_solver import unsteady_panel_solver
 import matplotlib.pyplot as plt
-
+import time
 # from VortexAD.utils.plot import plot_wireframe
 
 b = 10
 c = 1.564
 ns = 15
-nc = 9
+nc = 15
 
 alpha = np.deg2rad(0.) # aoa
 
 mach = 0.25
 sos = 340.3
 V_inf = np.array([sos*mach, 0., 0.])
-nt = 10
+nt = 5
 num_nodes = 1
 
 mesh_orig = gen_panel_mesh(nc, ns, c, b, frame='default', plot_mesh=False)
@@ -38,7 +38,7 @@ for i in range(num_nodes):
     for j in range(nt):
         mesh_velocities[i,j,:] = V_inf_rot
 
-recorder = csdl.Recorder(inline=True)
+recorder = csdl.Recorder(inline=False)
 recorder.start()
 
 mesh = csdl.Variable(value=mesh)
@@ -46,12 +46,22 @@ mesh_velocities = csdl.Variable(value=mesh_velocities)
 
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
-
+start_time = time.time()
 output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.01)
+run_stop = time.time()
+
+CL = output_dict['surface_0']['CL']
+
+# dCL_dmesh = csdl.derivative(csdl.norm(CL),mesh)
+deriv_stop = time.time()
+
+print('run time: ', run_stop - start_time)
+print('deriv time: ', deriv_stop - run_stop)
+# print(dCL_dmesh)
 recorder.stop()
 
 recorder.print_graph_structure()
-recorder.visualize_graph(filename='test_graph')
+recorder.visualize_graph(filename='test_graph', visualize_style='hierarchical')
 
 exit()
 

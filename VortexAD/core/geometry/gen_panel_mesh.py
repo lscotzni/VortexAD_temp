@@ -81,7 +81,7 @@ def gen_panel_mesh_new(nc, ns, chord, span, airfoil='naca0012', frame='default',
     return mesh
 
 
-def gen_panel_mesh(nc, ns, chord, span, airfoil='naca0012', frame='default', plot_mesh=True):
+def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012', frame='default', plot_mesh=False):
     if airfoil not in ['naca0012']:
         raise ImportError('Airfoil not added yet.')
     else:
@@ -106,7 +106,15 @@ def gen_panel_mesh(nc, ns, chord, span, airfoil='naca0012', frame='default', plo
 
     c_mesh_interp[:zero_ind_c] *= -1.
 
+    # if span_spacing == 'linear':
     span_array = np.linspace(-span/2, span/2, ns)
+    # print('old span:', span_array)
+    if span_spacing == 'cos':
+        theta = np.linspace(0, np.pi, ns)
+        cos = np.cos(theta)
+        span_array = cos*span/2
+        # print('new span:', span_array)
+        # exit()
     for i, y in enumerate(span_array):
         mesh[:,i,0] = c_mesh_interp * chord
         mesh[:,i,1] = y
@@ -132,8 +140,8 @@ def gen_panel_mesh(nc, ns, chord, span, airfoil='naca0012', frame='default', plo
 
         import matplotlib.pyplot as plt
         fig = plt.figure()
-        plt.plot(airfoil_data['x'], airfoil_data['z'], '*',label='upper')
-        plt.plot(c_mesh_interp, thickness_interp, label='upper interpolated')
+        plt.plot(airfoil_data['x'], airfoil_data['z'], 'k', label='Airfoil data')
+        plt.plot(c_mesh_interp, thickness_interp, 'b*', label='Interpolation')
         plt.axis('equal')
         if frame == 'caddee':
             plt.gca().invert_xaxis()

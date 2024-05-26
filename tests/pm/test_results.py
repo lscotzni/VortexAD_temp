@@ -1,6 +1,6 @@
 import csdl_alpha as csdl
 import numpy as np 
-from VortexAD.core.geometry.gen_panel_mesh import gen_panel_mesh
+from VortexAD.core.geometry.gen_panel_mesh import gen_panel_mesh, gen_panel_mesh_new
 from VortexAD.core.panel_method.unsteady_panel_solver import unsteady_panel_solver
 import matplotlib.pyplot as plt
 
@@ -8,18 +8,20 @@ from VortexAD.utils.plot import plot_wireframe, plot_pressure_distribution
 
 b = 10
 c = 1.564
-ns = 15
-nc = 31
+ns = 11
+nc = 15
 
-alpha = np.deg2rad(0.) # aoa
+alpha_deg = 10.
+alpha = np.deg2rad(alpha_deg) # aoa
 
-mach = 0.25
+mach = 0.1
 sos = 340.3
 V_inf = np.array([sos*mach, 0., 0.])
-nt = 4
+nt = 8
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, frame='default', plot_mesh=False)
+mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='linear',  frame='default', plot_mesh=False)
+# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=True)
 
 mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
 for i in range(num_nodes):
@@ -47,7 +49,7 @@ mesh_velocities = csdl.Variable(value=mesh_velocities)
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.01)
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.005)
 recorder.stop()
 
 mesh = mesh_dict['surface_0']['mesh'].value
@@ -57,11 +59,11 @@ Cp = output_dict['surface_0']['Cp'].value
 
 
 verif = True
-if verif:
+if verif and alpha_deg == 0.:
 
     chord_station = coll_points[0,0,:,int((ns-1)/2),0]
     chord = chord_station[0]
-    Cp_station = Cp[0,0,:,int((ns-1)/2)]
+    Cp_station = Cp[0,-2,:,int((ns-1)/2)]
 
     LHJ_data_Re6 = np.array([
     [.9483,   .1008],
@@ -200,11 +202,75 @@ if verif:
     plt.grid()
     plt.show()
 
+if verif and alpha_deg == 10.:
+    chord_station = coll_points[0,0,:,int((ns-1)/2),0]
+    chord = chord_station[0]
+    Cp_station = Cp[0,-2,:,int((ns-1)/2)]
+
+    LHJ_data_Re9 = np.array([
+    [.9483,   .1147],
+    [.9000,   .0684],
+    [.8503,   .0882],
+    [.7998,   .0849],
+    [.7497,   .0782],
+    [.7003,   .0739],
+    [.6502,   .0685],
+    [.5997,   .0813],
+    [.5506,   .0884],
+    [.5000,   .0940],
+    [.4503,   .1125],
+    [.4000,   .1225],
+    [.3507,   .1488],
+    [.3002,   .1893],
+    [.2501,   .2292],
+    [.2004,   .2973],
+    [.1504,   .3900],
+    [.1000,   .5435],
+    [.0755,   .6563],
+    [.0510,   .8031],
+    [.0251,  1.0081],
+    [.0122,  1.0241],
+    [0.   , -2.6598],
+    [.0135, -3.9314],
+    [.0271, -3.1386],
+    [.0515, -2.4889],
+    [.0763, -2.0671],
+    [.1012, -1.8066],
+    [.1503, -1.4381],
+    [.1994, -1.2297],
+    [.2501, -1.0638],
+    [.2999,  -.9300],
+    [.3499,  -.8094],
+    [.3994,  -.7131],
+    [.4496,  -.6182],
+    [.4997,  -.5374],
+    [.5492,  -.4563],
+    [.5994,  -.3921],
+    [.6495,  -.3247],
+    [.6996,  -.2636],
+    [.7489,  -.1964],
+    [.8003,  -.1318],
+    [.8500,  -.0613],
+    [.8993,  -.0021],
+    [.9489,   .0795],
+    ])
+
+    params = {'mathtext.default': 'regular' }          
+    plt.rcParams.update(params)
+
+    plt.plot(chord_station/chord, Cp_station, 'k-*', label='CSDL panel code')
+    plt.plot(LHJ_data_Re9[:,0], LHJ_data_Re9[:,1], '^r', label='Ladson et al. ')
+    plt.gca().invert_yaxis()
+    plt.xlabel('Normalized chord')
+    plt.ylabel('$C_p$')
+    plt.legend()
+    plt.grid()
+    plt.show()
 1
 wake_mesh = wake_mesh_dict['surface_0']['mesh'].value
 
 if True:
-    plot_pressure_distribution(mesh, Cp, interactive=True)
+    plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
 if False:
-    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='imageio')
+    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=True, backend='cv', name=f'wing_{alpha_deg}_cos_span')

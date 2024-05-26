@@ -38,11 +38,15 @@ def pre_processor(mesh_dict):
         panel_corners = panel_corners.set(csdl.slice[:,:,:,:,3,:], value=p4)
         mesh_dict[key]['panel_corners'] = panel_corners
 
-        panel_x_vec = p4 - p1
-        panel_y_vec = p2 - p1
-        panel_normal_vec = csdl.cross(panel_x_vec, panel_y_vec, axis=4)
+        panel_diag_1 = p3-p1
+        panel_diag_2 = p2-p4
+        
+        panel_normal_vec = csdl.cross(panel_diag_1, panel_diag_2, axis=4)
         panel_area = csdl.norm(panel_normal_vec, axes=(4,)) / 2.
         mesh_dict[key]['panel_area'] = panel_area
+
+        panel_x_vec = p4 - p1
+        panel_y_vec = p2 - p1
 
         panel_x_dir = panel_x_vec / csdl.expand((csdl.norm(panel_x_vec, axes=(4,))), panel_x_vec.shape, 'ijkl->ijkla')
         panel_y_dir = panel_y_vec / csdl.expand((csdl.norm(panel_y_vec, axes=(4,))), panel_y_vec.shape, 'ijkl->ijkla')
@@ -52,7 +56,34 @@ def pre_processor(mesh_dict):
         mesh_dict[key]['panel_y_dir'] = panel_y_dir
         mesh_dict[key]['panel_normal'] = panel_normal
 
-        panel_center_mod = panel_center - panel_normal*0.00001
+        # COMPUTE DISTANCE FROM PANEL CENTER TO SEGMENT CENTERS
+
+        pos_l = (p3+p4)/2.
+        neg_l = (p1+p2)/2.
+        pos_m = (p2+p3)/2.
+        neg_m = (p1+p4)/2.
+
+        pos_l_norm = csdl.norm(pos_l-panel_center, axes=(4,))
+        neg_l_norm = csdl.norm(neg_l-panel_center, axes=(4,))
+        pos_m_norm = csdl.norm(pos_m-panel_center, axes=(4,))
+        neg_m_norm = csdl.norm(neg_m-panel_center, axes=(4,))
+
+        mesh_dict[key]['panel_dl_norm'] = [pos_l_norm, neg_l_norm]
+        mesh_dict[key]['panel_dm_norm'] = [pos_m_norm, neg_m_norm]
+
+        delta_coll_point = csdl.Variable(panel_center.shape[:-1] + (4,2), value=0.)
+        # shape is (num_nodes, nt, nc_panels, ns_panels, 4,2)
+        # dimension of size 4 is dl backward, dl forward, dm backward, dm forward
+        # dimension of size 2 is the projected deltas in the x or y direction
+        # for panel i, the delta to adjacent panel j is taken as "j-i"
+        delta_coll_point = delta_coll_point.set(csdl.slice[:,:,1:,:,0,0], value=csdl.sum((panel_center[:,:,:-1,:,:] - panel_center[:,:,1:,:,:] ) * panel_x_dir[:,:,1:,:,:], axes=(4,)))
+        delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:-1,:,1,0], value=csdl.sum((panel_center[:,:,1:,:,:] - panel_center[:,:,:-1,:,:]) * panel_x_dir[:,:,:-1,:,:], axes=(4,)))
+        delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,1:,2,1], value=csdl.sum((panel_center[:,:,:,:-1,:] - panel_center[:,:,:,1:,:]) * panel_y_dir[:,:,:,1:,:], axes=(4,)))
+        delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,:-1,3,1], value=csdl.sum((panel_center[:,:,:,1:,:] - panel_center[:,:,:,:-1,:]) * panel_y_dir[:,:,:,:-1,:], axes=(4,)))
+
+        mesh_dict[key]['delta_coll_point'] = delta_coll_point
+
+        panel_center_mod = panel_center - panel_normal*0.0001
         mesh_dict[key]['panel_center'] = panel_center_mod
 
         # global unit vectors

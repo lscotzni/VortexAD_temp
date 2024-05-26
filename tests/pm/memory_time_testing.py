@@ -11,19 +11,19 @@ from guppy import hpy
 
 h=hpy()
 
-def grid_indep():
+def grid_indep(nc, ns, nt):
 
     b = 10
     c = 1.564
-    ns = 41
-    nc = 26
+    # ns = 41
+    # nc = 26
 
     alpha = np.deg2rad(0.) # aoa
 
     mach = 0.25
     sos = 340.3
     V_inf = np.array([sos*mach, 0., 0.])
-    nt = 5
+    # nt = 5
     num_nodes = 1
 
     mesh_orig = gen_panel_mesh(nc, ns, c, b, frame='default', plot_mesh=False)
@@ -54,15 +54,33 @@ def grid_indep():
     mesh_list = [mesh]
     mesh_velocity_list = [mesh_velocities]
 
-    outputs = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.01)
+    start_time = time.time()
+
+    output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.01)
+    run_time = time.time()
+
+    CL = output_dict['surface_0']['CL']
+
+    dCL_dmesh = csdl.derivative(csdl.norm(CL),mesh)
+    deriv_time = time.time()
     recorder.stop()
 
+    print(f'Run time: {run_time - start_time} seconds')
+    print(f'Derivative time: {deriv_time - run_time} seconds')
+
+    return recorder
+
 if __name__ == '__main__':
-    start = time.time()
-    grid_indep()
-    stop = time.time()
+    nt = 2
+    # ns_dict = {
+    #     5: {'nc': [5, 11, 21, 31, 41], 't_forward': {[]}, 't_deriv': {[]}},
+    #     11:{'nc': [5, 11, 21, 31, 41], 't_forward': {[]}, 't_deriv': {[]}},
+    #     21:{'nc': [5, 11, 21, 31, 41], 't_forward': {[]}, 't_deriv': {[]}},
+    #     31:{'nc': [5, 11, 21, 26, 31, 36], 't_forward': {[]}, 't_deriv': {[]}},
+    #     41:{'nc': [5, 11, 21, 26], 't_forward': {[]}, 't_deriv': {[]}},
+    # }
 
-    print(f'Run time: {stop - start} seconds')
+    recorder = grid_indep(nc=46,ns=11,nt=nt)
 
-    heap = h.heap()
-    print(heap)
+    # heap = h.heap()
+    # print(heap)
