@@ -87,6 +87,8 @@ def vlm_solver(mesh_list, mesh_velocity_list, alpha_ML=None):
         surface_moment: csdl.Variable # total moment of lifting surface w.r.t the input reference point
 
         surface_panel_forces: list # individual panel forces of each lifting surface
+        surface_panel_force_points: list
+        surface_panel_areas: list
         surface_panel_force_points: list # location of panel forces of each lifting surface (1/4 chord of the mesh panels)
         surface_sectional_cop: list # span-wise sectional center of pressure for each lifting surface
         surface_cop: csdl.Variable # center of pressure for each lifting surface
@@ -106,6 +108,7 @@ def vlm_solver(mesh_list, mesh_velocity_list, alpha_ML=None):
         surface_moment = surface_output_dict['surface_moment'],
         
         surface_panel_forces = surface_output_dict['surface_panel_forces'],
+        surface_panel_areas = [surface['panel_area'] for surface in mesh_dict.values()],
         surface_panel_force_points = surface_panel_force_points,
         surface_sectional_cop = surface_output_dict['surface_sectional_cop'],
         surface_cop = surface_output_dict['surface_cop'],
