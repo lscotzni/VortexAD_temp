@@ -1,6 +1,8 @@
 import numpy as np
 from VortexAD import AIRFOIL_PATH
 
+from VortexAD.core.geometry.gen_gmsh_unstructured_mesh import gen_gmsh_unstructured_mesh, convert_to_unstructured
+
 def gen_panel_mesh_new(nc, ns, chord, span, airfoil='naca0012', frame='default', plot_mesh=True):
     if airfoil not in ['naca0012']:
         raise ImportError('Airfoil not added yet.')
@@ -81,7 +83,7 @@ def gen_panel_mesh_new(nc, ns, chord, span, airfoil='naca0012', frame='default',
     return mesh
 
 
-def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012', frame='default', plot_mesh=False):
+def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012', frame='default', unstructured=False, plot_mesh=False):
     if airfoil not in ['naca0012']:
         raise ImportError('Airfoil not added yet.')
     else:
@@ -94,6 +96,9 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
         'z': loaded_data[:,1] * -1. # flips data so that we go from lower surface to upper surface
     }
     airfoil_data['x'][:zero_ind] *= -1
+
+    airfoil_data['z'][-1] = (airfoil_data['z'][0]+airfoil_data['z'][-1]) / 2.
+    airfoil_data['z'][0] = airfoil_data['z'][-1] 
 
     # origin at the wing LE center
     mesh = np.zeros((2*nc-1, ns, 3))
@@ -115,13 +120,19 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
         span_array = cos*span/2
         # print('new span:', span_array)
         # exit()
-    for i, y in enumerate(span_array):
-        mesh[:,i,0] = c_mesh_interp * chord
-        mesh[:,i,1] = y
-        mesh[:,i,2] = thickness_interp * chord
-    
-    mesh[0,:,:] = (mesh[0,:,:] + mesh[-1,:,:])/2.
-    mesh[-1,:,:] = mesh[0,:,:]
+
+    if not unstructured:
+        for i, y in enumerate(span_array):
+            mesh[:,i,0] = c_mesh_interp * chord
+            mesh[:,i,1] = y
+            mesh[:,i,2] = thickness_interp * chord
+        
+        mesh[0,:,:] = (mesh[0,:,:] + mesh[-1,:,:])/2.
+        mesh[-1,:,:] = mesh[0,:,:]
+
+    elif unstructured:
+        # mesh = gen_gmsh_unstructured_mesh(span_array, thickness_interp, c_mesh_interp*chord, name=airfoil+'_mesh')
+        new_mesh = convert_to_unstructured(mesh)
 
     airfoil_data['x'][:zero_ind] *= -1
 
@@ -133,8 +144,6 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
         airfoil_data['z'] *= -1.
         c_mesh_interp *= -1.
         thickness_interp *= -1.
-
-
 
     if plot_mesh:
 
@@ -149,11 +158,11 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
 
         plt.legend()
         plt.show()
-        
-        import pyvista as pv
-        p = pv.Plotter()
-        pv_mesh = pv.wrap(mesh.reshape((ns*(2*nc-1),3)))
-        p.add_mesh(pv_mesh, color='black')
-        p.show()
+        if not unstructured:
+            import pyvista as pv
+            p = pv.Plotter()
+            pv_mesh = pv.wrap(mesh.reshape((ns*(2*nc-1),3)))
+            p.add_mesh(pv_mesh, color='black')
+            p.show()
 
     return mesh

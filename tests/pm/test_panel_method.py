@@ -8,7 +8,7 @@ import time
 
 b = 10
 c = 1.564
-ns = 15
+ns = 11
 nc = 15
 
 alpha = np.deg2rad(0.) # aoa
@@ -19,7 +19,8 @@ V_inf = np.array([sos*mach, 0., 0.])
 nt = 5
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, frame='default', plot_mesh=False)
+mesh_orig = gen_panel_mesh(nc, ns, c, b, frame='default', unstructured=True, plot_mesh=True)
+exit()
 
 mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
 for i in range(num_nodes):
