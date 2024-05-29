@@ -98,11 +98,11 @@ def convert_to_unstructured(mesh):
 
     points = mesh.reshape((nc*ns,3))
 
-    connectivity = np.zeros((num_panels, 4))
+    connectivity = np.zeros((num_panels, 4), dtype=int)
     panel_count = 0
     for i in range(nc_panels):
         for j in range(ns_panels):
-            connectivity[panel_count,:] = np.array([i*ns+j, i*ns+j+1, (i+1)*ns+j, (i+1)*ns+j+1])
+            connectivity[panel_count,:] = np.array([int(i*ns+j), int(i*ns+j+1), int((i+1)*ns+j), int((i+1)*ns+j+1)])
             panel_count += 1
 
     return points, connectivity

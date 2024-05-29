@@ -132,7 +132,7 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
 
     elif unstructured:
         # mesh = gen_gmsh_unstructured_mesh(span_array, thickness_interp, c_mesh_interp*chord, name=airfoil+'_mesh')
-        new_mesh = convert_to_unstructured(mesh)
+        points, connectivity = convert_to_unstructured(mesh)
 
     airfoil_data['x'][:zero_ind] *= -1
 
@@ -165,4 +165,8 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
             p.add_mesh(pv_mesh, color='black')
             p.show()
 
-    return mesh
+    if not unstructured:
+        return mesh
+    
+    else:
+        return points, connectivity

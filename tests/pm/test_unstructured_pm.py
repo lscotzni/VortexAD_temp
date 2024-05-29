@@ -19,13 +19,13 @@ V_inf = np.array([sos*mach, 0., 0.])
 nt = 5
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, frame='default', unstructured=False, plot_mesh=True)
+points_orig, connectivity = gen_panel_mesh(nc, ns, c, b, frame='default', unstructured=True, plot_mesh=False)
 
 
-mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
+points = np.zeros((num_nodes, nt) + points_orig.shape)
 for i in range(num_nodes):
     for j in range(nt):
-        mesh[i,j,:] = mesh_orig
+        points[i,j,:] = points_orig
 
 V_rot_mat = np.zeros((3,3))
 V_rot_mat[1,1] = 1.
@@ -34,21 +34,21 @@ V_rot_mat[2,0] = np.sin(alpha)
 V_rot_mat[0,2] = -np.sin(alpha)
 V_inf_rot = np.matmul(V_rot_mat, V_inf)
 
-mesh_velocities = np.zeros_like(mesh)
+point_velocities = np.zeros_like(points)
 for i in range(num_nodes):
     for j in range(nt):
-        mesh_velocities[i,j,:] = V_inf_rot
+        point_velocities[i,j,:] = V_inf_rot
 
 recorder = csdl.Recorder(inline=False)
 recorder.start()
 
-mesh = csdl.Variable(value=mesh)
-mesh_velocities = csdl.Variable(value=mesh_velocities)
+points = csdl.Variable(value=points)
+point_velocities = csdl.Variable(value=point_velocities)
 
-mesh_list = [mesh]
-mesh_velocity_list = [mesh_velocities]
+point_list = [points]
+point_velocity_list = [point_velocities]
 start_time = time.time()
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.01)
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(point_list, point_velocity_list, dt=0.01, connectivity=connectivity, mesh_mode='unstructured')
 run_stop = time.time()
 
 CL = output_dict['surface_0']['CL']
