@@ -20,13 +20,13 @@ def compute_induced_velocity(p1, p2, p_eval, gamma=1.):
 
     # find cross product and norm
     r1r2_cross = csdl.cross(r1, r2, axis=xyz_dim)
-    r1r2_cross_norm = csdl.norm(r1r2_cross, axes=(xyz_dim,))
+    r1r2_cross_norm = csdl.norm(r1r2_cross+1.e-12, axes=(xyz_dim,))
     r1r2_cross_norm_exp = csdl.expand(r1r2_cross_norm, r1.shape, 'ij->ija')
 
     # compute norms of r1 and r2
-    r1_norm = csdl.norm(r1, axes=(xyz_dim, ))
+    r1_norm = csdl.norm(r1+1.e-12, axes=(xyz_dim, ))
     r1_norm_exp = csdl.expand(r1_norm, r1.shape, 'ij->ija')
-    r2_norm = csdl.norm(r2, axes=(xyz_dim, ))
+    r2_norm = csdl.norm(r2+1.e-12, axes=(xyz_dim, ))
     r2_norm_exp = csdl.expand(r2_norm, r2.shape, 'ij->ija')
 
     # compute dot products 
