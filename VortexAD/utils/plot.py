@@ -22,7 +22,15 @@ def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive = False, plot_m
     min_mu = np.min((min_mu_b, min_mu_w))
     max_mu = np.max((max_mu_b, max_mu_w))
 
-    for i in range(1,nt-1):
+    for i in range(nt-1):
+
+        min_mu_b = np.min(mu[:,i,:])
+        max_mu_b = np.max(mu[:,i,:])
+        min_mu_w = np.min(mu_wake[:,i,:])
+        max_mu_w = np.max(mu_wake[:,i,:])
+
+        min_mu = np.min((min_mu_b, min_mu_w))
+        max_mu = np.max((max_mu_b, max_mu_w))
         vp = Plotter(
             bg='white',
             # bg2='white',
@@ -48,7 +56,7 @@ def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive = False, plot_m
         vps.cmap(cmap, mu_color, on='cells', vmin=min_mu, vmax=max_mu)
         vp += vps
         vp += __doc__
-        wake_points = wake_mesh[:,i,:(i+1),:]
+        wake_points = wake_mesh[:,i,:(i+2),:]
         # mu_w = np.reshape(sim['system_model.wig.wig.wig.operation.prob.' + 'op_' + surface_name+'_mu_w'][i, 0:i, :], (-1,1))
         # if absolute:
         #     mu_w = np.absolute(mu_w)
@@ -60,7 +68,7 @@ def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive = False, plot_m
             for j in range(ny-1):
                 connectivity.append([k*ny+j,(k+1)*ny+j,(k+1)*ny+j+1,k*ny+j+1])
         vps = Mesh([np.reshape(wake_points, (-1, 3)), connectivity], c=color, alpha=1)
-        mu_wake_color = np.reshape(mu_wake[:,i,:(i)*(ny-1)], (-1,1))
+        mu_wake_color = np.reshape(mu_wake[:,i,:(i+1)*(ny-1)], (-1,1))
         vps.cmap(cmap, mu_wake_color, on='cells', vmin=min_mu, vmax=max_mu)
         if draw_scalarbar:
             vps.add_scalarbar()
@@ -117,8 +125,8 @@ def plot_pressure_distribution(mesh, Cp, surface_color='white', cmap='jet', inte
         # vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.).linecolor('black')
         vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.)
     Cp_color = np.reshape(Cp[:,-2,:,:], (-1,1))
-    # Cp_min, Cp_max = np.min(Cp[:,-2,:,:]), np.max(Cp[:,0,:,:])
-    Cp_min, Cp_max = -0.4, 1.
+    Cp_min, Cp_max = np.min(Cp[:,-2,:,:]), np.max(Cp[:,0,:,:])
+    # Cp_min, Cp_max = -0.4, 1.
     # Cp_min, Cp_max = -5., 1.
     vps.cmap(cmap, Cp_color, on='cells', vmin=Cp_min, vmax=Cp_max)
     # vps.cmap(cmap, Cp_color, on='cells', vmin=-0.4, vmax=1)

@@ -17,9 +17,10 @@ def mu_sigma_solver(num_nodes, nt, mesh_dict, dt, free_wake=False):
     # sigma = compute_source_strengths(mesh_dict, surface_names, num_nodes, nt, num_tot_panels) # shape=(num_nodes, nt, num_surf_panels)
 
     if free_wake:
-        mu, sigma, induced_vel = transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt, free_wake=free_wake)
+        mu, sigma, mu_wake = transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt, free_wake=free_wake)
     
-        return mu, sigma, wake_mesh_dict, induced_vel
+        # return mu, sigma, wake_mesh_dict, induced_vel
+        return mu, sigma, mu_wake, wake_mesh_dict
     else:
         mu, sigma, mu_wake = transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt)
     

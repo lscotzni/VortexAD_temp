@@ -19,36 +19,67 @@ def compute_source_strengths(mesh_dict, surface_names, num_nodes, nt, num_panels
     return sigma # VECTORIZED in shape=(num_nodes, nt, num_surf_panels)
 
 def compute_source_influence(dij, mij, dpij, dx, dy, dz, rk, ek, hk, sigma=1., mode='potential'):
+    '''
+    UPDATE TO EXPLAIN EACH INPUT
+    each input is a list of length 4, holding the values at the corners
+    ex: mij = [mij_i for i in range(4)] where each index i corresponds to a corner of the panel
+    NOTE: dpij uses the same notation, but contains a sub-index to differentiate between x and y values
+    ex: dpij[0][0] refers to the x-component of dpij for point 1
+    '''
     if mode == 'potential':
-        # source_AIC_vec = -sigma/4/np.pi*((
-        #     ((dk[:,0,0]*dpij[:,0,1] - dk[:,0,1]*dpij[:,0,0])/dij[:,0]*csdl.log((rk[:,0] + rk[:,1] + dij[:,0])/(rk[:,0] + rk[:,1] - dij[:,0]))) + 
-        #     ((dk[:,1,0]*dpij[:,1,1] - dk[:,1,1]*dpij[:,1,0])/dij[:,1]*csdl.log((rk[:,1] + rk[:,2] + dij[:,1])/(rk[:,1] + rk[:,2] - dij[:,1]))) + 
-        #     ((dk[:,2,0]*dpij[:,2,1] - dk[:,2,1]*dpij[:,2,0])/dij[:,2]*csdl.log((rk[:,2] + rk[:,3] + dij[:,2])/(rk[:,2] + rk[:,3] - dij[:,2]))) + 
-        #     ((dk[:,3,0]*dpij[:,3,1] - dk[:,3,1]*dpij[:,3,0])/dij[:,3]*csdl.log((rk[:,3] + rk[:,0] + dij[:,3])/(rk[:,3] + rk[:,0] - dij[:,3])))
-        # ) - (dk[:,0,2]**2)**0.5 * (
-        #     csdl.arctan((mij[:,0]*ek[:,0]-hk[:,0])/(dk[:,0,2]*rk[:,0]+1.e-12)) - csdl.arctan((mij[:,0]*ek[:,1]-hk[:,1])/(dk[:,0,2]*rk[:,1]+1.e-12)) + 
-        #     csdl.arctan((mij[:,1]*ek[:,1]-hk[:,1])/(dk[:,1,2]*rk[:,1]+1.e-12)) - csdl.arctan((mij[:,1]*ek[:,2]-hk[:,2])/(dk[:,1,2]*rk[:,2]+1.e-12)) + 
-        #     csdl.arctan((mij[:,2]*ek[:,2]-hk[:,2])/(dk[:,2,2]*rk[:,2]+1.e-12)) - csdl.arctan((mij[:,2]*ek[:,3]-hk[:,3])/(dk[:,2,2]*rk[:,3]+1.e-12)) + 
-        #     csdl.arctan((mij[:,3]*ek[:,3]-hk[:,3])/(dk[:,3,2]*rk[:,3]+1.e-12)) - csdl.arctan((mij[:,3]*ek[:,0]-hk[:,0])/(dk[:,3,2]*rk[:,0]+1.e-12))
+        # source_influence = -sigma/4/np.pi*(
+        #     ( # CHANGE TO USE dx, dy, dz
+        #     ((dx[:,:,:,0]*dpij[:,:,:,0,1] - dy[:,:,:,0]*dpij[:,:,:,0,0])/(dij[:,:,:,0]+1.e-12)*csdl.log((rk[:,:,:,0] + rk[:,:,:,1] + dij[:,:,:,0]+1.e-12)/(rk[:,:,:,0] + rk[:,:,:,1] - dij[:,:,:,0] + 1.e-12))) + 
+        #     ((dx[:,:,:,1]*dpij[:,:,:,1,1] - dy[:,:,:,1]*dpij[:,:,:,1,0])/(dij[:,:,:,1]+1.e-12)*csdl.log((rk[:,:,:,1] + rk[:,:,:,2] + dij[:,:,:,1]+1.e-12)/(rk[:,:,:,1] + rk[:,:,:,2] - dij[:,:,:,1] + 1.e-12))) + 
+        #     ((dx[:,:,:,2]*dpij[:,:,:,2,1] - dy[:,:,:,2]*dpij[:,:,:,2,0])/(dij[:,:,:,2]+1.e-12)*csdl.log((rk[:,:,:,2] + rk[:,:,:,3] + dij[:,:,:,2]+1.e-12)/(rk[:,:,:,2] + rk[:,:,:,3] - dij[:,:,:,2] + 1.e-12))) + 
+        #     ((dx[:,:,:,3]*dpij[:,:,:,3,1] - dy[:,:,:,3]*dpij[:,:,:,3,0])/(dij[:,:,:,3]+1.e-12)*csdl.log((rk[:,:,:,3] + rk[:,:,:,0] + dij[:,:,:,3]+1.e-12)/(rk[:,:,:,3] + rk[:,:,:,0] - dij[:,:,:,3] + 1.e-12)))
+        # )
+        # - dz[:,:,:,0] * (
+        #     csdl.arctan((mij[:,:,:,0]*ek[:,:,:,0]-hk[:,:,:,0])/(dz[:,:,:,0]*rk[:,:,:,0]+1.e-12)) - csdl.arctan((mij[:,:,:,0]*ek[:,:,:,1]-hk[:,:,:,1])/(dz[:,:,:,0]*rk[:,:,:,1]+1.e-12)) + 
+        #     csdl.arctan((mij[:,:,:,1]*ek[:,:,:,1]-hk[:,:,:,1])/(dz[:,:,:,1]*rk[:,:,:,1]+1.e-12)) - csdl.arctan((mij[:,:,:,1]*ek[:,:,:,2]-hk[:,:,:,2])/(dz[:,:,:,1]*rk[:,:,:,2]+1.e-12)) + 
+        #     csdl.arctan((mij[:,:,:,2]*ek[:,:,:,2]-hk[:,:,:,2])/(dz[:,:,:,2]*rk[:,:,:,2]+1.e-12)) - csdl.arctan((mij[:,:,:,2]*ek[:,:,:,3]-hk[:,:,:,3])/(dz[:,:,:,2]*rk[:,:,:,3]+1.e-12)) + 
+        #     csdl.arctan((mij[:,:,:,3]*ek[:,:,:,3]-hk[:,:,:,3])/(dz[:,:,:,3]*rk[:,:,:,3]+1.e-12)) - csdl.arctan((mij[:,:,:,3]*ek[:,:,:,0]-hk[:,:,:,0])/(dz[:,:,:,3]*rk[:,:,:,0]+1.e-12))
         # )) # note that dk[:,i,2] is the same for all i
+
         source_influence = -sigma/4/np.pi*(
             ( # CHANGE TO USE dx, dy, dz
-            ((dx[:,:,:,0]*dpij[:,:,:,0,1] - dy[:,:,:,0]*dpij[:,:,:,0,0])/(dij[:,:,:,0]+1.e-12)*csdl.log((rk[:,:,:,0] + rk[:,:,:,1] + dij[:,:,:,0]+1.e-12)/(rk[:,:,:,0] + rk[:,:,:,1] - dij[:,:,:,0] + 1.e-12))) + 
-            ((dx[:,:,:,1]*dpij[:,:,:,1,1] - dy[:,:,:,1]*dpij[:,:,:,1,0])/(dij[:,:,:,1]+1.e-12)*csdl.log((rk[:,:,:,1] + rk[:,:,:,2] + dij[:,:,:,1]+1.e-12)/(rk[:,:,:,1] + rk[:,:,:,2] - dij[:,:,:,1] + 1.e-12))) + 
-            ((dx[:,:,:,2]*dpij[:,:,:,2,1] - dy[:,:,:,2]*dpij[:,:,:,2,0])/(dij[:,:,:,2]+1.e-12)*csdl.log((rk[:,:,:,2] + rk[:,:,:,3] + dij[:,:,:,2]+1.e-12)/(rk[:,:,:,2] + rk[:,:,:,3] - dij[:,:,:,2] + 1.e-12))) + 
-            ((dx[:,:,:,3]*dpij[:,:,:,3,1] - dy[:,:,:,3]*dpij[:,:,:,3,0])/(dij[:,:,:,3]+1.e-12)*csdl.log((rk[:,:,:,3] + rk[:,:,:,0] + dij[:,:,:,3]+1.e-12)/(rk[:,:,:,3] + rk[:,:,:,0] - dij[:,:,:,3] + 1.e-12)))
+            ((dx[0]*dpij[0][1] - dy[0]*dpij[0][0])/(dij[0]+1.e-12)*csdl.log((rk[0] + rk[1] + dij[0]+1.e-12)/(rk[0] + rk[1] - dij[0] + 1.e-12))) + 
+            ((dx[1]*dpij[1][1] - dy[1]*dpij[1][0])/(dij[1]+1.e-12)*csdl.log((rk[1] + rk[2] + dij[1]+1.e-12)/(rk[1] + rk[2] - dij[1] + 1.e-12))) + 
+            ((dx[2]*dpij[2][1] - dy[2]*dpij[2][0])/(dij[2]+1.e-12)*csdl.log((rk[2] + rk[3] + dij[2]+1.e-12)/(rk[2] + rk[3] - dij[2] + 1.e-12))) + 
+            ((dx[3]*dpij[3][1] - dy[3]*dpij[3][0])/(dij[3]+1.e-12)*csdl.log((rk[3] + rk[0] + dij[3]+1.e-12)/(rk[3] + rk[0] - dij[3] + 1.e-12)))
         )
-        # - (dz[:,:,:,0]**2)**0.5 * (
-        - dz[:,:,:,0] * (
-            csdl.arctan((mij[:,:,:,0]*ek[:,:,:,0]-hk[:,:,:,0])/(dz[:,:,:,0]*rk[:,:,:,0]+1.e-12)) - csdl.arctan((mij[:,:,:,0]*ek[:,:,:,1]-hk[:,:,:,1])/(dz[:,:,:,0]*rk[:,:,:,1]+1.e-12)) + 
-            csdl.arctan((mij[:,:,:,1]*ek[:,:,:,1]-hk[:,:,:,1])/(dz[:,:,:,1]*rk[:,:,:,1]+1.e-12)) - csdl.arctan((mij[:,:,:,1]*ek[:,:,:,2]-hk[:,:,:,2])/(dz[:,:,:,1]*rk[:,:,:,2]+1.e-12)) + 
-            csdl.arctan((mij[:,:,:,2]*ek[:,:,:,2]-hk[:,:,:,2])/(dz[:,:,:,2]*rk[:,:,:,2]+1.e-12)) - csdl.arctan((mij[:,:,:,2]*ek[:,:,:,3]-hk[:,:,:,3])/(dz[:,:,:,2]*rk[:,:,:,3]+1.e-12)) + 
-            csdl.arctan((mij[:,:,:,3]*ek[:,:,:,3]-hk[:,:,:,3])/(dz[:,:,:,3]*rk[:,:,:,3]+1.e-12)) - csdl.arctan((mij[:,:,:,3]*ek[:,:,:,0]-hk[:,:,:,0])/(dz[:,:,:,3]*rk[:,:,:,0]+1.e-12))
+        - dz[0] * (
+            csdl.arctan((mij[0]*ek[0]-hk[0])/(dz[0]*rk[0]+1.e-12)) - csdl.arctan((mij[0]*ek[1]-hk[1])/(dz[0]*rk[1]+1.e-12)) + 
+            csdl.arctan((mij[1]*ek[1]-hk[1])/(dz[1]*rk[1]+1.e-12)) - csdl.arctan((mij[1]*ek[2]-hk[2])/(dz[1]*rk[2]+1.e-12)) + 
+            csdl.arctan((mij[2]*ek[2]-hk[2])/(dz[2]*rk[2]+1.e-12)) - csdl.arctan((mij[2]*ek[3]-hk[3])/(dz[2]*rk[3]+1.e-12)) + 
+            csdl.arctan((mij[3]*ek[3]-hk[3])/(dz[3]*rk[3]+1.e-12)) - csdl.arctan((mij[3]*ek[0]-hk[0])/(dz[3]*rk[0]+1.e-12))
         )) # note that dk[:,i,2] is the same for all i
         return source_influence
-        # source_AIC = np.reshape(source_AIC_vec, (num_panels, num_panels))
+
     elif mode == 'velocity':
-        return
+        # vel = csdl.Variable(shape=dz.shape[],value=0.)
+        u = sigma/(4*np.pi) * (
+            dpij[0][1]/dij[0]*csdl.log((rk[0] + rk[1] - dij[0])/(rk[0] + rk[1] + dij[0])) + 
+            dpij[1][1]/dij[1]*csdl.log((rk[1] + rk[2] - dij[1])/(rk[1] + rk[2] + dij[1])) + 
+            dpij[2][1]/dij[2]*csdl.log((rk[2] + rk[3] - dij[2])/(rk[2] + rk[3] + dij[2])) + 
+            dpij[3][1]/dij[3]*csdl.log((rk[3] + rk[0] - dij[3])/(rk[3] + rk[0] + dij[3]))
+        )
+
+        v = sigma/(4*np.pi) * (
+            dpij[0][0]/dij[0]*csdl.log((rk[0] + rk[1] - dij[0])/(rk[0] + rk[1] + dij[0])) + 
+            dpij[1][0]/dij[1]*csdl.log((rk[1] + rk[2] - dij[1])/(rk[1] + rk[2] + dij[1])) + 
+            dpij[2][0]/dij[2]*csdl.log((rk[2] + rk[3] - dij[2])/(rk[2] + rk[3] + dij[2])) + 
+            dpij[3][0]/dij[3]*csdl.log((rk[3] + rk[0] - dij[3])/(rk[3] + rk[0] + dij[3]))
+        ) * -1. # NOTE: THIS -1 IS BECAUSE OF THE DIFFERENT SIGN IN THE POTENTIAL EQUATION
+
+        w = sigma/(4*np.pi) * (
+            csdl.arctan((mij[0]*ek[0]-hk[0])/(dz[0]*rk[0]+1.e-12)) - csdl.arctan((mij[0]*ek[1]-hk[1])/(dz[0]*rk[1]+1.e-12)) + 
+            csdl.arctan((mij[1]*ek[1]-hk[1])/(dz[1]*rk[1]+1.e-12)) - csdl.arctan((mij[1]*ek[2]-hk[2])/(dz[1]*rk[2]+1.e-12)) + 
+            csdl.arctan((mij[2]*ek[2]-hk[2])/(dz[2]*rk[2]+1.e-12)) - csdl.arctan((mij[2]*ek[3]-hk[3])/(dz[2]*rk[3]+1.e-12)) + 
+            csdl.arctan((mij[3]*ek[3]-hk[3])/(dz[3]*rk[3]+1.e-12)) - csdl.arctan((mij[3]*ek[0]-hk[0])/(dz[3]*rk[0]+1.e-12))
+        )
+        
+        return u, v, w
 
 def compute_source_AIC(mesh_dict, num_nodes, nt, num_tot_panels):
     surface_names = list(mesh_dict.keys())

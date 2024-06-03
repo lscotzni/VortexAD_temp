@@ -3,133 +3,135 @@ import csdl_alpha as csdl
 
 import time
 
-def perturbation_velocity_FD(mu_grid, dl, dm):
-    ql, qm = csdl.Variable(shape=mu_grid.shape, value=0.), csdl.Variable(shape=mu_grid.shape, value=0.)
-    ql = ql.set(csdl.slice[:,:,1:-1,:], value=(mu_grid[:,:,2:,:] - mu_grid[:,:,0:-2,:]) / (dl[:,:,1:-1,:,0] + dl[:,:,1:-1,:,1])) # all panels except TE
-    # ql = ql.set(csdl.slice[:,:,0,:], value=(mu_grid[:,:,1,:] - mu_grid[:,:,-1,:]) / (dl[:,:,0,:,0] + dl[:,:,0,:,1])) # TE on lower surface
-    ql = ql.set(csdl.slice[:,:,0,:], value=(-3*mu_grid[:,:,0,:] + 4*mu_grid[:,:,1,:] - mu_grid[:,:,2,:]) / (3*dl[:,:,1,:,0] - dl[:,:,1,:,1])) # TE on lower surface
-    # ql = ql.set(csdl.slice[:,:,-1,:], value=(mu_grid[:,:,0,:] - mu_grid[:,:,-2,:]) / (dl[:,:,-1,:,0] + dl[:,:,-1,:,1])) # TE on upper surface
-    ql = ql.set(csdl.slice[:,:,-1,:], value=(3*mu_grid[:,:,-1,:] - 4*mu_grid[:,:,-2,:] + mu_grid[:,:,-3,:]) / (3*dl[:,:,-2,:,1] - dl[:,:,-2,:,0])) # TE on upper surface
+from VortexAD.core.panel_method.perturbation_velocity_comp import perturbation_velocity_FD, perturbation_velocity_FD_K_P, least_squares_velocity_old
 
-    qm = qm.set(csdl.slice[:,:,:,1:-1], value=(mu_grid[:,:,:,2:] - mu_grid[:,:,:,0:-2]) / (dm[:,:,:,1:-1,0] + dm[:,:,:,1:-1,1])) # all panels expect wing tips
-    qm = qm.set(csdl.slice[:,:,:,0], value=(-3*mu_grid[:,:,:,0] + 4*mu_grid[:,:,:,1] - mu_grid[:,:,:,2]) / (3*dm[:,:,:,1,0] - dm[:,:,:,1,1]))
-    qm = qm.set(csdl.slice[:,:,:,-1], value=(3*mu_grid[:,:,:,-1] - 4*mu_grid[:,:,:,-2] + mu_grid[:,:,:,-3]) / (3*dm[:,:,:,-2,1] - dm[:,:,:,-2,0]))
+# def perturbation_velocity_FD(mu_grid, dl, dm):
+#     ql, qm = csdl.Variable(shape=mu_grid.shape, value=0.), csdl.Variable(shape=mu_grid.shape, value=0.)
+#     ql = ql.set(csdl.slice[:,:,1:-1,:], value=(mu_grid[:,:,2:,:] - mu_grid[:,:,0:-2,:]) / (dl[:,:,1:-1,:,0] + dl[:,:,1:-1,:,1])) # all panels except TE
+#     # ql = ql.set(csdl.slice[:,:,0,:], value=(mu_grid[:,:,1,:] - mu_grid[:,:,-1,:]) / (dl[:,:,0,:,0] + dl[:,:,0,:,1])) # TE on lower surface
+#     ql = ql.set(csdl.slice[:,:,0,:], value=(-3*mu_grid[:,:,0,:] + 4*mu_grid[:,:,1,:] - mu_grid[:,:,2,:]) / (3*dl[:,:,1,:,0] - dl[:,:,1,:,1])) # TE on lower surface
+#     # ql = ql.set(csdl.slice[:,:,-1,:], value=(mu_grid[:,:,0,:] - mu_grid[:,:,-2,:]) / (dl[:,:,-1,:,0] + dl[:,:,-1,:,1])) # TE on upper surface
+#     ql = ql.set(csdl.slice[:,:,-1,:], value=(3*mu_grid[:,:,-1,:] - 4*mu_grid[:,:,-2,:] + mu_grid[:,:,-3,:]) / (3*dl[:,:,-2,:,1] - dl[:,:,-2,:,0])) # TE on upper surface
 
-    return -ql, -qm
+#     qm = qm.set(csdl.slice[:,:,:,1:-1], value=(mu_grid[:,:,:,2:] - mu_grid[:,:,:,0:-2]) / (dm[:,:,:,1:-1,0] + dm[:,:,:,1:-1,1])) # all panels expect wing tips
+#     qm = qm.set(csdl.slice[:,:,:,0], value=(-3*mu_grid[:,:,:,0] + 4*mu_grid[:,:,:,1] - mu_grid[:,:,:,2]) / (3*dm[:,:,:,1,0] - dm[:,:,:,1,1]))
+#     qm = qm.set(csdl.slice[:,:,:,-1], value=(3*mu_grid[:,:,:,-1] - 4*mu_grid[:,:,:,-2] + mu_grid[:,:,:,-3]) / (3*dm[:,:,:,-2,1] - dm[:,:,:,-2,0]))
 
-def least_squares_velocity(mu_grid, delta_coll_point):
-    num_nodes, nt = mu_grid.shape[0], mu_grid.shape[1]
-    grid_shape = mu_grid.shape[2:]
-    nc_panels, ns_panels = grid_shape[0], grid_shape[1]
-    num_panels = nc_panels*ns_panels
-    num_deltas = 4*(ns_panels-2)*(nc_panels-2) + 3*(2)*(ns_panels-2+nc_panels-2) + 2*4
-    num_derivatives = num_panels*2
-    # the above count is done first through central panels, then non-corner edge panels, then corner panels
-    delta_system_matrix = csdl.Variable(shape=(num_nodes, nt, num_deltas, num_derivatives), value=0.)
-    delta_mu_vec = csdl.Variable(shape=(num_nodes, nt, num_deltas), value=0.)
-    TE_deltas = [2] + [3]*(ns_panels-2) + [2]
-    center_deltas = [3] + [4]*(ns_panels-2) + [3]
-    deltas_per_panel = TE_deltas + center_deltas*(nc_panels-2) + TE_deltas
+#     return -ql, -qm
+
+# def least_squares_velocity(mu_grid, delta_coll_point):
+#     num_nodes, nt = mu_grid.shape[0], mu_grid.shape[1]
+#     grid_shape = mu_grid.shape[2:]
+#     nc_panels, ns_panels = grid_shape[0], grid_shape[1]
+#     num_panels = nc_panels*ns_panels
+#     num_deltas = 4*(ns_panels-2)*(nc_panels-2) + 3*(2)*(ns_panels-2+nc_panels-2) + 2*4
+#     num_derivatives = num_panels*2
+#     # the above count is done first through central panels, then non-corner edge panels, then corner panels
+#     delta_system_matrix = csdl.Variable(shape=(num_nodes, nt, num_deltas, num_derivatives), value=0.)
+#     delta_mu_vec = csdl.Variable(shape=(num_nodes, nt, num_deltas), value=0.)
+#     TE_deltas = [2] + [3]*(ns_panels-2) + [2]
+#     center_deltas = [3] + [4]*(ns_panels-2) + [3]
+#     deltas_per_panel = TE_deltas + center_deltas*(nc_panels-2) + TE_deltas
     
-    deltas_per_panel_grid = np.array(deltas_per_panel).reshape((nc_panels, ns_panels))
+#     deltas_per_panel_grid = np.array(deltas_per_panel).reshape((nc_panels, ns_panels))
 
-    mu_grid_vec = mu_grid.reshape((num_nodes, nt, num_panels))
-    start, stop = 0, 0
-    panel_ind = 0
-    for i in range(nc_panels):
-        print('i:', i)
-        for j in range(ns_panels):
-            print('j:',j)
-            num_d_panel = deltas_per_panel_grid[i,j]
-            stop += num_d_panel
-            deltas_sub_matrix = csdl.Variable(shape=(num_nodes, nt, num_d_panel, 2), value=0.)
-            sub_delta_mu_vec = csdl.Variable(shape=(num_nodes, nt, num_d_panel), value=0.)
+#     mu_grid_vec = mu_grid.reshape((num_nodes, nt, num_panels))
+#     start, stop = 0, 0
+#     panel_ind = 0
+#     for i in range(nc_panels):
+#         print('i:', i)
+#         for j in range(ns_panels):
+#             print('j:',j)
+#             num_d_panel = deltas_per_panel_grid[i,j]
+#             stop += num_d_panel
+#             deltas_sub_matrix = csdl.Variable(shape=(num_nodes, nt, num_d_panel, 2), value=0.)
+#             sub_delta_mu_vec = csdl.Variable(shape=(num_nodes, nt, num_d_panel), value=0.)
 
-            mu_panel = mu_grid[:,:,i,j]
-            mu_panel_exp = csdl.expand(mu_panel, sub_delta_mu_vec.shape, 'ij->ija')
-            mu_adjacent = csdl.Variable(shape=mu_panel_exp.shape, value=0.)
+#             mu_panel = mu_grid[:,:,i,j]
+#             mu_panel_exp = csdl.expand(mu_panel, sub_delta_mu_vec.shape, 'ij->ija')
+#             mu_adjacent = csdl.Variable(shape=mu_panel_exp.shape, value=0.)
 
-            if i == 0: # first chordwise panel
-                mu_adjacent = mu_adjacent.set(csdl.slice[:,:,0], value=mu_grid[:,:,i+1,j])
-                deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,0,:], value=delta_coll_point[:,:,i,j,1,:])
-                if j == 0: # 2 panels (first spanwise)
-                    mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i,j+1])
-                    deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,3,:])
-                elif j == ns_panels-1: # 2 panels  (last spanwise)
-                    mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i,j-1])
-                    deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,2,:])
-                else: # 3 panels
-                    mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i,j-1])
-                    mu_adjacent = mu_adjacent.set(csdl.slice[:,:,2], value=mu_grid[:,:,i,j+1])
-                    deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,2,:])
-                    deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,2,:], value=delta_coll_point[:,:,i,j,3,:])
+#             if i == 0: # first chordwise panel
+#                 mu_adjacent = mu_adjacent.set(csdl.slice[:,:,0], value=mu_grid[:,:,i+1,j])
+#                 deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,0,:], value=delta_coll_point[:,:,i,j,1,:])
+#                 if j == 0: # 2 panels (first spanwise)
+#                     mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i,j+1])
+#                     deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,3,:])
+#                 elif j == ns_panels-1: # 2 panels  (last spanwise)
+#                     mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i,j-1])
+#                     deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,2,:])
+#                 else: # 3 panels
+#                     mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i,j-1])
+#                     mu_adjacent = mu_adjacent.set(csdl.slice[:,:,2], value=mu_grid[:,:,i,j+1])
+#                     deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,2,:])
+#                     deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,2,:], value=delta_coll_point[:,:,i,j,3,:])
 
-            elif i == nc_panels-1: # last chordwise panel
-                mu_adjacent = mu_adjacent.set(csdl.slice[:,:,0], value=mu_grid[:,:,i-1,j])
-                deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,0,:], value=delta_coll_point[:,:,i,j,0,:])
-                if j == 0: # 2 panels (first spanwise)
-                    mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i,j+1])
-                    deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,3,:])
-                elif j == ns_panels-1: # 2 panels (last spanwise)
-                    mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i,j-1])
-                    deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,2,:])
-                else: # 3 panels
-                    mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i,j-1])
-                    mu_adjacent = mu_adjacent.set(csdl.slice[:,:,2], value=mu_grid[:,:,i,j+1])
-                    deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,2,:])
-                    deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,2,:], value=delta_coll_point[:,:,i,j,3,:])
+#             elif i == nc_panels-1: # last chordwise panel
+#                 mu_adjacent = mu_adjacent.set(csdl.slice[:,:,0], value=mu_grid[:,:,i-1,j])
+#                 deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,0,:], value=delta_coll_point[:,:,i,j,0,:])
+#                 if j == 0: # 2 panels (first spanwise)
+#                     mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i,j+1])
+#                     deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,3,:])
+#                 elif j == ns_panels-1: # 2 panels (last spanwise)
+#                     mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i,j-1])
+#                     deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,2,:])
+#                 else: # 3 panels
+#                     mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i,j-1])
+#                     mu_adjacent = mu_adjacent.set(csdl.slice[:,:,2], value=mu_grid[:,:,i,j+1])
+#                     deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,2,:])
+#                     deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,2,:], value=delta_coll_point[:,:,i,j,3,:])
 
-            else: # 4 panels
-                mu_adjacent = mu_adjacent.set(csdl.slice[:,:,0], value=mu_grid[:,:,i-1,j])
-                mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i+1,j])
-                deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,0,:], value=delta_coll_point[:,:,i,j,0,:])
-                deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,1,:])
-                if j == 0:
-                    mu_adjacent = mu_adjacent.set(csdl.slice[:,:,2], value=mu_grid[:,:,i,j+1])
-                    deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,2,:], value=delta_coll_point[:,:,i,j,3,:])
-                elif j == ns_panels-1:
-                    mu_adjacent = mu_adjacent.set(csdl.slice[:,:,2], value=mu_grid[:,:,i,j-1])
-                    deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,2,:], value=delta_coll_point[:,:,i,j,2,:])
-                else:
-                    mu_adjacent = mu_adjacent.set(csdl.slice[:,:,2], value=mu_grid[:,:,i,j-1])
-                    mu_adjacent = mu_adjacent.set(csdl.slice[:,:,3], value=mu_grid[:,:,i,j+1])
+#             else: # 4 panels
+#                 mu_adjacent = mu_adjacent.set(csdl.slice[:,:,0], value=mu_grid[:,:,i-1,j])
+#                 mu_adjacent = mu_adjacent.set(csdl.slice[:,:,1], value=mu_grid[:,:,i+1,j])
+#                 deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,0,:], value=delta_coll_point[:,:,i,j,0,:])
+#                 deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,1,:], value=delta_coll_point[:,:,i,j,1,:])
+#                 if j == 0:
+#                     mu_adjacent = mu_adjacent.set(csdl.slice[:,:,2], value=mu_grid[:,:,i,j+1])
+#                     deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,2,:], value=delta_coll_point[:,:,i,j,3,:])
+#                 elif j == ns_panels-1:
+#                     mu_adjacent = mu_adjacent.set(csdl.slice[:,:,2], value=mu_grid[:,:,i,j-1])
+#                     deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,2,:], value=delta_coll_point[:,:,i,j,2,:])
+#                 else:
+#                     mu_adjacent = mu_adjacent.set(csdl.slice[:,:,2], value=mu_grid[:,:,i,j-1])
+#                     mu_adjacent = mu_adjacent.set(csdl.slice[:,:,3], value=mu_grid[:,:,i,j+1])
 
-                    deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,2,:], value=delta_coll_point[:,:,i,j,2,:])
-                    deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,3,:], value=delta_coll_point[:,:,i,j,3,:])
+#                     deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,2,:], value=delta_coll_point[:,:,i,j,2,:])
+#                     deltas_sub_matrix = deltas_sub_matrix.set(csdl.slice[:,:,3,:], value=delta_coll_point[:,:,i,j,3,:])
 
-            sub_delta_mu_vec = mu_adjacent - mu_panel_exp
+#             sub_delta_mu_vec = mu_adjacent - mu_panel_exp
             
-            mu_grid[:,:,i,j]
-            delta_system_matrix = delta_system_matrix.set(csdl.slice[:,:,start:stop,2*panel_ind:2*(panel_ind+1)], value=deltas_sub_matrix)
-            delta_mu_vec = delta_mu_vec.set(csdl.slice[:,:,start:stop], value=sub_delta_mu_vec)
+#             mu_grid[:,:,i,j]
+#             delta_system_matrix = delta_system_matrix.set(csdl.slice[:,:,start:stop,2*panel_ind:2*(panel_ind+1)], value=deltas_sub_matrix)
+#             delta_mu_vec = delta_mu_vec.set(csdl.slice[:,:,start:stop], value=sub_delta_mu_vec)
             
-            start += deltas_per_panel_grid[i,j]
-            panel_ind += 1
+#             start += deltas_per_panel_grid[i,j]
+#             panel_ind += 1
 
-    print('computing transposes')
-    a = time.time()
-    delta_system_matrix_T = csdl.einsum(delta_system_matrix, action='ijkl->ijlk')
-    b = time.time()
-    print(f'transpose einsum time: {b-a} seconds')
+#     print('computing transposes')
+#     a = time.time()
+#     delta_system_matrix_T = csdl.einsum(delta_system_matrix, action='ijkl->ijlk')
+#     b = time.time()
+#     print(f'transpose einsum time: {b-a} seconds')
 
-    print('setting up linear system matrix')
-    lin_sys_matrix = csdl.einsum(delta_system_matrix_T, delta_system_matrix, action='ijkl,ijlm->ijkm')
-    c = time.time()
-    print(f'matrix matrix product for linear system time: {c-b} seconds')
+#     print('setting up linear system matrix')
+#     lin_sys_matrix = csdl.einsum(delta_system_matrix_T, delta_system_matrix, action='ijkl,ijlm->ijkm')
+#     c = time.time()
+#     print(f'matrix matrix product for linear system time: {c-b} seconds')
 
-    print('RHS matrix vector product')
-    RHS = csdl.einsum(delta_system_matrix_T, delta_mu_vec, action='ijkl,ijl->ijk')
-    d = time.time()
-    print(f'RHS matrix vector product computation time: {d-c} seconds')
-    dmu_d = csdl.Variable(shape=(num_nodes, nt, num_panels*2), value=0.)
-    print('solving linear system for least squares')
-    for i in csdl.frange(num_nodes):
-        for j in csdl.frange(nt):
-            dmu_d = dmu_d.set(csdl.slice[i,j,:], value=csdl.solve_linear(lin_sys_matrix[i,j,:,:], RHS[i,j,:]))
+#     print('RHS matrix vector product')
+#     RHS = csdl.einsum(delta_system_matrix_T, delta_mu_vec, action='ijkl,ijl->ijk')
+#     d = time.time()
+#     print(f'RHS matrix vector product computation time: {d-c} seconds')
+#     dmu_d = csdl.Variable(shape=(num_nodes, nt, num_panels*2), value=0.)
+#     print('solving linear system for least squares')
+#     for i in csdl.frange(num_nodes):
+#         for j in csdl.frange(nt):
+#             dmu_d = dmu_d.set(csdl.slice[i,j,:], value=csdl.solve_linear(lin_sys_matrix[i,j,:,:], RHS[i,j,:]))
 
-    ql = -dmu_d[:,:,0::2].reshape((num_nodes, nt, nc_panels, ns_panels))
-    qm = -dmu_d[:,:,1::2].reshape((num_nodes, nt, nc_panels, ns_panels))
-    return ql, qm
+#     ql = -dmu_d[:,:,0::2].reshape((num_nodes, nt, nc_panels, ns_panels))
+#     qm = -dmu_d[:,:,1::2].reshape((num_nodes, nt, nc_panels, ns_panels))
+#     return ql, qm
     
 
 def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
@@ -154,10 +156,10 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         pos_dl_norm, neg_dl_norm = mesh_dict[surface_name]['panel_dl_norm']
         pos_dm_norm, neg_dm_norm = mesh_dict[surface_name]['panel_dm_norm']
 
-        if True:
+        if False:
             # region least squares method for derivatives
             delta_coll_point = mesh_dict[surface_name]['delta_coll_point']
-            ql, qm = least_squares_velocity(mu_grid, delta_coll_point)
+            ql, qm = least_squares_velocity_old(mu_grid, delta_coll_point)
             # endregion
         if False:
             # region updated fd method
@@ -176,7 +178,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
             ql, qm = perturbation_velocity_FD(mu_grid, dl, dm)
             # endregion
 
-        if False:
+        if True:
             # region original fd method
             panel_center = mesh_dict[surface_name]['panel_center'] # nn, nt, nc-1, ns-1, 3
 
@@ -192,16 +194,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
             panel_center_dm = panel_center_dm.set(csdl.slice[:,:,:,:-1,0], value=panel_center_dm_magnitude)
             panel_center_dm = panel_center_dm.set(csdl.slice[:,:,:,1:,1], value=panel_center_dm_magnitude)
 
-            ql = csdl.Variable(shape=mu_grid.shape, value=0.)
-            qm = csdl.Variable(shape=mu_grid.shape, value=0.)
-
-            ql = ql.set(csdl.slice[:,:,1:-1,:], value=-(mu_grid[:,:,2:,:] - mu_grid[:,:,:-2,:])/2./((panel_center_dl[:,:,1:-1,:,0]+panel_center_dl[:,:,1:-1,:,1])/2))
-            ql = ql.set(csdl.slice[:,:,0,:], value=-(-3*mu_grid[:,:,0,:]+4*mu_grid[:,:,1,:]-mu_grid[:,:,2,:])/2./((panel_center_dl[:,:,0,:,0]+panel_center_dl[:,:,1,:,0])/2))
-            ql = ql.set(csdl.slice[:,:,-1,:], value=-(3*mu_grid[:,:,-1,:]-4*mu_grid[:,:,-2,:]+mu_grid[:,:,-3,:])/2./((panel_center_dl[:,:,-1,:,1]+panel_center_dl[:,:,-2,:,1])/2))
-
-            qm = qm.set(csdl.slice[:,:,:,1:-1], value=-(mu_grid[:,:,:,2:] - mu_grid[:,:,:,:-2])/2./((panel_center_dm[:,:,:,1:-1,0]+panel_center_dm[:,:,:,1:-1,1])/2))
-            qm = qm.set(csdl.slice[:,:,:,0], value=-(-3*mu_grid[:,:,:,0]+4*mu_grid[:,:,:,1]-mu_grid[:,:,:,2])/2./((panel_center_dm[:,:,:,0,0]+panel_center_dm[:,:,:,1,0])/2))
-            qm = qm.set(csdl.slice[:,:,:,-1], value=-(3*mu_grid[:,:,:,-1]-4*mu_grid[:,:,:,-2]+mu_grid[:,:,:,-3])/2./((panel_center_dm[:,:,:,-1,1]+panel_center_dm[:,:,:,-2,1])/2))
+            ql, qm = perturbation_velocity_FD_K_P(mu_grid, panel_center_dl, panel_center_dm)
             # endregion
 
         panel_x_dir = mesh_dict[surface_name]['panel_x_dir']
@@ -249,23 +242,24 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         panel_L = Fz_panel*cosa - Fx_panel*sina
         panel_Di = Fz_panel*sina + Fx_panel*cosa
 
-        # Fz = csdl.sum(Fz_panel, axes=(2,3))
-        # Fx = csdl.sum(Fx_panel, axes=(2,3))
-
         L = csdl.sum(panel_L, axes=(2,3))
         Di = csdl.sum(panel_Di, axes=(2,3))
 
         Q_inf = csdl.norm(csdl.average(LE_velocity, axes=(2,)), axes=(2,))
 
-        CL = L/(0.5*rho*surface_area*Q_inf**2)
-        CDi = Di/(0.5*rho*surface_area*Q_inf**2)
+        planform_area = mesh_dict[surface_name]['planform_area']
+        CL = L/(0.5*rho*planform_area*Q_inf**2)
+        CDi = Di/(0.5*rho*planform_area*Q_inf**2)
 
         surf_dict['Cp'] = Cp
         surf_dict['CL'] = CL
+        surf_dict['CDi'] = CDi
+        surf_dict['Fx_panel'] = Fx_panel
+        surf_dict['Fz_panel'] = Fz_panel
         output_dict[surface_name] = surf_dict
 
-        print(CL.value)
-        print(CDi.value)
+        # print(CL.value)
+        # print(CDi.value)
 
 
     return output_dict

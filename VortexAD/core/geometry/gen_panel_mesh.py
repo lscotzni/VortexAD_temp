@@ -3,7 +3,7 @@ from VortexAD import AIRFOIL_PATH
 
 from VortexAD.core.geometry.gen_gmsh_unstructured_mesh import gen_gmsh_unstructured_mesh, convert_to_unstructured
 
-def gen_panel_mesh_new(nc, ns, chord, span, airfoil='naca0012', frame='default', plot_mesh=True):
+def gen_panel_mesh_new(nc, ns, chord, span, airfoil='naca0012', frame='default', plot_mesh=False):
     if airfoil not in ['naca0012']:
         raise ImportError('Airfoil not added yet.')
     else:
@@ -117,7 +117,7 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
     if span_spacing == 'cos':
         theta = np.linspace(0, np.pi, ns)
         cos = np.cos(theta)
-        span_array = cos*span/2
+        span_array = -cos*span/2
         # print('new span:', span_array)
         # exit()
 

@@ -150,6 +150,18 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
 
             nodal_vel = mesh_dict[key]['nodal_velocity']
             mesh_dict[key]['coll_point_velocity'] = (nodal_vel[:,:,:-1,:-1,:]+nodal_vel[:,:,:-1,1:,:]+nodal_vel[:,:,1:,1:,:]+nodal_vel[:,:,1:,:-1,:]) / 4.
+
+            # computing planform area
+            panel_width_spanwise = csdl.norm((mesh[:,:,:,1:,:] - mesh[:,:,:,:-1,:]), axes=(4,))
+            avg_panel_width_spanwise = csdl.average(panel_width_spanwise, axes=(2,)) # num_nodes, nt, ns - 1
+            surface_TE = (mesh[:,:,-1,:-1,:] + mesh[:,:,0,:-1,:] + mesh[:,:,-1,1:,:] + mesh[:,:,0,1:,:])/4
+            surface_LE = (mesh[:,:,int((nc-1)/2),:-1,:] + mesh[:,:,int((nc-1)/2),1:,:])/2 # num_nodes, nt, ns - 1, 3
+
+            chord_spanwise = csdl.norm(surface_TE - surface_LE, axes=(3,)) # num_nodes, nt, ns - 1
+
+            planform_area = csdl.sum(chord_spanwise*avg_panel_width_spanwise, axes=(2,))
+            mesh_dict[key]['planform_area'] = planform_area
+
     elif mode == 'unstructured':
         # use point list and connectivity
         for i, key in enumerate(surface_names): # looping over surface names

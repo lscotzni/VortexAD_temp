@@ -27,7 +27,7 @@ def initialize_unsteady_wake(mesh_dict, num_nodes, dt, panel_fraction=0.25):
         TE_vel = (mesh_velocity[:,:,0,:,:] + mesh_velocity[:,:,-1,:,:])/2.
         init_wake_pos = TE - panel_fraction*TE_vel*dt
 
-        nc_w = nt+2 # we initialize small wake which is t = 0, so the wake MESH has +2 rows (+1 panels)
+        nc_w = nt+1 # we initialize small wake which is t = 0, so the wake MESH has +1 rows (+1 panels)
 
         # wake_mesh = csdl.Variable(shape=surface_mesh.shape[:2] + (nc_w,) + surface_mesh.shape[3:], value=0.)
         wake_mesh = csdl.Variable(shape=(num_nodes, nt, nc_w, ns, 3), value=0.)
@@ -41,6 +41,7 @@ def initialize_unsteady_wake(mesh_dict, num_nodes, dt, panel_fraction=0.25):
         surf_wake_mesh_dict['mesh'] = wake_mesh
         surf_wake_mesh_dict['nc'], surf_wake_mesh_dict['ns'] = nc_w, ns
         surf_wake_mesh_dict['num_panels'] = (nc_w-1)*(ns-1)
+        surf_wake_mesh_dict['num_points'] = nc_w*ns
 
         # INITIALIZING OTHER WAKE MESH PARAMETERS
         surf_wake_mesh_dict['panel_center'] = csdl.Variable(shape=(num_nodes, nt, nc_w-1, ns-1, 3), value=0.)

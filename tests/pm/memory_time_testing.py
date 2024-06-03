@@ -18,7 +18,7 @@ def grid_indep(nc, ns, nt):
     # ns = 41
     # nc = 26
 
-    alpha = np.deg2rad(0.) # aoa
+    alpha = np.deg2rad(10.) # aoa
 
     mach = 0.25
     sos = 340.3
@@ -56,22 +56,22 @@ def grid_indep(nc, ns, nt):
 
     start_time = time.time()
 
-    output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.01)
+    output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.1, free_wake=True)
     run_time = time.time()
 
     CL = output_dict['surface_0']['CL']
 
-    dCL_dmesh = csdl.derivative(csdl.norm(CL),mesh)
+    # dCL_dmesh = csdl.derivative(csdl.norm(CL),mesh)
     deriv_time = time.time()
     recorder.stop()
 
     print(f'Run time: {run_time - start_time} seconds')
-    print(f'Derivative time: {deriv_time - run_time} seconds')
+    # print(f'Derivative time: {deriv_time - run_time} seconds')
 
     return recorder
 
 if __name__ == '__main__':
-    nt = 2
+    nt = 8
     # ns_dict = {
     #     5: {'nc': [5, 11, 21, 31, 41], 't_forward': {[]}, 't_deriv': {[]}},
     #     11:{'nc': [5, 11, 21, 31, 41], 't_forward': {[]}, 't_deriv': {[]}},
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     #     41:{'nc': [5, 11, 21, 26], 't_forward': {[]}, 't_deriv': {[]}},
     # }
 
-    recorder = grid_indep(nc=46,ns=11,nt=nt)
+    recorder = grid_indep(nc=11,ns=15,nt=nt)
 
-    # heap = h.heap()
-    # print(heap)
+    heap = h.heap()
+    print(heap)

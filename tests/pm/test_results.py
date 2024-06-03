@@ -6,22 +6,23 @@ import matplotlib.pyplot as plt
 
 from VortexAD.utils.plot import plot_wireframe, plot_pressure_distribution
 
-b = 10
-c = 1.564
-ns = 11
-nc = 15
+b = 10.
+# c = 1.564
+c = 1.
+ns = 15
+nc = 41
 
-alpha_deg = 10.
+alpha_deg = 0.
 alpha = np.deg2rad(alpha_deg) # aoa
 
-mach = 0.1
+mach = 0.3
 sos = 340.3
 V_inf = np.array([sos*mach, 0., 0.])
-nt = 8
+nt = 15
 num_nodes = 1
 
 mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='linear',  frame='default', plot_mesh=False)
-# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=True)
+# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
 
 mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
 for i in range(num_nodes):
@@ -49,20 +50,33 @@ mesh_velocities = csdl.Variable(value=mesh_velocities)
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.005)
-recorder.stop()
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.025, free_wake=True)
+
 
 mesh = mesh_dict['surface_0']['mesh'].value
 coll_points = mesh_dict['surface_0']['panel_center'].value
 Cp = output_dict['surface_0']['Cp'].value
+# CL = output_dict['surface_0']['CL'].value
 
+# CL_norm = csdl.norm(output_dict['surface_0']['CL'])
+
+# dCL_dmesh = csdl.derivative(CL_norm, mesh_velocities)
+
+recorder.stop()
+
+CL  = output_dict['surface_0']['CL'].value
+CDi = output_dict['surface_0']['CDi'].value
+
+print(f'CL: {CL}')
+print(f'CDi: {CDi}')
+# exit()
 
 
 verif = True
 if verif and alpha_deg == 0.:
 
     chord_station = coll_points[0,0,:,int((ns-1)/2),0]
-    chord = chord_station[0]
+    chord = mesh[0,0,0,10,0]
     Cp_station = Cp[0,-2,:,int((ns-1)/2)]
 
     LHJ_data_Re6 = np.array([
@@ -192,7 +206,7 @@ if verif and alpha_deg == 0.:
     params = {'mathtext.default': 'regular' }          
     plt.rcParams.update(params)
 
-    plt.plot(chord_station/chord, Cp_station, 'k-*', label='CSDL panel code')
+    plt.plot(chord_station/chord, Cp_station, 'k*', label='CSDL panel code')
     plt.plot(LHJ_data_Re9[:,0], LHJ_data_Re9[:,1], '^g', label='Ladson et al. ')
     plt.plot(Gregory_data[:,0], Gregory_data[:,1], '>r', label='Gregory et al. ')
     plt.gca().invert_yaxis()
@@ -258,7 +272,7 @@ if verif and alpha_deg == 10.:
     params = {'mathtext.default': 'regular' }          
     plt.rcParams.update(params)
 
-    plt.plot(chord_station/chord, Cp_station, 'k-*', label='CSDL panel code')
+    plt.plot(chord_station/chord, Cp_station, 'k*', label='CSDL panel code')
     plt.plot(LHJ_data_Re9[:,0], LHJ_data_Re9[:,1], '^r', label='Ladson et al. ')
     plt.gca().invert_yaxis()
     plt.xlabel('Normalized chord')
@@ -273,4 +287,5 @@ if True:
     plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
 if False:
-    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=True, backend='cv', name=f'wing_{alpha_deg}_cos_span')
+    # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_{alpha_deg}_cos_span')
+    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name='free_wake_demo')
