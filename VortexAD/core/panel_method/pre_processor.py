@@ -65,9 +65,9 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
             neg_m = (p1+p4)/2.
 
             pos_l_norm = csdl.norm(pos_l-panel_center, axes=(4,))
-            neg_l_norm = csdl.norm(neg_l-panel_center, axes=(4,))
+            neg_l_norm = -csdl.norm(neg_l-panel_center, axes=(4,))
             pos_m_norm = csdl.norm(pos_m-panel_center, axes=(4,))
-            neg_m_norm = csdl.norm(neg_m-panel_center, axes=(4,))
+            neg_m_norm = -csdl.norm(neg_m-panel_center, axes=(4,))
 
             mesh_dict[key]['panel_dl_norm'] = [pos_l_norm, neg_l_norm]
             mesh_dict[key]['panel_dm_norm'] = [pos_m_norm, neg_m_norm]
@@ -77,14 +77,20 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
             # dimension of size 4 is dl backward, dl forward, dm backward, dm forward
             # dimension of size 2 is the projected deltas in the x or y direction
             # for panel i, the delta to adjacent panel j is taken as "j-i"
-            delta_coll_point = delta_coll_point.set(csdl.slice[:,:,1:,:,0,0], value=csdl.sum((panel_center[:,:,:-1,:,:] - panel_center[:,:,1:,:,:] ) * panel_x_dir[:,:,1:,:,:], axes=(4,)))
-            delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:-1,:,1,0], value=csdl.sum((panel_center[:,:,1:,:,:] - panel_center[:,:,:-1,:,:]) * panel_x_dir[:,:,:-1,:,:], axes=(4,)))
-            delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,1:,2,1], value=csdl.sum((panel_center[:,:,:,:-1,:] - panel_center[:,:,:,1:,:]) * panel_y_dir[:,:,:,1:,:], axes=(4,)))
-            delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,:-1,3,1], value=csdl.sum((panel_center[:,:,:,1:,:] - panel_center[:,:,:,:-1,:]) * panel_y_dir[:,:,:,:-1,:], axes=(4,)))
+            # delta_coll_point = delta_coll_point.set(csdl.slice[:,:,1:,:,0,0], value=csdl.sum((panel_center[:,:,:-1,:,:] - panel_center[:,:,1:,:,:] ) * panel_x_dir[:,:,1:,:,:], axes=(4,)))
+            # delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:-1,:,1,0], value=csdl.sum((panel_center[:,:,1:,:,:] - panel_center[:,:,:-1,:,:]) * panel_x_dir[:,:,:-1,:,:], axes=(4,)))
+            # delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,1:,2,1], value=csdl.sum((panel_center[:,:,:,:-1,:] - panel_center[:,:,:,1:,:]) * panel_y_dir[:,:,:,1:,:], axes=(4,)))
+            # delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,:-1,3,1], value=csdl.sum((panel_center[:,:,:,1:,:] - panel_center[:,:,:,:-1,:]) * panel_y_dir[:,:,:,:-1,:], axes=(4,)))
+            delta_coll_point = delta_coll_point.set(csdl.slice[:,:,1:,:,0,0], value=neg_l_norm[:,:,1:,:] - pos_l_norm[:,:,:-1,:])
+            delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:-1,:,1,0], value=pos_l_norm[:,:,:-1,:] - neg_l_norm[:,:,1:,:])
+            delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,1:,2,1], value=neg_m_norm[:,:,:,1:] - pos_m_norm[:,:,:,:-1])
+            delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,:-1,3,1], value=pos_m_norm[:,:,:,:-1] - neg_m_norm[:,:,:,1:])
 
             mesh_dict[key]['delta_coll_point'] = delta_coll_point
 
-            panel_center_mod = panel_center - panel_normal*0.0001
+            # panel_center_mod = panel_center - panel_normal*0.00000001/csdl.expand(panel_area, panel_normal.shape, 'ijkl->ijkla')
+            panel_center_mod = panel_center - panel_normal*0.00000001
+            # panel_center_mod = panel_center
             mesh_dict[key]['panel_center'] = panel_center_mod
 
             # global unit vectors

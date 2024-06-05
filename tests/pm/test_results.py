@@ -6,24 +6,24 @@ import matplotlib.pyplot as plt
 
 from VortexAD.utils.plot import plot_wireframe, plot_pressure_distribution
 
-b = 10.
+b = 20.
 # c = 1.564
 c = 1.
-ns = 15
-nc = 41
+ns = 3
+nc = 31
 
-alpha_deg = 0.
+alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
 
 mach = 0.3
 sos = 340.3
 V_inf = np.array([sos*mach, 0., 0.])
-nt = 15
+nt = 8
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='linear',  frame='default', plot_mesh=False)
-# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
-
+# mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='linear',  frame='default', plot_mesh=False)
+mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
+# exit()
 mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
 for i in range(num_nodes):
     for j in range(nt):
@@ -50,7 +50,7 @@ mesh_velocities = csdl.Variable(value=mesh_velocities)
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.025, free_wake=True)
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.1, free_wake=True)
 
 
 mesh = mesh_dict['surface_0']['mesh'].value
@@ -69,7 +69,7 @@ CDi = output_dict['surface_0']['CDi'].value
 
 print(f'CL: {CL}')
 print(f'CDi: {CDi}')
-# exit()
+exit()
 
 
 verif = True
@@ -77,7 +77,7 @@ if verif and alpha_deg == 0.:
 
     chord_station = coll_points[0,0,:,int((ns-1)/2),0]
     chord = mesh[0,0,0,10,0]
-    Cp_station = Cp[0,-2,:,int((ns-1)/2)]
+    Cp_station = Cp[0,0,:,int((ns-1)/2)]
 
     LHJ_data_Re6 = np.array([
     [.9483,   .1008],
@@ -218,7 +218,7 @@ if verif and alpha_deg == 0.:
 
 if verif and alpha_deg == 10.:
     chord_station = coll_points[0,0,:,int((ns-1)/2),0]
-    chord = chord_station[0]
+    chord = mesh[0,0,0,int((ns-1)/2),0]
     Cp_station = Cp[0,-2,:,int((ns-1)/2)]
 
     LHJ_data_Re9 = np.array([
