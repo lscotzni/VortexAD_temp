@@ -3,7 +3,8 @@ import csdl_alpha as csdl
 
 import time
 
-from VortexAD.core.panel_method.perturbation_velocity_comp import perturbation_velocity_FD, perturbation_velocity_FD_K_P, least_squares_velocity_old
+from VortexAD.core.panel_method.perturbation_velocity_comp import perturbation_velocity_FD, perturbation_velocity_FD_K_P
+from VortexAD.core.panel_method.perturbation_velocity_comp import least_squares_velocity_old, least_squares_velocity
 
 # def perturbation_velocity_FD(mu_grid, dl, dm):
 #     ql, qm = csdl.Variable(shape=mu_grid.shape, value=0.), csdl.Variable(shape=mu_grid.shape, value=0.)
@@ -148,6 +149,8 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         nc, ns = mesh_dict[surface_name]['nc'], mesh_dict[surface_name]['ns']
         stop += num_panels
 
+        panel_areas = mesh_dict[surface_name]['panel_area']
+
         mu_grid = mu[:,:,start:stop].reshape((num_nodes, nt, nc-1, ns-1))
 
         # perturbation velocities
@@ -156,10 +159,11 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         pos_dl_norm, neg_dl_norm = mesh_dict[surface_name]['panel_dl_norm']
         pos_dm_norm, neg_dm_norm = mesh_dict[surface_name]['panel_dm_norm']
 
-        if False:
+        if True:
             # region least squares method for derivatives
             delta_coll_point = mesh_dict[surface_name]['delta_coll_point']
-            ql, qm = least_squares_velocity_old(mu_grid, delta_coll_point)
+            # ql, qm = least_squares_velocity_old(mu_grid, delta_coll_point)
+            ql, qm = least_squares_velocity(mu_grid, delta_coll_point)
             # endregion
         if False:
             # region updated fd method
@@ -178,7 +182,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
             ql, qm = perturbation_velocity_FD(mu_grid, dl, dm)
             # endregion
 
-        if True:
+        if False:
             # region original fd method
             panel_center = mesh_dict[surface_name]['panel_center'] # nn, nt, nc-1, ns-1, 3
 
