@@ -78,7 +78,7 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha_ML=None,
 
         surface_area = csdl.sum(panel_area, axes=(1,2))
         cosa = csdl.cos(alpha_tot)
-        sina = csdl.sin(alpha_tot)
+        sina = -csdl.sin(alpha_tot)
 
         panel_lift = panel_forces_z*cosa - panel_forces_x*sina
         panel_drag = panel_forces_z*sina + panel_forces_x*cosa
