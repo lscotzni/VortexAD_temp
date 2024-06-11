@@ -64,8 +64,10 @@ def gen_panel_mesh_new(nc, ns, chord, span, airfoil='naca0012', frame='default',
         import matplotlib.pyplot as plt
         fig = plt.figure()
         # plt.plot(airfoil_data['x'], airfoil_data['z'], 'v', label='upper')
-        plt.plot(airfoil_data['x'], airfoil_data['z'], label='upper')
-        plt.plot(chord_interp, thickness_interp, '*', label='upper interpolated')
+        plt.plot(airfoil_data['x'], airfoil_data['z'], 'k', label='Airfoil data')
+        plt.plot(chord_interp, thickness_interp, 'b*', label='Interpolation')
+
+
         plt.axis('equal')
         if frame == 'caddee':
             plt.gca().invert_xaxis()
@@ -114,7 +116,7 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
     # if span_spacing == 'linear':
     span_array = np.linspace(-span/2, span/2, ns)
     # print('old span:', span_array)
-    if span_spacing == 'cos':
+    if span_spacing == 'cosine':
         theta = np.linspace(0, np.pi, ns)
         cos = np.cos(theta)
         span_array = -cos*span/2

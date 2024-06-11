@@ -5,8 +5,12 @@ from VortexAD.core.panel_method.pre_processor import pre_processor
 from VortexAD.core.panel_method.mu_sigma_solver import mu_sigma_solver
 from VortexAD.core.panel_method.post_processor import post_processor
 
-def unsteady_panel_solver(mesh_list, mesh_velocity_list, dt, mesh_mode='structured', connectivity=None, free_wake=False):
-
+def unsteady_panel_solver(mesh_list, mesh_velocity_list, dt, mesh_mode='structured', mode='source_doublet', connectivity=None, free_wake=False):
+    '''
+    2 modes:
+    - source doublet (Dirichlet (no-perturbation potential in the body))
+    - vortex rings (Neumann (no-penetration condition))
+    '''
     exp_orig_mesh_dict = {}
     surface_counter = 0
     for i in range(len(mesh_list)):

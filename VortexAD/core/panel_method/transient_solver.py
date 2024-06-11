@@ -107,8 +107,8 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
         num_first_wake_panels += wake_mesh_dict[surface]['ns'] - 1
 
     AIC_wake = csdl.Variable(shape=(num_nodes, nt, num_tot_panels, num_wake_panels - num_first_wake_panels), value=0.)
-    # AIC_mu_adjustment = csdl.Variable(shape=AIC_mu.shape, value=0.)
-    # AIC_mu_total = csdl.Variable(shape=AIC_mu.shape, value=0.)
+    AIC_mu_adjustment = csdl.Variable(shape=AIC_mu.shape, value=0.)
+    AIC_mu_total = csdl.Variable(shape=AIC_mu.shape, value=0.)
     mu = csdl.Variable(shape=(num_nodes, nt, num_tot_panels), value=0.)
     mu_wake = csdl.Variable(shape=(num_nodes, nt, num_wake_panels), value=0.)
     mu_wake_minus_1 = csdl.Variable(shape=(num_nodes, nt, num_wake_panels - num_first_wake_panels), value=0.)
@@ -201,11 +201,11 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                     num_panels_j_surf = mesh_dict[surf_j_name]['num_panels']
                     stop_j_surf += num_panels_j_surf
 
-                    # AIC_mu_adjustment = AIC_mu_adjustment.set(csdl.slice[:,t,start_i:stop_i, start_j_surf:start_j_surf+(ns_j-1)], value=-kutta_condition) # lower TE adjustment
-                    # AIC_mu_adjustment = AIC_mu_adjustment.set(csdl.slice[:,t,start_i:stop_i, (stop_j_surf-(ns_j-1)):stop_j_surf], value=kutta_condition) # upper TE adjustment
+                    AIC_mu_adjustment = AIC_mu_adjustment.set(csdl.slice[:,t,start_i:stop_i, start_j_surf:start_j_surf+(ns_j-1)], value=-kutta_condition) # lower TE adjustment
+                    AIC_mu_adjustment = AIC_mu_adjustment.set(csdl.slice[:,t,start_i:stop_i, (stop_j_surf-(ns_j-1)):stop_j_surf], value=kutta_condition) # upper TE adjustment
                     
-                    AIC_mu = AIC_mu.set(csdl.slice[:,t,start_i:stop_i, start_j_surf:start_j_surf+(ns_j-1)], value=-kutta_condition+AIC_mu[:,t,start_i:stop_i, start_j_surf:start_j_surf+(ns_j-1)])
-                    AIC_mu = AIC_mu.set(csdl.slice[:,t,start_i:stop_i, (stop_j_surf-(ns_j-1)):stop_j_surf], value=kutta_condition+AIC_mu[:,t,start_i:stop_i, (stop_j_surf-(ns_j-1)):stop_j_surf])
+                    # AIC_mu = AIC_mu.set(csdl.slice[:,t,start_i:stop_i, start_j_surf:start_j_surf+(ns_j-1)], value=-kutta_condition+AIC_mu[:,t,start_i:stop_i, start_j_surf:start_j_surf+(ns_j-1)])
+                    # AIC_mu = AIC_mu.set(csdl.slice[:,t,start_i:stop_i, (stop_j_surf-(ns_j-1)):stop_j_surf], value=kutta_condition+AIC_mu[:,t,start_i:stop_i, (stop_j_surf-(ns_j-1)):stop_j_surf])
                     1
 
                     start_j += num_panels_j - ns_j
@@ -243,9 +243,9 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                 wake_influence = csdl.matvec(AIC_wake[nn,t,:,:], mu_wake_minus_1[nn,t,:])
                 RHS = -sigma_BC_influence[nn,t,:] - wake_influence
                 # RHS = -sigma_BC_influence[:,t,:]
-                # AIC_mu_total = AIC_mu_total.set(csdl.slice[:,t,:,:], value=AIC_mu[:,t,:,:]+AIC_mu_adjustment[:,t,:,:])
-                # mu_timestep = csdl.solve_linear(AIC_mu_total[nn, t, :, :], RHS[nn,:])
-                mu_timestep = csdl.solve_linear(AIC_mu[nn, t, :, :], RHS)
+                AIC_mu_total = AIC_mu_total.set(csdl.slice[:,t,:,:], value=AIC_mu[:,t,:,:]+AIC_mu_adjustment[:,t,:,:])
+                mu_timestep = csdl.solve_linear(AIC_mu_total[nn, t, :, :], RHS)
+                # mu_timestep = csdl.solve_linear(AIC_mu[nn, t, :, :], RHS)
                 mu = mu.set(csdl.slice[nn,t,:], value=mu_timestep)
 
             if t == nt-1:

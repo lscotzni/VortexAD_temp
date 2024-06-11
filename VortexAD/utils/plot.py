@@ -24,13 +24,13 @@ def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive = False, plot_m
 
     for i in range(nt-1):
 
-        min_mu_b = np.min(mu[:,i,:])
-        max_mu_b = np.max(mu[:,i,:])
-        min_mu_w = np.min(mu_wake[:,i,:])
-        max_mu_w = np.max(mu_wake[:,i,:])
+        # min_mu_b = np.min(mu[:,i,:])
+        # max_mu_b = np.max(mu[:,i,:])
+        # min_mu_w = np.min(mu_wake[:,i,:])
+        # max_mu_w = np.max(mu_wake[:,i,:])
 
-        min_mu = np.min((min_mu_b, min_mu_w))
-        max_mu = np.max((max_mu_b, max_mu_w))
+        # min_mu = np.min((min_mu_b, min_mu_w))
+        # max_mu = np.max((max_mu_b, max_mu_w))
         vp = Plotter(
             bg='white',
             # bg2='white',
@@ -127,7 +127,7 @@ def plot_pressure_distribution(mesh, Cp, surface_color='white', cmap='jet', inte
     Cp_color = np.reshape(Cp[:,-2,:,:], (-1,1))
     Cp_min, Cp_max = np.min(Cp[:,-2,:,:]), np.max(Cp[:,0,:,:])
     # Cp_min, Cp_max = -0.4, 1.
-    # Cp_min, Cp_max = -5., 1.
+    Cp_min, Cp_max = -5., 1.
     vps.cmap(cmap, Cp_color, on='cells', vmin=Cp_min, vmax=Cp_max)
     # vps.cmap(cmap, Cp_color, on='cells', vmin=-0.4, vmax=1)
     vps.add_scalarbar()
