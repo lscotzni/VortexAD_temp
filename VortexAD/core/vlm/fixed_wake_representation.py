@@ -20,7 +20,7 @@ def fixed_wake_representation(mesh_dict, num_panels=1):
         wake_vortex_mesh = wake_vortex_mesh.set(csdl.slice[:,0,:,:], value=bd_vortex_grid_TE) 
         for i in csdl.frange(num_panels):
             # dx_i = csdl.expand(V_inf*dt*(i+1), (num_nodes, ns, 3), 'ij->ibj') + bd_vortex_grid_TE
-            dx_i = TE_nodal_velocity*dt*(i+1) + bd_vortex_grid_TE
+            dx_i = TE_nodal_velocity*dt*(i+1) + bd_vortex_grid_TE # NEGATIVE SIGN WAS ADDED RECENTLY, I FORGOT TO DO THIS BEFORE
             wake_vortex_mesh = wake_vortex_mesh.set(csdl.slice[:,i+1,:,:], value=dx_i) 
 
         # print(bd_vortex_grid_TE.value)

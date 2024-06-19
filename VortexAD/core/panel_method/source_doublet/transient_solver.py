@@ -1,10 +1,10 @@
 import csdl_alpha as csdl
 
-from VortexAD.core.panel_method.source_functions import compute_source_strengths, compute_source_influence 
-from VortexAD.core.panel_method.doublet_functions import compute_doublet_influence
-from VortexAD.core.panel_method.wake_geometry import wake_geometry
+from VortexAD.core.panel_method.source_doublet.source_functions import compute_source_strengths, compute_source_influence 
+from VortexAD.core.panel_method.source_doublet.doublet_functions import compute_doublet_influence
+from VortexAD.core.panel_method.source_doublet.wake_geometry import wake_geometry
 
-from VortexAD.core.panel_method.free_wake_comp import free_wake_comp
+from VortexAD.core.panel_method.source_doublet.free_wake_comp import free_wake_comp
 
 def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt, free_wake=False):
     '''

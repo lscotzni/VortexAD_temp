@@ -8,7 +8,7 @@ from VortexAD.core.vlm.vlm_solver import vlm_solver
 # flow parameters
 frame = 'caddee'
 vnv_scaler =  1.
-num_nodes = 2
+num_nodes = 1
 alpha = np.array([5.,]) * np.pi/180.
 V_inf = np.array([-60, 0., 0.])
 if frame == 'caddee':

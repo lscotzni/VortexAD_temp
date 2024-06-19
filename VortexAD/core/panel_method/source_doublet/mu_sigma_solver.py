@@ -1,9 +1,8 @@
 import numpy as np 
 import csdl_alpha as csdl
 
-from VortexAD.core.panel_method.initialize_unsteady_wake import initialize_unsteady_wake
-from VortexAD.core.panel_method.source_functions import compute_source_strengths
-from VortexAD.core.panel_method.transient_solver import transient_solver
+from VortexAD.core.panel_method.source_doublet.initialize_unsteady_wake import initialize_unsteady_wake
+from VortexAD.core.panel_method.source_doublet.transient_solver import transient_solver
 
 def mu_sigma_solver(num_nodes, nt, mesh_dict, dt, free_wake=False):
 
@@ -27,19 +26,6 @@ def mu_sigma_solver(num_nodes, nt, mesh_dict, dt, free_wake=False):
         return mu, sigma, mu_wake, wake_mesh_dict
 
     
-
-    # sigma_AIC = compute_source_AIC(mesh_dict, num_nodes, nt, num_tot_panels) # shape=(num_nodes, nt, num_surf_panels, num_surf_panels)
-
-    # sigma_BC_influence = csdl.einsum(sigma_AIC, sigma, 'ijkl,ijk -> ijl')
-
-    # if free_wake:
-    #     mu, induced_vel = transient_solver(mesh_dict, wake_mesh_dict, sigma_BC_influence, free_wake=free_wake)
-    
-    #     return mu, sigma, induced_vel
-    # else:
-    #     mu = transient_solver(mesh_dict, wake_mesh_dict, sigma_BC_influence, free_wake=free_wake)
-    
-    #     return mu, sigma
 
 
 

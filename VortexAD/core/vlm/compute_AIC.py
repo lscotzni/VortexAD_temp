@@ -172,8 +172,10 @@ def compute_AIC(num_nodes, mesh_dict, eval_pt_name):
             # if not force_computation:
                 surface_induced_vel = csdl.sum(v_induced_grid*bd_normal_vec_i_exp_grid, axes=(3,)) # (num_nodes, num_panels_j, num_panels_i)
                 wake_induced_vel = csdl.sum(wake_influence_grid*bd_normal_vec_i_exp_grid, axes=(3,)) # (num_nodes, num_panels_j, num_panels_i)
+                # wake_induced_vel = csdl.sum(v_induced_wake_grid*bd_normal_vec_i_exp_grid, axes=(3,)) # (num_nodes, num_panels_j, num_panels_i)
 
                 normal_induced_vel = surface_induced_vel + wake_induced_vel
+                # normal_induced_vel = surface_induced_vel
 
                 # I think  a transpose needs to be applied to where the AIC gets added
                 AIC = AIC.set(csdl.slice[:, start_panel_counter:stop_panel_counter, start_panel_counter_j:stop_panel_counter_j], value=normal_induced_vel)
@@ -181,7 +183,18 @@ def compute_AIC(num_nodes, mesh_dict, eval_pt_name):
             elif eval_pt_name == 'force_eval_points':
             # else:
                 induced_vel = v_induced_grid + wake_influence_grid
+                # induced_vel = v_induced_grid + v_induced_wake_grid
                 AIC = AIC.set(csdl.slice[:, start_panel_counter:stop_panel_counter, start_panel_counter_j:stop_panel_counter_j, :], value=induced_vel)
             start_panel_counter_j += np_surf_j
         start_panel_counter += np_surf_i
+
+    # if eval_pt_name == 'collocation_points':
+    #     import pickle
+    #     filehandler = open('vlm_AIC', 'wb')
+    #     pickle.dump(AIC.value[0,:,:], filehandler)
+    #     filehandler.close()
+    #     filehandler = open('vlm_kutta_condition', 'wb')
+    #     pickle.dump(wake_induced_vel.value[0,:,:], filehandler)
+    #     filehandler.close()
+
     return AIC

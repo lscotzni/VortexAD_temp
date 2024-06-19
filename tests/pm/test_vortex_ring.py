@@ -25,7 +25,7 @@ V_inf = np.array([-10., 0., 0.])
 nt = 10
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False)
+mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
 # mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=True)
 # mesh_orig[:,:,1] += 5.
 # exit()
@@ -33,8 +33,6 @@ mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default'
 # filename = str(SAMPLE_GEOMETRY_PATH) + '/pm/wing_NACA0012_ar10.vtk' 
 # mesh_data = pv.read(filename)
 # mesh_orig = mesh_data.points.reshape((21,5,3))
-
-
 
 mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
 for i in range(num_nodes):
@@ -62,7 +60,7 @@ mesh_velocities = csdl.Variable(value=mesh_velocities)
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=True)
+output_dict, mesh_dict, wake_mesh_dict, gamma, gamma_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, mode='vortex-ring', free_wake=False)
 
 
 mesh = mesh_dict['surface_0']['mesh'].value
@@ -80,7 +78,7 @@ CL  = output_dict['surface_0']['CL'].value
 CDi = output_dict['surface_0']['CDi'].value
 
 print('doublet distribution:')
-print(mu.value[0,0,:].reshape((nc-1)*2,ns-1))
+print(gamma.value[0,0,:].reshape((nc-1)*2,ns-1))
 print(f'CL: {CL}')
 print(f'CDi: {CDi}')
 
@@ -92,7 +90,7 @@ if verif and alpha_deg == 0.:
 
     chord_station = coll_points[0,0,:,int((ns-1)/2),0]
     chord = mesh[0,0,0,int((ns-1)/2),0]
-    Cp_station = Cp[0,-2,:,int((ns-1)/2)]
+    Cp_station = Cp[0,0,:,int((ns-1)/2)]
 
     LHJ_data_Re6 = np.array([
     [.9483,   .1008],
@@ -304,5 +302,5 @@ if False:
     plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
 if False:
-    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_{alpha_deg}')
-    # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name='free_wake_demo')
+    # plot_wireframe(mesh, wake_mesh, gamma.value, gamma_wake.value, nt, interactive=False, backend='cv', name=f'wing_vr_{alpha_deg}')
+    plot_wireframe(mesh, wake_mesh, gamma.value, gamma_wake.value, nt, interactive=False, backend='cv', name='vr_free_wake_demo')

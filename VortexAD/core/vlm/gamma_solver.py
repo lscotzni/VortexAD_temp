@@ -22,4 +22,8 @@ def gamma_solver(num_nodes, mesh_dict):
     for i in csdl.frange(num_nodes):
         gamma_vec = gamma_vec.set(csdl.slice[i,:], value=csdl.solve_linear(AIC[i,:,:], RHS[i,:]))
 
+    # import pickle
+    # filehandler = open('vlm_gamma', 'wb')
+    # pickle.dump(gamma_vec.value[0,:], filehandler)
+    # filehandler.close()
     return gamma_vec
