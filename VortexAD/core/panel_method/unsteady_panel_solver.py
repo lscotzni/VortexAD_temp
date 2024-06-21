@@ -57,18 +57,18 @@ def unsteady_panel_solver(mesh_list, mesh_velocity_list, dt, mesh_mode='structur
     
 
 
-    print('running pre-processing')
-    with csdl.namespace('pre-processing'):
-        mesh_dict = pre_processor(exp_orig_mesh_dict, mode=mesh_mode, connectivity=connectivity)
+    # print('running pre-processing')
+    # with csdl.namespace('pre-processing'):
+    #     mesh_dict = pre_processor(exp_orig_mesh_dict, mode=mesh_mode, connectivity=connectivity)
 
-    print('solving for doublet strengths and propagating the wake')
-    if mode == 'source_doublet':
-        mu, sigma, mu_wake, wake_mesh_dict = mu_sigma_solver(num_nodes, nt, mesh_dict, dt, free_wake=free_wake)
-    elif mode == 'vortex_ring':
-        sigma = None
-        mu, mu_wake, wake_mesh_dict = vortex_ring_solver(num_nodes, nt, mesh_dict, dt, free_wake=free_wake)
-        pass
-    with csdl.namespace('post-processing'):
-        output_dict = post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt)
+    # print('solving for doublet strengths and propagating the wake')
+    # if mode == 'source_doublet':
+    #     mu, sigma, mu_wake, wake_mesh_dict = mu_sigma_solver(num_nodes, nt, mesh_dict, dt, free_wake=free_wake)
+    # elif mode == 'vortex_ring':
+    #     sigma = None
+    #     mu, mu_wake, wake_mesh_dict = vortex_ring_solver(num_nodes, nt, mesh_dict, dt, free_wake=free_wake)
+    #     pass
+    # with csdl.namespace('post-processing'):
+    #     output_dict = post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt)
 
     

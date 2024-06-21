@@ -12,10 +12,10 @@ import pyvista as pv
 b = 10.
 # c = 1.564
 c = 1.
-ns = 5
-nc = 11
+ns = 11
+nc = 31
 
-alpha_deg = 0.
+alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
 
 mach = 0.3
@@ -25,8 +25,8 @@ V_inf = np.array([-10., 0., 0.])
 nt = 10
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False)
-# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=True)
+mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
+# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
 # mesh_orig[:,:,1] += 5.
 # exit()
 
@@ -62,7 +62,7 @@ mesh_velocities = csdl.Variable(value=mesh_velocities)
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=True)
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.1, free_wake=False)
 
 
 mesh = mesh_dict['surface_0']['mesh'].value
@@ -78,9 +78,10 @@ recorder.stop()
 
 CL  = output_dict['surface_0']['CL'].value
 CDi = output_dict['surface_0']['CDi'].value
+mu_value = mu.value[0,0,:].reshape((nc-1)*2,ns-1)
 
 print('doublet distribution:')
-print(mu.value[0,0,:].reshape((nc-1)*2,ns-1))
+print(mu_value)
 print(f'CL: {CL}')
 print(f'CDi: {CDi}')
 
@@ -300,9 +301,9 @@ if verif and alpha_deg == 10.:
 1
 wake_mesh = wake_mesh_dict['surface_0']['mesh'].value
 
-if False:
+if True:
     plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
 if False:
-    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_{alpha_deg}')
-    # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name='free_wake_demo')
+    # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_{alpha_deg}')
+    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name='free_wake_demo')

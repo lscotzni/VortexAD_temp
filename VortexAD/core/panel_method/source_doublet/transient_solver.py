@@ -90,7 +90,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                 AIC_sigma = AIC_sigma.set(csdl.slice[:,:,start_i:stop_i, start_j:stop_j], value=source_influence)
 
                 # doublet_influence_vec = compute_doublet_influence(dpij_j_exp_vec, mij_j_exp_vec, ek, hk, rk, dx, dy, dz, mode='potential')
-                doublet_influence_vec = compute_doublet_influence(dpij_j_exp_vec, mij_list, ek_list, hk_list, rk_list, dx_list, dy_list, dz_list, mode='potential')
+                doublet_influence_vec = compute_doublet_influence(dpij_list, mij_list, ek_list, hk_list, rk_list, dx_list, dy_list, dz_list, mode='potential')
                 doublet_influence = doublet_influence_vec.reshape((num_nodes, nt, num_panels_i, num_panels_j))
                 AIC_mu = AIC_mu.set(csdl.slice[:,:,start_i:stop_i, start_j:stop_j], value=doublet_influence)
 
@@ -179,6 +179,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                     hk = dx*dy
 
                     mij_list = [mij_j_exp_vec[:,:,ind] for ind in range(4)]
+                    dpij_list = [[dpij_j_exp_vec[:,:,ind,0], dpij_j_exp_vec[:,:,ind,1]] for ind in range(4)]
                     ek_list = [ek[:,:,ind] for ind in range(4)]
                     hk_list = [hk[:,:,ind] for ind in range(4)]
                     rk_list = [rk[:,:,ind] for ind in range(4)]
@@ -187,7 +188,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                     dz_list = [dz[:,:,ind] for ind in range(4)]
 
                     # wake_doublet_influence_vec = compute_doublet_influence(dpij_j_exp_vec, mij_j_exp_vec, ek, hk, rk, dx, dy, dz, mode='potential')
-                    wake_doublet_influence_vec = compute_doublet_influence(dpij_j_exp_vec, mij_list, ek_list, hk_list, rk_list, dx_list, dy_list, dz_list, mode='potential')
+                    wake_doublet_influence_vec = compute_doublet_influence(dpij_list, mij_list, ek_list, hk_list, rk_list, dx_list, dy_list, dz_list, mode='potential')
 
                     wake_doublet_influence = wake_doublet_influence_vec.reshape((num_nodes, num_panels_i, num_panels_j)) # GRID OF WAKE AIC (without kutta condition taken into account)
 
@@ -286,7 +287,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                 wake_mesh = wake_mesh_dict[surface_name]['mesh']
                 wake_velocity = wake_mesh_dict[surface_name]['wake_nodal_velocity']
                 
-                wake_velocity_timestep = -wake_velocity[:,t,:,:,:]
+                wake_velocity_timestep = wake_velocity[:,t,:,:,:]
 
                 if free_wake:
                     total_vel = wake_velocity_timestep + induced_vel[:,:].reshape((num_nodes, nc_w, ns_w, 3))

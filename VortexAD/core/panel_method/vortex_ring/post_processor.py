@@ -87,8 +87,9 @@ def post_processor(mesh_dict, gamma, num_nodes, nt, dt):
             dgamma_dt = dgamma_dt.set(csdl.slice[:,1:,:,:], value=(gamma_grid[:,1:,:,:] - gamma_grid[:,:-1,:,:])/dt)
 
         # perturbed_vel_mag = (Ql**2 + Qm**2 + Qn**2)**0.5 
-        perturbed_vel_mag = (Ql**2 + Qm**2)**0.5 
+        perturbed_vel_mag = (Ql**2 + Qm**2)**0.5
         Cp = 1 - (perturbed_vel_mag)**2/Q_inf_norm**2 - dgamma_dt*2./Q_inf_norm**2
+        # Cp = -(perturbed_vel_mag)**2/Q_inf_norm**2 - dgamma_dt*2./Q_inf_norm**2 + 2/Q_inf_norm**2*(ql*free_stream_l + qm*free_stream_m)
 
         panel_area = mesh_dict[surface_name]['panel_area']
 

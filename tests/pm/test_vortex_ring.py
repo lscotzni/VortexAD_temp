@@ -12,8 +12,8 @@ import pyvista as pv
 b = 10.
 # c = 1.564
 c = 1.
-ns = 5
-nc = 11
+ns = 21
+nc = 21
 
 alpha_deg = 0.
 alpha = np.deg2rad(alpha_deg) # aoa
@@ -25,8 +25,8 @@ V_inf = np.array([-10., 0., 0.])
 nt = 10
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
-# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=True)
+# mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
+mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
 # mesh_orig[:,:,1] += 5.
 # exit()
 
@@ -60,7 +60,7 @@ mesh_velocities = csdl.Variable(value=mesh_velocities)
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict, wake_mesh_dict, gamma, gamma_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, mode='vortex-ring', free_wake=False)
+output_dict, mesh_dict, wake_mesh_dict, gamma, gamma_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, mode='vortex-ring', free_wake=True)
 
 
 mesh = mesh_dict['surface_0']['mesh'].value
@@ -76,9 +76,9 @@ recorder.stop()
 
 CL  = output_dict['surface_0']['CL'].value
 CDi = output_dict['surface_0']['CDi'].value
-
+gamma_value = gamma.value[0,0,:].reshape((nc-1)*2,ns-1)
 print('doublet distribution:')
-print(gamma.value[0,0,:].reshape((nc-1)*2,ns-1))
+print(gamma_value)
 print(f'CL: {CL}')
 print(f'CDi: {CDi}')
 

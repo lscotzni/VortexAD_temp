@@ -126,8 +126,8 @@ def plot_pressure_distribution(mesh, Cp, surface_color='white', cmap='jet', inte
         vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.)
     Cp_color = np.reshape(Cp[:,-2,:,:], (-1,1))
     Cp_min, Cp_max = np.min(Cp[:,-2,:,:]), np.max(Cp[:,0,:,:])
-    # Cp_min, Cp_max = -0.4, 1.
-    Cp_min, Cp_max = -5., 1.
+    Cp_min, Cp_max = -0.4, 1.
+    # Cp_min, Cp_max = -5., 1.
     vps.cmap(cmap, Cp_color, on='cells', vmin=Cp_min, vmax=Cp_max)
     # vps.cmap(cmap, Cp_color, on='cells', vmin=-0.4, vmax=1)
     vps.add_scalarbar()

@@ -10,7 +10,7 @@ def gamma_solver(num_nodes, nt, mesh_dict, dt, free_wake=False):
     for surface in surface_names:
         num_tot_panels += mesh_dict[surface]['num_panels']
 
-    wake_mesh_dict = initialize_unsteady_wake(mesh_dict, num_nodes, dt, panel_fraction=100.)
+    wake_mesh_dict = initialize_unsteady_wake(mesh_dict, num_nodes, dt, panel_fraction=0.25)
 
     gamma, gamma_wake = transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt, free_wake=free_wake)
 
