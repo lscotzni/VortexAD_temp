@@ -42,7 +42,16 @@ add surface 1, surface 2, etc. within the function
     #     V_inf_rot = V_inf_rot.set(csdl.slice[i,:], value=csdl.matvec(V_rot_mat[i,:,:], V_inf[i,:]))
 
 
-def vlm_solver(mesh_list, mesh_velocity_list, alpha_ML=None):
+def vlm_solver(mesh_list, 
+               mesh_velocity_list, 
+               alpha_ML=None, 
+               airfoil_Cl_models=None,                   
+               airfoil_Cd_models=None,
+               airfoil_Cp_models=None,
+               airfoil_alpha_stall_models=None,
+               reynolds_numbers=None,
+               chord_length_mid_panel=None,
+    ):
     orig_mesh_dict = {}
     surface_counter = 0
 
@@ -61,7 +70,15 @@ def vlm_solver(mesh_list, mesh_velocity_list, alpha_ML=None):
     gamma = gamma_solver(num_nodes, mesh_dict)
 
     print('running post-processing')
-    surface_output_dict, total_output_dict = post_processor(num_nodes, mesh_dict, gamma, alpha_ML=alpha_ML)
+    surface_output_dict, total_output_dict = post_processor(
+        num_nodes, mesh_dict, gamma, alpha_ML=alpha_ML,
+        airfoil_Cd_models=airfoil_Cd_models,
+        airfoil_Cl_models=airfoil_Cl_models,
+        airfoil_Cp_models=airfoil_Cp_models,
+        airfoil_alpha_stall_models=airfoil_alpha_stall_models,
+        reynolds_numbers=reynolds_numbers,
+        chord_length_mid_panel=chord_length_mid_panel,
+    )
 
     surface_names = mesh_dict.keys()
     surface_panel_force_points = []
@@ -92,8 +109,8 @@ def vlm_solver(mesh_list, mesh_velocity_list, alpha_ML=None):
         surface_panel_force_points: list # location of panel forces of each lifting surface (1/4 chord of the mesh panels)
         surface_sectional_cop: list # span-wise sectional center of pressure for each lifting surface
         surface_cop: csdl.Variable # center of pressure for each lifting surface
+        surface_spanwise_Cp : csdl.Variable # spanwise pressure distribution for upper and lower surface of the wing
 
-    
     output_vg = Outputs(
         total_lift = total_output_dict['total_lift'],
         total_drag = total_output_dict['total_drag'],
@@ -112,6 +129,7 @@ def vlm_solver(mesh_list, mesh_velocity_list, alpha_ML=None):
         surface_panel_force_points = surface_panel_force_points,
         surface_sectional_cop = surface_output_dict['surface_sectional_cop'],
         surface_cop = surface_output_dict['surface_cop'],
+        surface_spanwise_Cp = surface_output_dict['surface_spanwise_Cp']
 
     )
 

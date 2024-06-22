@@ -228,7 +228,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
 
         panel_area = mesh_dict[surface_name]['panel_area']
 
-        rho = 1.225
+        rho = 1.22506547
         dF_no_normal = -0.5*rho*Q_inf_norm**2*panel_area*Cp
         dF = csdl.expand(dF_no_normal, panel_normal.shape, 'ijkl->ijkla') * panel_normal
 
