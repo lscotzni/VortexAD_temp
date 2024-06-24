@@ -12,8 +12,8 @@ import pyvista as pv
 b = 10.
 # c = 1.564
 c = 1.
-ns = 11
-nc = 31
+ns = 5
+nc = 11
 
 alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
@@ -25,14 +25,14 @@ V_inf = np.array([-10., 0., 0.])
 nt = 10
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
+# mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
 # mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
 # mesh_orig[:,:,1] += 5.
 # exit()
 
-# filename = str(SAMPLE_GEOMETRY_PATH) + '/pm/wing_NACA0012_ar10.vtk' 
-# mesh_data = pv.read(filename)
-# mesh_orig = mesh_data.points.reshape((21,5,3))
+filename = str(SAMPLE_GEOMETRY_PATH) + '/pm/wing_NACA0012_ar10.vtk' 
+mesh_data = pv.read(filename)
+mesh_orig = mesh_data.points.reshape((21,5,3))
 
 
 
