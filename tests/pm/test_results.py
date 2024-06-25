@@ -12,8 +12,8 @@ import pyvista as pv
 b = 10.
 # c = 1.564
 c = 1.
-ns = 5
-nc = 11
+ns = 15
+nc = 15
 
 alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
@@ -21,18 +21,19 @@ alpha = np.deg2rad(alpha_deg) # aoa
 mach = 0.3
 sos = 340.3
 # V_inf = np.array([sos*mach, 0., 0.])
+# V_inf = np.array([-10., 0., 0.])
 V_inf = np.array([-10., 0., 0.])
-nt = 10
+nt = 45
 num_nodes = 1
 
-# mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
+mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=True)
 # mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
 # mesh_orig[:,:,1] += 5.
 # exit()
 
-filename = str(SAMPLE_GEOMETRY_PATH) + '/pm/wing_NACA0012_ar10.vtk' 
-mesh_data = pv.read(filename)
-mesh_orig = mesh_data.points.reshape((21,5,3))
+# filename = str(SAMPLE_GEOMETRY_PATH) + '/pm/wing_NACA0012_ar10.vtk' 
+# mesh_data = pv.read(filename)
+# mesh_orig = mesh_data.points.reshape((21,5,3))
 
 
 
@@ -62,7 +63,7 @@ mesh_velocities = csdl.Variable(value=mesh_velocities)
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.1, free_wake=False)
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=True)
 
 
 mesh = mesh_dict['surface_0']['mesh'].value
@@ -84,6 +85,48 @@ print('doublet distribution:')
 print(mu_value)
 print(f'CL: {CL}')
 print(f'CDi: {CDi}')
+
+# >>> mesh_dict['surface_0'].keys()
+# dict_keys(['mesh', 'nodal_velocity', 'num_panels', 'nc', 'ns', 'panel_center', 'panel_corners', 'panel_area', 'panel_x_dir', 'panel_y_dir', 'panel_normal', 'panel_dl_norm', 'panel_dm_norm', 'delta_coll_point', 'dpij_global', 'local_coord_vec', 'dpij', 'dij', 'mij', 'coll_point_velocity', 'planform_area'])
+# >>> wake_mesh_dict['surface_0'].keys()
+# dict_keys(['mesh', 'nc', 'ns', 'num_panels', 'num_points', 'panel_center', 'panel_corners', 'panel_area', 'panel_x_dir', 'panel_y_dir', 'panel_normal', 'dpij', 'dij', 'mij', 'wake_nodal_velocity'])
+
+
+if True:
+    time_ind = 0
+    data_to_save = {
+        'time_ind': time_ind,
+        'grid_size': [nc, ns, nt],
+        'mu': mu.value[0,time_ind,:].reshape((nc-1)*2, ns-1),
+        'sigma': sigma.value[0,time_ind,:].reshape((nc-1)*2, ns-1),
+
+        'mesh': mesh_dict['surface_0']['mesh'].value[0,time_ind,:],
+        'panel_center': mesh_dict['surface_0']['panel_center'].value[0,time_ind,:],
+        'local_coord_vec': mesh_dict['surface_0']['local_coord_vec'].value[0,time_ind,:],
+        'panel_corners': mesh_dict['surface_0']['panel_corners'].value[0,time_ind,:],
+        'dpij': mesh_dict['surface_0']['dpij'].value[0,time_ind,:],
+        'mij': mesh_dict['surface_0']['mij'].value[0,time_ind,:],
+        'dij': mesh_dict['surface_0']['dij'].value[0,time_ind,:],
+        
+        'wake_mesh': wake_mesh_dict['surface_0']['mesh'].value[0,time_ind,:],
+        'wake_panel_center': wake_mesh_dict['surface_0']['panel_center'].value[0,time_ind,:],
+        'wake_local_coord_vec': mesh_dict['surface_0']['local_coord_vec'].value[0,time_ind,:],
+        'wake_panel_corners': wake_mesh_dict['surface_0']['panel_corners'].value[0,time_ind,:],
+        'wake_dpij': wake_mesh_dict['surface_0']['dpij'].value[0,time_ind,:],
+        'wake_mij': wake_mesh_dict['surface_0']['mij'].value[0,time_ind,:],
+        'wake_dij': wake_mesh_dict['surface_0']['dij'].value[0,time_ind,:],
+    }
+    # for key in mesh_dict['surface_0'].keys():
+    #     data_to_save[key] = mesh_dict['surface_0'][key].value[0,time_ind,:]
+
+    # for key in wake_mesh_dict['surface_0'].keys():
+    #     data_to_save[key+'_wake'] = wake_mesh_dict['surface_0'][key].value[0,time_ind,:]
+
+    import pickle
+    filehandler = open('streamline_analysis_data', 'wb')
+    pickle.dump(data_to_save, filehandler)
+    filehandler.close()
+
 
 # exit()
 
@@ -305,5 +348,5 @@ if True:
     plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
 if False:
-    # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_{alpha_deg}')
-    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name='free_wake_demo')
+    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')
+    # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name='free_wake_demo')

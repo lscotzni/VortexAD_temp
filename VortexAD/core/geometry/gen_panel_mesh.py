@@ -159,6 +159,7 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
             plt.gca().invert_yaxis()
 
         plt.legend()
+        plt.grid()
         plt.show()
         if not unstructured:
             import pyvista as pv
