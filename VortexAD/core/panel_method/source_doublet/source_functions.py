@@ -80,17 +80,17 @@ def compute_source_influence(dij, mij, dpij, dx, dy, dz, rk, ek, hk, sigma=1., m
     elif mode == 'velocity':
         # vel = csdl.Variable(shape=dz.shape[],value=0.)
         u = sigma/(4*np.pi) * (
-            dpij[0][1]/dij[0]*csdl.log((rk[0] + rk[1] - dij[0])/(rk[0] + rk[1] + dij[0])) + 
-            dpij[1][1]/dij[1]*csdl.log((rk[1] + rk[2] - dij[1])/(rk[1] + rk[2] + dij[1])) + 
-            dpij[2][1]/dij[2]*csdl.log((rk[2] + rk[3] - dij[2])/(rk[2] + rk[3] + dij[2])) + 
-            dpij[3][1]/dij[3]*csdl.log((rk[3] + rk[0] - dij[3])/(rk[3] + rk[0] + dij[3]))
+            dpij[0][1]/(dij[0] + 1.e-12)*csdl.log((rk[0] + rk[1] - dij[0])/(rk[0] + rk[1] + dij[0] + 1.e-12)) + 
+            dpij[1][1]/(dij[1] + 1.e-12)*csdl.log((rk[1] + rk[2] - dij[1])/(rk[1] + rk[2] + dij[1] + 1.e-12)) + 
+            dpij[2][1]/(dij[2] + 1.e-12)*csdl.log((rk[2] + rk[3] - dij[2])/(rk[2] + rk[3] + dij[2] + 1.e-12)) + 
+            dpij[3][1]/(dij[3] + 1.e-12)*csdl.log((rk[3] + rk[0] - dij[3])/(rk[3] + rk[0] + dij[3] + 1.e-12))
         )
 
         v = sigma/(4*np.pi) * (
-            dpij[0][0]/dij[0]*csdl.log((rk[0] + rk[1] - dij[0])/(rk[0] + rk[1] + dij[0])) + 
-            dpij[1][0]/dij[1]*csdl.log((rk[1] + rk[2] - dij[1])/(rk[1] + rk[2] + dij[1])) + 
-            dpij[2][0]/dij[2]*csdl.log((rk[2] + rk[3] - dij[2])/(rk[2] + rk[3] + dij[2])) + 
-            dpij[3][0]/dij[3]*csdl.log((rk[3] + rk[0] - dij[3])/(rk[3] + rk[0] + dij[3]))
+            dpij[0][0]/(dij[0] + 1.e-12)*csdl.log((rk[0] + rk[1] - dij[0])/(rk[0] + rk[1] + dij[0] + 1.e-12)) + 
+            dpij[1][0]/(dij[1] + 1.e-12)*csdl.log((rk[1] + rk[2] - dij[1])/(rk[1] + rk[2] + dij[1] + 1.e-12)) + 
+            dpij[2][0]/(dij[2] + 1.e-12)*csdl.log((rk[2] + rk[3] - dij[2])/(rk[2] + rk[3] + dij[2] + 1.e-12)) + 
+            dpij[3][0]/(dij[3] + 1.e-12)*csdl.log((rk[3] + rk[0] - dij[3])/(rk[3] + rk[0] + dij[3] + 1.e-12))
         ) * -1. # NOTE: THIS -1 IS BECAUSE OF THE DIFFERENT SIGN IN THE POTENTIAL EQUATION
 
         w = sigma/(4*np.pi) * (
