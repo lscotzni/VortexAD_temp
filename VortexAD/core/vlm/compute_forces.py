@@ -119,20 +119,19 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha_ML=None,
             alpha_min_max = airfoil_alpha_stall_models[i].evaluate(alpha=Ma, Re=reynolds_numbers[i], Ma=Ma)
             alpha_implicit = csdl.ImplicitVariable(shape=spanwise_sec_lift.shape, value=0)
             Cl = airfoil_Cl_models[i].evaluate(alpha=alpha_implicit, Re=reynolds_numbers[i], Ma=Ma)
-            lower_bracket = alpha_min_max[i, :, 0].reshape(Cl.shape)
-            upper_bracket = alpha_min_max[i, :, 1].reshape(Cl.shape)
+            lower_bracket = alpha_min_max[:, :, 0].reshape(Cl.shape)
+            upper_bracket = alpha_min_max[:, :, 1].reshape(Cl.shape)
             residual = Cl - spanwise_Cl
-            solver = csdl.nonlinear_solvers.bracketed_search.BracketedSearch(elementwise_states=True)
+            solver = csdl.nonlinear_solvers.bracketed_search.BracketedSearch(residual_jac_kwargs={'elementwise':True})
             solver.add_state(alpha_implicit, residual, bracket=(lower_bracket, upper_bracket))
             solver.run()
-
-            print("ALPHA", np.rad2deg(alpha_implicit.value))
 
 
         if airfoil_Cd_models[i] is not None:
             chord_lengths = chord_length_mid_panel[i]
             Cd = airfoil_Cd_models[i].evaluate(alpha=alpha_implicit, Re=reynolds_numbers[i], Ma=Ma)
-            viscous_drag = Cd *  0.5 * rho * csdl.norm(V_inf, axes=(2, ))**2 * chord_lengths
+            viscous_drag_2 = Cd *  0.5 * rho * csdl.norm(V_inf, axes=(2, ))**2 * spanwise_areas
+            print("total viscous drag 2", csdl.sum(viscous_drag_2, axes=(1, )).value)
 
         if airfoil_Cp_models[i] is not None:
             Cp = airfoil_Cp_models[i].evaluate(alpha=alpha_implicit, Re=reynolds_numbers[i], Ma=Ma)
@@ -144,6 +143,7 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha_ML=None,
 
         lift_surf = csdl.sum(spanwise_sec_lift, axes=(1,)) # summing across spanwise direction 
         drag_surf = csdl.sum(spanwise_sec_drag, axes=(1,)) # summing across spanwise direction 
+
 
         CL = lift_surf/(0.5*rho*csdl.average(csdl.norm(V_inf, axes=(2,)), axes=(1, ))**2*surface_area)
         CDi = drag_surf/(0.5*rho*csdl.average(csdl.norm(V_inf, axes=(2,)), axes=(1, ))**2*surface_area)
