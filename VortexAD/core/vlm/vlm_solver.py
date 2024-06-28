@@ -63,8 +63,6 @@ def vlm_solver(mesh_list,
     chord_length_mid_panel = []
     alpha_ml = []
 
-    mesh_vel_wing = mesh_velocity_list[0]
-
     for i in range(len(mesh_velocity_list)):
         nodal_coordinates = mesh_list[i]
         LE_nodes = nodal_coordinates[:, 0, :, :]

@@ -20,13 +20,13 @@ def compute_induced_velocity(p1, p2, p_eval, gamma=1.):
 
     # find cross product and norm
     r1r2_cross = csdl.cross(r1, r2, axis=xyz_dim)
-    r1r2_cross_norm = csdl.norm(r1r2_cross+1e-8, axes=(xyz_dim,))
+    r1r2_cross_norm = csdl.norm(r1r2_cross+1.e-8, axes=(xyz_dim,))
     r1r2_cross_norm_exp = csdl.expand(r1r2_cross_norm, r1.shape, 'ij->ija')
 
     # compute norms of r1 and r2
-    r1_norm = csdl.norm(r1+1e-8, axes=(xyz_dim, ))
+    r1_norm = csdl.norm(r1+1.e-8, axes=(xyz_dim, ))
     r1_norm_exp = csdl.expand(r1_norm, r1.shape, 'ij->ija')
-    r2_norm = csdl.norm(r2+1e-8, axes=(xyz_dim, ))
+    r2_norm = csdl.norm(r2+1.e-8, axes=(xyz_dim, ))
     r2_norm_exp = csdl.expand(r2_norm, r2.shape, 'ij->ija')
 
     # compute dot products 
@@ -36,7 +36,7 @@ def compute_induced_velocity(p1, p2, p_eval, gamma=1.):
     r0r2_dot = csdl.sum(r0*r2, axes=(xyz_dim,))
     r0r2_dot_exp = csdl.expand(r0r2_dot, r2.shape, 'ij->ija')
 
-    induced_vel = gamma/(4*np.pi)*r1r2_cross/(r1r2_cross_norm_exp + 1.e-8)**2 * \
+    induced_vel = gamma/(4*np.pi)*r1r2_cross/(r1r2_cross_norm_exp + 1e-8)**2 * \
                 (r0r1_dot_exp/r1_norm_exp - r0r2_dot_exp/r2_norm_exp)
 
     # term_pre_dot = r0*(r1/r1_norm_exp + r2/r2_norm_exp)
