@@ -73,7 +73,7 @@ def vlm_solver(mesh_list,
 
         mesh_vel = mesh_velocity_list[i]
         num_nodes = mesh_vel.shape[0]
-        V_inf = csdl.average(mesh_vel)
+        V_inf = csdl.average(csdl.norm(mesh_vel, axes=(3, )))
         rho = atmos_states.density
         mu = atmos_states.dynamic_viscosity
         a = atmos_states.speed_of_sound
@@ -102,10 +102,9 @@ def vlm_solver(mesh_list,
                 raise NotImplementedError("Shape mis-match between Ma and other airfoil model inputs. Unlikely to be a user-error.")
 
             Cl = airfoil_Cl_model.evaluate(alpha_implicit, Re, Ma_exp)
-
             # 
             solver = csdl.nonlinear_solvers.bracketed_search.BracketedSearch(residual_jac_kwargs={'elementwise':True})
-            solver.add_state(alpha_implicit, Cl, bracket=(-np.deg2rad(8), np.deg2rad(8)))
+            solver.add_state(alpha_implicit, Cl, bracket=(-np.deg2rad(10), np.deg2rad(10)))
             solver.run()
             
             alpha = alpha_implicit
