@@ -122,7 +122,7 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha_ML=None,
             lower_bracket = alpha_min_max[:, :, 0].reshape(Cl.shape)
             upper_bracket = alpha_min_max[:, :, 1].reshape(Cl.shape)
             residual = Cl - spanwise_Cl
-            solver = csdl.nonlinear_solvers.bracketed_search.BracketedSearch(residual_jac_kwargs={'elementwise':True})
+            solver = csdl.nonlinear_solvers.bracketed_search.BracketedSearch(residual_jac_kwargs={'elementwise':True, 'loop':True})
             solver.add_state(alpha_implicit, residual, bracket=(lower_bracket, upper_bracket))
             solver.run()
 

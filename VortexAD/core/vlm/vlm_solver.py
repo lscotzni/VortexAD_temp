@@ -103,7 +103,7 @@ def vlm_solver(mesh_list,
 
             Cl = airfoil_Cl_model.evaluate(alpha_implicit, Re, Ma_exp)
             # 
-            solver = csdl.nonlinear_solvers.bracketed_search.BracketedSearch(residual_jac_kwargs={'elementwise':True})
+            solver = csdl.nonlinear_solvers.bracketed_search.BracketedSearch(residual_jac_kwargs={'elementwise':True, 'loop': True})
             solver.add_state(alpha_implicit, Cl, bracket=(-np.deg2rad(10), np.deg2rad(10)))
             solver.run()
             
