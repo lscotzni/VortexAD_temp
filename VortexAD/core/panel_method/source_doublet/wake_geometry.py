@@ -32,15 +32,18 @@ def wake_geometry(surf_wake_mesh_dict, time_ind):
     surf_wake_mesh_dict['panel_corners'] = panel_corners
 
     panel_area = surf_wake_mesh_dict['panel_area']
-    panel_x_vec = p4 - p1
-    panel_y_vec = p2 - p1
-    panel_normal_vec = csdl.cross(panel_x_vec, panel_y_vec, axis=3)
+    panel_diag_1 = p3-p1
+    panel_diag_2 = p2-p4
+    panel_normal_vec = csdl.cross(panel_diag_1, panel_diag_2, axis=3)
     panel_area = panel_area.set(csdl.slice[:,time_ind,:,:], value=csdl.norm(panel_normal_vec+1.e-12, axes=(3,)) / 2.)
     surf_wake_mesh_dict['panel_area'] = panel_area
 
     panel_x_dir = surf_wake_mesh_dict['panel_x_dir']
     panel_y_dir = surf_wake_mesh_dict['panel_y_dir']
     panel_normal = surf_wake_mesh_dict['panel_normal']
+
+    panel_x_vec = (p3+p4)/2. - (p1+p2)/2.
+    panel_y_vec = (p2+p3)/2. - (p1+p4)/2.
 
     panel_x_dir_val = panel_x_vec / csdl.expand(csdl.norm(panel_x_vec+1.e-12, axes=(3,)), panel_x_vec.shape, 'ijk->ijka')
     panel_y_dir_val = panel_y_vec / csdl.expand(csdl.norm(panel_y_vec+1.e-12, axes=(3,)), panel_y_vec.shape, 'ijk->ijka')

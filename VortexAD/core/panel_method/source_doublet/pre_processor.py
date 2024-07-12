@@ -81,15 +81,15 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
             delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:-1,:,1,0], value=csdl.sum((panel_center[:,:,1:,:,:] - panel_center[:,:,:-1,:,:]) * panel_x_dir[:,:,:-1,:,:], axes=(4,)))
             delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,1:,2,1], value=csdl.sum((panel_center[:,:,:,:-1,:] - panel_center[:,:,:,1:,:]) * panel_y_dir[:,:,:,1:,:], axes=(4,)))
             delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,:-1,3,1], value=csdl.sum((panel_center[:,:,:,1:,:] - panel_center[:,:,:,:-1,:]) * panel_y_dir[:,:,:,:-1,:], axes=(4,)))
-            # delta_coll_point = delta_coll_point.set(csdl.slice[:,:,1:,:,0,0], value=neg_l_norm[:,:,1:,:] - pos_l_norm[:,:,:-1,:])
-            # delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:-1,:,1,0], value=pos_l_norm[:,:,:-1,:] - neg_l_norm[:,:,1:,:])
-            # delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,1:,2,1], value=neg_m_norm[:,:,:,1:] - pos_m_norm[:,:,:,:-1])
-            # delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,:-1,3,1], value=pos_m_norm[:,:,:,:-1] - neg_m_norm[:,:,:,1:])
+            # delta_coll_point = delta_coll_point.set(csdl.slice[:,:,1:,:,0,0], value=csdl.sum(panel_center[:,:,:-1,:,:] - panel_center[:,:,1:,:,:], axes=(4,)))
+            # delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:-1,:,1,0], value=csdl.sum(panel_center[:,:,1:,:,:] - panel_center[:,:,:-1,:,:], axes=(4,)))
+            # delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,1:,2,1], value=csdl.sum(panel_center[:,:,:,:-1,:] - panel_center[:,:,:,1:,:], axes=(4,)))
+            # delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:,:-1,3,1], value=csdl.sum(panel_center[:,:,:,1:,:] - panel_center[:,:,:,:-1,:], axes=(4,)))
 
             mesh_dict[key]['delta_coll_point'] = delta_coll_point
 
             # panel_center_mod = panel_center - panel_normal*0.00000001/csdl.expand(panel_area, panel_normal.shape, 'ijkl->ijkla')
-            panel_center_mod = panel_center - panel_normal*0.00000001
+            panel_center_mod = panel_center - panel_normal*0.000001
             # panel_center_mod = panel_center
             mesh_dict[key]['panel_center'] = panel_center_mod
 

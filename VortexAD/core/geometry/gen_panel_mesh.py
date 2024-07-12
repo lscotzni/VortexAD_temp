@@ -99,8 +99,8 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
     }
     airfoil_data['x'][:zero_ind] *= -1
 
-    airfoil_data['z'][-1] = (airfoil_data['z'][0]+airfoil_data['z'][-1]) / 2.
-    airfoil_data['z'][0] = airfoil_data['z'][-1] 
+    # airfoil_data['z'][-1] = (airfoil_data['z'][0]+airfoil_data['z'][-1]) / 2.
+    # airfoil_data['z'][0] = airfoil_data['z'][-1] 
 
     # origin at the wing LE center
     mesh = np.zeros((2*nc-1, ns, 3))
@@ -153,6 +153,9 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
         fig = plt.figure()
         plt.plot(airfoil_data['x'], airfoil_data['z'], 'k', label='Airfoil data')
         plt.plot(c_mesh_interp, thickness_interp, 'b*', label='Interpolation')
+        plt.xlabel('Normalized chord (x/c)')
+        plt.ylabel('Thickness (z)')
+        
         plt.axis('equal')
         if frame == 'caddee':
             plt.gca().invert_xaxis()
@@ -160,6 +163,7 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
 
         plt.legend()
         plt.grid()
+        plt.ylim([-0.1, 0.1])
         plt.show()
         if not unstructured:
             import pyvista as pv

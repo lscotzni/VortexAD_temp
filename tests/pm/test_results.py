@@ -12,8 +12,8 @@ import pyvista as pv
 b = 10.
 # c = 1.564
 c = 1.
-ns = 15
-nc = 15
+ns = 11
+nc = 31
 
 alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
@@ -23,18 +23,19 @@ sos = 340.3
 # V_inf = np.array([sos*mach, 0., 0.])
 # V_inf = np.array([-10., 0., 0.])
 V_inf = np.array([-10., 0., 0.])
-nt = 45
+nt = 30
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=True)
+mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False)
 # mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
 # mesh_orig[:,:,1] += 5.
 # exit()
 
-# filename = str(SAMPLE_GEOMETRY_PATH) + '/pm/wing_NACA0012_ar10.vtk' 
+# filename = str(SAMPLE_GEOMETRY_PATH) + '/pm/wing_NACA0012_ar10.vtk'
+# nc, ns = 11, 5
 # mesh_data = pv.read(filename)
-# mesh_orig = mesh_data.points.reshape((21,5,3))
-
+# mesh_orig = mesh_data.points.reshape((2*nc-1,ns,3))
+# mesh_orig[:,:,1] -= 5.
 
 
 mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
@@ -79,7 +80,7 @@ recorder.stop()
 
 CL  = output_dict['surface_0']['CL'].value
 CDi = output_dict['surface_0']['CDi'].value
-mu_value = mu.value[0,0,:].reshape((nc-1)*2,ns-1)
+mu_value = mu.value[0,-2,:].reshape((nc-1)*2,ns-1)
 
 print('doublet distribution:')
 print(mu_value)
@@ -91,8 +92,8 @@ print(f'CDi: {CDi}')
 # >>> wake_mesh_dict['surface_0'].keys()
 # dict_keys(['mesh', 'nc', 'ns', 'num_panels', 'num_points', 'panel_center', 'panel_corners', 'panel_area', 'panel_x_dir', 'panel_y_dir', 'panel_normal', 'dpij', 'dij', 'mij', 'wake_nodal_velocity'])
 
-
-if True:
+save_data = False
+if save_data:
     time_ind = 0
     data_to_save = {
         'time_ind': time_ind,
@@ -265,8 +266,8 @@ if verif and alpha_deg == 0.:
     params = {'mathtext.default': 'regular' }          
     plt.rcParams.update(params)
 
-    plt.plot(LHJ_data_Re9[:,0], LHJ_data_Re9[:,1], '^r', label='Ladson et al. ')
-    plt.plot(Gregory_data[:,0], Gregory_data[:,1], '>g', label='Gregory et al. ')
+    plt.plot(LHJ_data_Re9[:,0], LHJ_data_Re9[:,1], 'vb', label='Ladson et al. ')
+    plt.plot(Gregory_data[:,0], Gregory_data[:,1], '>r', label='Gregory et al. ')
     plt.plot(chord_station/chord, Cp_station, 'k*', label='CSDL panel code')
 
     plt.gca().invert_yaxis()
@@ -329,11 +330,37 @@ if verif and alpha_deg == 10.:
     [.9489,   .0795],
     ])
 
+    Gregory_data = np.array([[0, -3.66423],
+    [0.00218341, -5.04375],
+    [0.00873362, -5.24068],
+    [0.0131004, -4.67125],
+    [0.0174672, -4.32079],
+    [0.0480349, -2.74347],
+    [0.0742358, -2.26115],
+    [0.0982533, -1.95405],
+    [0.124454, -1.7345],
+    [0.146288, -1.55884],
+    [0.176856, -1.36109],
+    [0.28821, -1.00829],
+    [0.320961, -0.941877],
+    [0.384279, -0.787206],
+    [0.447598, -0.654432],
+    [0.515284, -0.543461],
+    [0.576419, -0.432633],
+    [0.637555, -0.343703],
+    [0.700873, -0.254725],
+    [0.766376, -0.1657],
+    [0.831878, -0.098572],
+    [0.893013, -0.00964205],
+    [0.958515, 0.0793835],
+    [1, 0.124088]])
+
     params = {'mathtext.default': 'regular' }          
     plt.rcParams.update(params)
 
-    plt.plot(LHJ_data_Re9[:,0], LHJ_data_Re9[:,1], '^r', label='Ladson et al. ')
-    plt.plot(chord_station/chord, Cp_station, 'k*', label='CSDL panel code')
+    plt.plot(LHJ_data_Re9[:,0], LHJ_data_Re9[:,1], 'vb', fillstyle='none', label='Ladson et al. ')
+    plt.plot(Gregory_data[:,0], Gregory_data[:,1], '>r', label='Gregory et al. ')
+    plt.plot(chord_station/chord, Cp_station, 'k*-', label='CSDL panel code')
 
     plt.gca().invert_yaxis()
     plt.xlabel('Normalized chord')
@@ -344,9 +371,9 @@ if verif and alpha_deg == 10.:
 1
 wake_mesh = wake_mesh_dict['surface_0']['mesh'].value
 
-if True:
+if False:
     plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
-if False:
-    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')
-    # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name='free_wake_demo')
+if True:
+    # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')
+    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name='free_wake_demo')

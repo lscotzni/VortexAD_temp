@@ -3,6 +3,7 @@ import csdl_alpha as csdl
 
 from VortexAD.core.panel_method.source_doublet.initialize_unsteady_wake import initialize_unsteady_wake
 from VortexAD.core.panel_method.source_doublet.transient_solver import transient_solver
+from VortexAD.core.panel_method.source_doublet.transient_solver_new import transient_solver_new
 
 def mu_sigma_solver(num_nodes, nt, mesh_dict, dt, free_wake=False):
 
@@ -11,17 +12,17 @@ def mu_sigma_solver(num_nodes, nt, mesh_dict, dt, free_wake=False):
     for surface in surface_names:
         num_tot_panels += mesh_dict[surface]['num_panels']
 
-    wake_mesh_dict = initialize_unsteady_wake(mesh_dict, num_nodes, dt, panel_fraction=0.25)
+    wake_mesh_dict = initialize_unsteady_wake(mesh_dict, num_nodes, dt, panel_fraction=1.)
 
     # sigma = compute_source_strengths(mesh_dict, surface_names, num_nodes, nt, num_tot_panels) # shape=(num_nodes, nt, num_surf_panels)
 
     if free_wake:
-        mu, sigma, mu_wake = transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt, free_wake=free_wake)
+        mu, sigma, mu_wake = transient_solver_new(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt, free_wake=free_wake)
     
         # return mu, sigma, wake_mesh_dict, induced_vel
         return mu, sigma, mu_wake, wake_mesh_dict
     else:
-        mu, sigma, mu_wake = transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt)
+        mu, sigma, mu_wake = transient_solver_new(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt)
     
         return mu, sigma, mu_wake, wake_mesh_dict
 

@@ -38,7 +38,7 @@ wake_dij = data['wake_dij']
 # z between 0 and 0.1
 # y = 0
 num_x = 50
-num_z = 50
+num_z = 200
 num_eval_pts = num_x*num_z
 x_vec = np.linspace(0.2, 0.4, num_x)
 z_vec = np.linspace(0.05, 0.07, num_z)
@@ -153,7 +153,7 @@ asdf = np.zeros(shape=surf_induced_vel_grid.shape)
 asdf[:,:,0] = 10.
 
 
-ind_vel_mag = csdl.norm(surf_induced_vel_grid + asdf, axes=(2,))
+ind_vel_mag = csdl.norm(-surf_induced_vel_grid + asdf, axes=(2,))
 
 
 X, Z = np.meshgrid(x_vec, z_vec)
@@ -161,15 +161,19 @@ X, Z = np.meshgrid(x_vec, z_vec)
 panel_center_x = [1.42857143e-01, 2.14285714e-01, 2.85714286e-01, 3.57142857e-01, 4.28571429e-01]
 panel_center_z = [5.26912935e-02, 5.81154169e-02, 5.99456941e-02, 5.93067998e-02, 5.68255165e-02]
 
-
+import matplotlib
+norm = matplotlib.colors.Normalize(vmin=0, vmax=1.5)
 fig, ax = plt.subplots()
 # CS = ax.contour(X, Z, ind_vel_mag.value.T)
-strm = ax.streamplot(X, Z, surf_induced_vel_grid.value[:,:,0] + 10, surf_induced_vel_grid.value[:,:,2], color=ind_vel_mag.value,)
-fig.colorbar(strm.lines)
+strm = ax.streamplot(X, Z, (-surf_induced_vel_grid.value[:,:,0].T + 10)/10, (-surf_induced_vel_grid.value[:,:,2].T)/10, color=(ind_vel_mag.value.T)/10., norm=norm, cmap='jet')
 ax.plot(panel_center_x, panel_center_z, 'k-o', linewidth=3)
-ax.set_title('Simplest default with labels')
 ax.set_xlim([x_vec[0], x_vec[-1]])
 ax.set_ylim([z_vec[0], z_vec[-1]])
+ax.set_xlabel('Normalized chord (x/c)')
+ax.set_ylabel('z')
+
+cbar = fig.colorbar(strm.lines)
+cbar.ax.set_xlabel(r'$\frac{|u|}{|U_\infty|}$', fontsize=18)
 
 
 plt.show()

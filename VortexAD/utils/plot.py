@@ -56,7 +56,7 @@ def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive = False, plot_m
         vps.cmap(cmap, mu_color, on='cells', vmin=min_mu, vmax=max_mu)
         vp += vps
         vp += __doc__
-        wake_points = wake_mesh[:,i,:(i+2),:]
+        wake_points = wake_mesh[:,i,:(i+1),:]
         # mu_w = np.reshape(sim['system_model.wig.wig.wig.operation.prob.' + 'op_' + surface_name+'_mu_w'][i, 0:i, :], (-1,1))
         # if absolute:
         #     mu_w = np.absolute(mu_w)
@@ -68,8 +68,9 @@ def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive = False, plot_m
             for j in range(ny-1):
                 connectivity.append([k*ny+j,(k+1)*ny+j,(k+1)*ny+j+1,k*ny+j+1])
         vps = Mesh([np.reshape(wake_points, (-1, 3)), connectivity], c=color, alpha=1)
-        mu_wake_color = np.reshape(mu_wake[:,i,:(i+1)*(ny-1)], (-1,1))
-        vps.cmap(cmap, mu_wake_color, on='cells', vmin=min_mu, vmax=max_mu)
+        if i > 0:
+            mu_wake_color = np.reshape(mu_wake[:,i,:(i)*(ny-1)], (-1,1))
+            vps.cmap(cmap, mu_wake_color, on='cells', vmin=min_mu, vmax=max_mu)
         if draw_scalarbar:
             vps.add_scalarbar()
             draw_scalarbar = False

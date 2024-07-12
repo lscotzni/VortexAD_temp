@@ -160,7 +160,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         pos_dm_norm, neg_dm_norm = mesh_dict[surface_name]['panel_dm_norm']
 
         if True:
-            # region least squares method for derivatives
+            # region least squares method for perturbation velocities (derivatives)
             delta_coll_point = mesh_dict[surface_name]['delta_coll_point']
             # ql, qm = least_squares_velocity_old(mu_grid, delta_coll_point)
             ql, qm = least_squares_velocity(mu_grid, delta_coll_point)
@@ -217,10 +217,13 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
 
         dmu_dt = csdl.Variable(shape=Q_inf_norm.shape, value=0)
         if nt > 2:
-            dmu_dt = dmu_dt.set(csdl.slice[:,1:,:,:], value=(mu_grid[:,1:,:,:] - mu_grid[:,:-1,:,:])/dt)
+            dmu_dt = dmu_dt.set(csdl.slice[:,1:,:,:], value=(mu_grid[:,:-1,:,:] - mu_grid[:,1:,:,:])/dt)
 
         perturbed_vel_mag = (Ql**2 + Qm**2 + Qn**2)**0.5 
-        Cp = 1 - (Ql**2 + Qm**2 + Qn**2)/Q_inf_norm**2 - dmu_dt*2./Q_inf_norm**2
+        Cp_static = 1 - (Ql**2 + Qm**2 + Qn**2)/Q_inf_norm**2
+        Cp_dynamic = -dmu_dt*2./Q_inf_norm**2
+        Cp = Cp_static + Cp_dynamic
+        # Cp = 1 - (Ql**2 + Qm**2 + Qn**2)/Q_inf_norm**2 - dmu_dt*2./Q_inf_norm**2
         # Cp = 1 - (Ql**2 + Qn**2)/Q_inf_norm**2 - dmu_dt*2./Q_inf_norm**2
 
         panel_area = mesh_dict[surface_name]['panel_area']
