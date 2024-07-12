@@ -1,5 +1,4 @@
 import numpy as np 
-import csdl_alpha as csdl
 
 from VortexAD.core.panel_method.source_doublet.initialize_unsteady_wake import initialize_unsteady_wake
 from VortexAD.core.panel_method.source_doublet.transient_solver import transient_solver
