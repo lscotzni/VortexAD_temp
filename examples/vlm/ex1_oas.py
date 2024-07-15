@@ -53,7 +53,23 @@ mesh_velocity_list = [mesh_velocity]
 
 
 output_vg = vlm_solver(mesh_list, mesh_velocity_list)
+wing_CL = output_vg.surface_CL[0]
+
+# deriv = csdl.derivative_utils.verify_derivatives(ofs = wing_CL, wrts=mesh)
+
 recorder.stop()
+
+# py_sim = csdl.experimental.PySimulator(
+#         recorder=recorder,
+#     )   
+#     py_sim.check_totals(ofs=csdl.average(vlm_outputs.AIC_force_eval_pts), wrts=elevator_deflection)
+
+from csdl_alpha.experimental import PySimulator
+
+py_sim = PySimulator(
+    recorder=recorder
+)
+py_sim.check_totals(ofs=wing_CL, wrts=mesh)
 
 # recorder.print_graph_structure()
 # recorder.visualize_graph(filename='ex1_oas_graph')

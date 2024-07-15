@@ -93,10 +93,10 @@ def compute_AIC(num_nodes, mesh_dict, eval_pt_name):
                 v_induced = v_i_12 + v_i_23 + v_i_34 + v_i_41
             elif eval_pt_name == 'force_eval_points':
             # else:
-                v_i_12 = compute_induced_velocity(p1_bd_vec, p2_bd_vec, eval_pt_i_exp_vec)
-                v_i_23 = compute_induced_velocity(p2_bd_vec, p3_bd_vec, eval_pt_i_exp_vec)
-                v_i_34 = compute_induced_velocity(p3_bd_vec, p4_bd_vec, eval_pt_i_exp_vec)
-                v_i_41 = compute_induced_velocity(p4_bd_vec, p1_bd_vec, eval_pt_i_exp_vec)
+                v_i_12 = compute_induced_velocity(p1_bd_vec, p2_bd_vec, eval_pt_i_exp_vec, vc=1.e-6)
+                v_i_23 = compute_induced_velocity(p2_bd_vec, p3_bd_vec, eval_pt_i_exp_vec, vc=1.e-6)
+                v_i_34 = compute_induced_velocity(p3_bd_vec, p4_bd_vec, eval_pt_i_exp_vec, vc=1.e-6)
+                v_i_41 = compute_induced_velocity(p4_bd_vec, p1_bd_vec, eval_pt_i_exp_vec, vc=1.e-6)
 
                 # v_induced = v_i_23 + v_i_41
                 v_induced = v_i_12 + v_i_23 + v_i_34 + v_i_41
@@ -146,10 +146,10 @@ def compute_AIC(num_nodes, mesh_dict, eval_pt_name):
 
             elif eval_pt_name == 'force_eval_points':
             # else:
-                v_i_12_w = compute_induced_velocity(p1_w_vec, p2_w_vec, eval_pt_i_wake_exp_vec)
-                v_i_23_w = compute_induced_velocity(p2_w_vec, p3_w_vec, eval_pt_i_wake_exp_vec)
-                v_i_34_w = compute_induced_velocity(p3_w_vec, p4_w_vec, eval_pt_i_wake_exp_vec)
-                v_i_41_w = compute_induced_velocity(p4_w_vec, p1_w_vec, eval_pt_i_wake_exp_vec)
+                v_i_12_w = compute_induced_velocity(p1_w_vec, p2_w_vec, eval_pt_i_wake_exp_vec, vc=1.e-6)
+                v_i_23_w = compute_induced_velocity(p2_w_vec, p3_w_vec, eval_pt_i_wake_exp_vec, vc=1.e-6)
+                v_i_34_w = compute_induced_velocity(p3_w_vec, p4_w_vec, eval_pt_i_wake_exp_vec, vc=1.e-6)
+                v_i_41_w = compute_induced_velocity(p4_w_vec, p1_w_vec, eval_pt_i_wake_exp_vec, vc=1.e-6)
 
                 # v_induced_wake = v_i_23_w + v_i_41_w
                 v_induced_wake = v_i_12_w + v_i_23_w + v_i_34_w + v_i_41_w
