@@ -13,7 +13,7 @@ b = 10.
 # c = 1.564
 c = 1.
 ns = 11
-nc = 31
+nc = 41
 
 alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
@@ -23,7 +23,7 @@ sos = 340.3
 # V_inf = np.array([sos*mach, 0., 0.])
 # V_inf = np.array([-10., 0., 0.])
 V_inf = np.array([-10., 0., 0.])
-nt = 30
+nt = 15
 num_nodes = 1
 
 mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False)
@@ -55,7 +55,7 @@ for i in range(num_nodes):
     for j in range(nt):
         mesh_velocities[i,j,:] = V_inf_rot
 
-recorder = csdl.Recorder(inline=True)
+recorder = csdl.Recorder(inline=False)
 recorder.start()
 
 mesh = csdl.Variable(value=mesh)
@@ -64,12 +64,17 @@ mesh_velocities = csdl.Variable(value=mesh_velocities)
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=True)
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=False)
 
 
-mesh = mesh_dict['surface_0']['mesh'].value
-coll_points = mesh_dict['surface_0']['panel_center'].value
-Cp = output_dict['surface_0']['Cp'].value
+# mesh = mesh_dict['surface_0']['mesh'].value
+coll_points = mesh_dict['surface_0']['panel_center']
+Cp = output_dict['surface_0']['Cp']
+CL  = output_dict['surface_0']['CL']
+CDi = output_dict['surface_0']['CDi']
+wake_mesh = wake_mesh_dict['surface_0']['mesh']
+
+
 # CL = output_dict['surface_0']['CL'].value
 
 # CL_norm = csdl.norm(output_dict['surface_0']['CL'])
@@ -77,10 +82,27 @@ Cp = output_dict['surface_0']['Cp'].value
 # dCL_dmesh = csdl.derivative(CL_norm, mesh_velocities)
 
 recorder.stop()
+jax_sim = csdl.experimental.JaxSimulator(
+    recorder=recorder,
+    additional_inputs=[mesh, mesh_velocities], # list of outputs (put in csdl variable)
+    additional_outputs=[mu, sigma, mu_wake, wake_mesh, coll_points, Cp, CL, CDi], # list of outputs (put in csdl variable)
+)
+jax_sim.run()
 
-CL  = output_dict['surface_0']['CL'].value
-CDi = output_dict['surface_0']['CDi'].value
-mu_value = mu.value[0,-2,:].reshape((nc-1)*2,ns-1)
+mesh = jax_sim[mesh]
+coll_points = jax_sim[coll_points]
+Cp = jax_sim[Cp]
+CL = jax_sim[CL]
+CDi = jax_sim[CDi]
+mu = jax_sim[mu]
+
+mu_value = mu[0,-2,:].reshape((nc-1)*2,ns-1)
+
+# CL = jax_sim[output_dict['surface_0']['CL']]
+
+# CL  = output_dict['surface_0']['CL'].value
+# CDi = output_dict['surface_0']['CDi'].value
+# mu_value = mu.value[0,-2,:].reshape((nc-1)*2,ns-1)
 
 print('doublet distribution:')
 print(mu_value)
@@ -369,11 +391,11 @@ if verif and alpha_deg == 10.:
     plt.grid()
     plt.show()
 1
-wake_mesh = wake_mesh_dict['surface_0']['mesh'].value
+
 
 if False:
     plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
-if True:
+if False:
     # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')
     plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name='free_wake_demo')

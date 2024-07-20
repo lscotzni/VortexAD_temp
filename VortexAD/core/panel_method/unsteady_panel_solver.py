@@ -11,28 +11,58 @@ from VortexAD.core.panel_method.vortex_ring.vortex_ring_solver import vortex_rin
 # from VortexAD.core.panel_method.vortex_ring_solver import vortex_ring_solver
 # from VortexAD.core.panel_method.post_processor import post_processor
 
-def unsteady_panel_solver(mesh_list, mesh_velocity_list, dt, mesh_mode='structured', mode='source-doublet', connectivity=None, free_wake=False):
+# def unsteady_panel_solver(mesh_list, mesh_velocity_list, dt, mesh_mode='structured', mode='source-doublet', connectivity=None, free_wake=False):
+def unsteady_panel_solver(*args, dt, mesh_mode='structured', mode='source-doublet', free_wake=False):
     '''
     2 modes:
     - source doublet (Dirichlet (no-perturbation potential in the body))
     - vortex rings (Neumann (no-penetration condition))
     '''
-    exp_orig_mesh_dict = {}
-    surface_counter = 0
-    for i in range(len(mesh_list)):
-        surface_name = f'surface_{surface_counter}'
-        exp_orig_mesh_dict[surface_name] = {}
-        exp_orig_mesh_dict[surface_name]['mesh'] = mesh_list[i]
-        exp_orig_mesh_dict[surface_name]['nodal_velocity'] = mesh_velocity_list[i] * -1. 
-        if i == 0:
-            num_nodes = mesh_list[i].shape[0] # NOTE: CHECK THIS LINE
-            nt = mesh_list[i].shape[1]
-        
-        surface_counter += 1
+
+    if mesh_mode == 'structured':
+        connectivity=False
+        mesh_list = args[0]
+        mesh_velocity_list = args[1]
+
+        exp_orig_mesh_dict = {}
+        surface_counter = 0
+        for i in range(len(mesh_list)):
+            surface_name = f'surface_{surface_counter}'
+            exp_orig_mesh_dict[surface_name] = {}
+            exp_orig_mesh_dict[surface_name]['mesh'] = mesh_list[i]
+            exp_orig_mesh_dict[surface_name]['nodal_velocity'] = mesh_velocity_list[i] * -1. 
+            if i == 0:
+                num_nodes = mesh_list[i].shape[0] # NOTE: CHECK THIS LINE
+                nt = mesh_list[i].shape[1]
+            
+            surface_counter += 1
+
+    elif mesh_mode == 'unstructured':
+        points = args[0]
+        cells, cell_adjacency = args[1][0], args[1][1]
+        TE_node_indices, TE_cells = args[2]
+        upper_TE_cells, lower_TE_cells = TE_cells[0], TE_cells[1]
+        point_velocity = args[3]
+
+        num_nodes = points.shape[0]
+        nt = points.shape[1]
+
+        exp_orig_mesh_dict = {}
+        exp_orig_mesh_dict['points'] = points
+        exp_orig_mesh_dict['nodal_velocity'] = point_velocity
+        exp_orig_mesh_dict['cell_point_indices'] = cells
+        exp_orig_mesh_dict['cell_adjacency'] = cell_adjacency
+
+        exp_orig_mesh_dict['TE_node_indices'] = TE_node_indices
+        exp_orig_mesh_dict['upper_TE_cells'] = upper_TE_cells
+        exp_orig_mesh_dict['lower_TE_cells'] = lower_TE_cells
+
+
+    # NOTE: CAN USE EITHER ARGS OR KWARGS FOR THIS
 
 
     if mode == 'source-doublet':
-        outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, nt, dt, mesh_mode, connectivity, free_wake)
+        outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, nt, dt, mesh_mode, free_wake)
         output_dict = outputs[0]
         mesh_dict = outputs[1]
         wake_mesh_dict = outputs[2]

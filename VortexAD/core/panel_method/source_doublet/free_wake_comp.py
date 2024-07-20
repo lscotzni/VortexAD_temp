@@ -103,10 +103,10 @@ def free_wake_comp(num_nodes, t, mesh_dict, mu, sigma, wake_mesh_dict, mu_wake):
             # AIC_sigma = AIC_sigma.set(csdl.slice[:,start_i:stop_i,start_s_j:stop_s_j,1], value=v_source)
             # AIC_sigma = AIC_sigma.set(csdl.slice[:,start_i:stop_i,start_s_j:stop_s_j,2], value=w_source)
 
-            ind_vel_s_12 = compute_vortex_line_ind_vel(panel_corners_s_j_exp_vec[:,:,0,:],panel_corners_s_j_exp_vec[:,:,1,:],p_eval=eval_pt_w_i_exp_vec[:,:,0,:], mode='wake')
-            ind_vel_s_23 = compute_vortex_line_ind_vel(panel_corners_s_j_exp_vec[:,:,1,:],panel_corners_s_j_exp_vec[:,:,2,:],p_eval=eval_pt_w_i_exp_vec[:,:,0,:], mode='wake')
-            ind_vel_s_34 = compute_vortex_line_ind_vel(panel_corners_s_j_exp_vec[:,:,2,:],panel_corners_s_j_exp_vec[:,:,3,:],p_eval=eval_pt_w_i_exp_vec[:,:,0,:], mode='wake')
-            ind_vel_s_41 = compute_vortex_line_ind_vel(panel_corners_s_j_exp_vec[:,:,3,:],panel_corners_s_j_exp_vec[:,:,0,:],p_eval=eval_pt_w_i_exp_vec[:,:,0,:], mode='wake')
+            ind_vel_s_12 = compute_vortex_line_ind_vel(panel_corners_s_j_exp_vec[:,:,0,:],panel_corners_s_j_exp_vec[:,:,1,:],p_eval=eval_pt_w_i_exp_vec[:,:,0,:], mode='wake', vc=1.e-6)
+            ind_vel_s_23 = compute_vortex_line_ind_vel(panel_corners_s_j_exp_vec[:,:,1,:],panel_corners_s_j_exp_vec[:,:,2,:],p_eval=eval_pt_w_i_exp_vec[:,:,0,:], mode='wake', vc=1.e-6)
+            ind_vel_s_34 = compute_vortex_line_ind_vel(panel_corners_s_j_exp_vec[:,:,2,:],panel_corners_s_j_exp_vec[:,:,3,:],p_eval=eval_pt_w_i_exp_vec[:,:,0,:], mode='wake', vc=1.e-6)
+            ind_vel_s_41 = compute_vortex_line_ind_vel(panel_corners_s_j_exp_vec[:,:,3,:],panel_corners_s_j_exp_vec[:,:,0,:],p_eval=eval_pt_w_i_exp_vec[:,:,0,:], mode='wake', vc=1.e-6)
 
             ind_vel_s = ind_vel_s_12+ind_vel_s_23+ind_vel_s_34+ind_vel_s_41 # (nn, num_interactions, 3)
             ind_vel_s_mat = ind_vel_s.reshape((num_nodes, num_points_i, num_panels_s_j, 3))
@@ -132,10 +132,10 @@ def free_wake_comp(num_nodes, t, mesh_dict, mu, sigma, wake_mesh_dict, mu_wake):
             panel_corners_w_j_exp = csdl.expand(panel_corners_w_j, (num_nodes, num_points_i, nc_w_j-1, ns_w_j-1, 4, 3), 'ijklm->iajklm')
             panel_corners_w_j_exp_vec = panel_corners_w_j_exp.reshape((num_nodes, num_wake_interactions, 4, 3))
 
-            ind_vel_w_12 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,0,:],panel_corners_w_j_exp_vec[:,:,1,:],p_eval=eval_pt_w_i_exp_vec[:,:,:], mode='wake')
-            ind_vel_w_23 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,1,:],panel_corners_w_j_exp_vec[:,:,2,:],p_eval=eval_pt_w_i_exp_vec[:,:,:], mode='wake')
-            ind_vel_w_34 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,2,:],panel_corners_w_j_exp_vec[:,:,3,:],p_eval=eval_pt_w_i_exp_vec[:,:,:], mode='wake')
-            ind_vel_w_41 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,3,:],panel_corners_w_j_exp_vec[:,:,0,:],p_eval=eval_pt_w_i_exp_vec[:,:,:], mode='wake')
+            ind_vel_w_12 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,0,:],panel_corners_w_j_exp_vec[:,:,1,:],p_eval=eval_pt_w_i_exp_vec[:,:,:], mode='wake', vc=1.e-6)
+            ind_vel_w_23 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,1,:],panel_corners_w_j_exp_vec[:,:,2,:],p_eval=eval_pt_w_i_exp_vec[:,:,:], mode='wake', vc=1.e-6)
+            ind_vel_w_34 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,2,:],panel_corners_w_j_exp_vec[:,:,3,:],p_eval=eval_pt_w_i_exp_vec[:,:,:], mode='wake', vc=1.e-6)
+            ind_vel_w_41 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,3,:],panel_corners_w_j_exp_vec[:,:,0,:],p_eval=eval_pt_w_i_exp_vec[:,:,:], mode='wake', vc=1.e-6)
 
             # ind_vel_w_12 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,1,:],panel_corners_w_j_exp_vec[:,:,0,:],p_eval=eval_pt_w_i_exp_vec[:,:,:])
             # ind_vel_w_23 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,2,:],panel_corners_w_j_exp_vec[:,:,1,:],p_eval=eval_pt_w_i_exp_vec[:,:,:])
@@ -158,6 +158,7 @@ def free_wake_comp(num_nodes, t, mesh_dict, mu, sigma, wake_mesh_dict, mu_wake):
             mu_wake_induced_vel = csdl.matvec(AIC_mu_wake[nn,:,:,direction], mu_wake[nn,t,:])
             induced_vel = induced_vel.set(csdl.slice[nn,:,direction], value=mu_surf_induced_vel+mu_wake_induced_vel)
             # induced_vel = induced_vel.set(csdl.slice[nn,:,direction], value=mu_wake_induced_vel)
+            # induced_vel = induced_vel.set(csdl.slice[nn,:,direction], value=mu_surf_induced_vel)
 
     return induced_vel
 

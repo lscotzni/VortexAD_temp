@@ -174,14 +174,111 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
 
     elif mode == 'unstructured':
         # use point list and connectivity
-        for i, key in enumerate(surface_names): # looping over surface names
-            mesh = mesh_dict[key]['mesh'] # num_nodes, nt, num_panels, 3
-            mesh_shape = mesh.shape
+        mesh = mesh_dict['points'] # num_nodes, nt, num_panels, 3
+        cell_point_indices = mesh_dict['cell_point_indices']
+        cell_adjacency = mesh_dict['cell_adjacency']
+        mesh_shape = mesh.shape
 
-            p1 = mesh[:,:,list(connectivity[:,0])]
+        p1 = mesh[:,:,list(cell_point_indices[:,0]),:]
+        p2 = mesh[:,:,list(cell_point_indices[:,1]),:]
+        p3 = mesh[:,:,list(cell_point_indices[:,2]),:]
+        panel_center = (p1+p2+p3)/3.
+        mesh_dict['panel_center'] = panel_center
 
+        panel_corners = csdl.Variable(shape=panel_center.shape[:-1] + (3,3), value=0.) # (3,3) is 3 points, 3 dimensions
+        panel_corners = panel_corners.set(csdl.slice[:,:,:,0,:], value=p1)
+        panel_corners = panel_corners.set(csdl.slice[:,:,:,1,:], value=p2)
+        panel_corners = panel_corners.set(csdl.slice[:,:,:,2,:], value=p3)
+        mesh_dict['panel_corners'] = panel_corners
 
+        a = csdl.norm(p2-p1, axes=(3,))
+        b = csdl.norm(p3-p2, axes=(3,))
+        c = csdl.norm(p1-p3, axes=(3,))
 
+        s = (a+b+c)/2.
+        panel_area = (s*(s-a)*(s-b)*(s-c))**0.5
+        mesh_dict['panel_area'] = panel_area
 
+        m12 = (p1+p2)/2.
+        m23 = (p2+p3)/2.
+        m31 = (p3+p1)/2.
+
+        l_vec = m12 - panel_center
+        l_vec = l_vec / csdl.expand(csdl.norm(l_vec, axes=(3,)), l_vec.shape, 'ijk->ijka')
+
+        n_vec = csdl.cross(l_vec, m23-panel_center, axis=3)
+        n_vec = n_vec / csdl.expand(csdl.norm(n_vec, axes=(3,)), l_vec.shape, 'ijk->ijka')
+
+        m_vec = csdl.cross(n_vec, l_vec, axis=3)
+
+        mesh_dict['panel_x_dir'] = l_vec
+        mesh_dict['panel_y_dir'] = m_vec
+        mesh_dict['panel_normal'] = n_vec
+
+        panel_center_mod = panel_center - n_vec*0.000001
+        mesh_dict['panel_center'] = panel_center_mod
+
+        cp_deltas = csdl.Variable(shape=panel_corners.shape, value=0.)
+        cp_deltas = cp_deltas.set(csdl.slice[:,:,:,0,:], value=panel_center[:,:,list(cell_adjacency[:,0]),:] - panel_center)
+        cp_deltas = cp_deltas.set(csdl.slice[:,:,:,1,:], value=panel_center[:,:,list(cell_adjacency[:,1]),:] - panel_center)
+        cp_deltas = cp_deltas.set(csdl.slice[:,:,:,2,:], value=panel_center[:,:,list(cell_adjacency[:,2]),:] - panel_center)
+
+        cell_deltas = csdl.Variable(shape=panel_corners.shape[:-1] + (2,), value=0.) # each cell has 3 deltas, with 2 dimensions (l,m)
+        cell_deltas = cell_deltas.set(csdl.slice[:,:,:,0,0], value=csdl.sum(cp_deltas[:,:,:,0,:]*l_vec, axes=(3,)))
+        cell_deltas = cell_deltas.set(csdl.slice[:,:,:,0,1], value=csdl.sum(cp_deltas[:,:,:,0,:]*m_vec, axes=(3,)))
+        cell_deltas = cell_deltas.set(csdl.slice[:,:,:,1,0], value=csdl.sum(cp_deltas[:,:,:,1,:]*l_vec, axes=(3,)))
+        cell_deltas = cell_deltas.set(csdl.slice[:,:,:,1,1], value=csdl.sum(cp_deltas[:,:,:,1,:]*m_vec, axes=(3,)))
+        cell_deltas = cell_deltas.set(csdl.slice[:,:,:,2,0], value=csdl.sum(cp_deltas[:,:,:,2,:]*l_vec, axes=(3,)))
+        cell_deltas = cell_deltas.set(csdl.slice[:,:,:,2,1], value=csdl.sum(cp_deltas[:,:,:,2,:]*m_vec, axes=(3,)))
+
+        mesh_dict['delta_coll_point'] = cell_deltas
+
+        local_coord_vec = csdl.Variable(shape=(panel_center.shape[:-1] + (3,3)), value=0.) # last two indices are for 3 vectors, 3 dimensions
+        local_coord_vec = local_coord_vec.set(csdl.slice[:,:,:,0,:], value=l_vec)
+        local_coord_vec = local_coord_vec.set(csdl.slice[:,:,:,1,:], value=m_vec)
+        local_coord_vec = local_coord_vec.set(csdl.slice[:,:,:,2,:], value=n_vec)
+        
+        mesh_dict['local_coord_vec'] = local_coord_vec
+
+        dpij_global = csdl.Variable(value=np.zeros((panel_center.shape[:-1] + (3,3))))
+        dpij_global = dpij_global.set(csdl.slice[:,:,:,0,:], value=p2-p1)
+        dpij_global = dpij_global.set(csdl.slice[:,:,:,1,:], value=p3-p2)
+        dpij_global = dpij_global.set(csdl.slice[:,:,:,2,:], value=p1-p3)
+
+        dpij_local = csdl.einsum(dpij_global, local_coord_vec, action='ijkma,ijkba->ijkmb')  # THIS IS CORRECT
+
+        dpij = csdl.Variable(value=np.zeros((panel_center.shape[:-1] + (3,2))))
+        dpij = dpij.set(csdl.slice[:,:,:,0,:], value=dpij_local[:,:,:,0,:2])
+        dpij = dpij.set(csdl.slice[:,:,:,1,:], value=dpij_local[:,:,:,1,:2])
+        dpij = dpij.set(csdl.slice[:,:,:,2,:], value=dpij_local[:,:,:,2,:2])
+        mesh_dict['dpij'] = dpij
+
+        dij = csdl.Variable(value=np.zeros((panel_center.shape[:-1] + (3,))))
+        dij = dij.set(csdl.slice[:,:,:,0], value=csdl.norm(dpij[:,:,:,0,:], axes=(3,)))
+        dij = dij.set(csdl.slice[:,:,:,1], value=csdl.norm(dpij[:,:,:,1,:], axes=(3,)))
+        dij = dij.set(csdl.slice[:,:,:,2], value=csdl.norm(dpij[:,:,:,2,:], axes=(3,)))
+        mesh_dict['dij'] = dij
+
+        nodal_vel = mesh_dict['nodal_velocity']
+        v1 = nodal_vel[:,:,list(cell_point_indices[:,0]),:]
+        v2 = nodal_vel[:,:,list(cell_point_indices[:,1]),:]
+        v3 = nodal_vel[:,:,list(cell_point_indices[:,2]),:]
+        mesh_dict['coll_point_velocity'] = (v1+v2+v3)/3.
 
     return mesh_dict
+
+
+'''
+==================== NOTES ====================
+The pre-processor computes parameters of the mesh:
+- collocation points -> DONE
+- normalized panel local coordinate system (one normal vector, two in-plane vectors) -> DONE
+- one variable holding all local coordinate system vectors -> DONE
+- panel corners and areas -> DONE
+- panel delta projections across adjacent elements -> DONE
+- dij, dpij (used for AIC) -> DONE
+- collocation point velocity -> DONE
+
+TODO: Figure out how to define local coordinate systems to shift panel collocation points inward
+
+'''

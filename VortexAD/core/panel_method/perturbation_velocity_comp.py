@@ -196,3 +196,45 @@ def least_squares_velocity(mu_grid, delta_coll_point):
     qm = -dmu_d[:,:,1::2].reshape((num_nodes, nt, nc_panels, ns_panels))
 
     return ql, qm
+
+def unstructured_least_squares_velocity(mu, delta_coll_point, cell_adjacency):
+
+    num_nodes, nt = mu.shape[:2]
+    num_tot_panels = mu.shape[2]
+
+    diag_list_dl = np.arange(start=0, stop=2*num_tot_panels, step=2)
+    diag_list_dm = list(diag_list_dl + 1)
+    diag_list_dl = list(diag_list_dl)
+
+    C = csdl.Variable(shape=(num_nodes, nt, num_tot_panels*2, num_tot_panels*2), value=0.)
+    b = csdl.Variable(shape=(num_nodes, nt, num_tot_panels*2), value=0.)
+
+    sum_dl_sq = csdl.sum(delta_coll_point[:,:,:,:,0]**2, axes=(3,))
+    sum_dm_sq = csdl.sum(delta_coll_point[:,:,:,:,1]**2, axes=(3,))
+    sum_dl_dm = csdl.sum(delta_coll_point[:,:,:,:,0]*delta_coll_point[:,:,:,:,1], axes=(3,))
+
+    C = C.set(csdl.slice[:,:,diag_list_dl, diag_list_dl], value=sum_dl_sq)
+    C = C.set(csdl.slice[:,:,diag_list_dm, diag_list_dm], value=sum_dm_sq)
+    C = C.set(csdl.slice[:,:,diag_list_dl, diag_list_dm], value=sum_dl_dm)
+    C = C.set(csdl.slice[:,:,diag_list_dm, diag_list_dl], value=sum_dl_dm)
+
+    dmu = csdl.Variable(shape=(num_nodes, nt, num_tot_panels, 3), value=0.)
+    dmu = dmu.set(csdl.slice[:,:,:,0], value=mu - mu[:,:,list(cell_adjacency[:,0])])
+    dmu = dmu.set(csdl.slice[:,:,:,1], value=mu - mu[:,:,list(cell_adjacency[:,1])])
+    dmu = dmu.set(csdl.slice[:,:,:,2], value=mu - mu[:,:,list(cell_adjacency[:,2])])
+
+    dl_dot_dmu = csdl.sum(delta_coll_point[:,:,:,:,0]*dmu, axes=(3,))
+    dm_dot_dmu = csdl.sum(delta_coll_point[:,:,:,:,1]*dmu, axes=(3,))
+
+    b = b.set(csdl.slice[:,:,0::2], value=dl_dot_dmu)
+    b = b.set(csdl.slice[:,:,1::2], value=dm_dot_dmu)
+    
+    dmu_d = csdl.Variable(shape=(num_nodes, nt, num_tot_panels*2), value=0.)
+    for i in csdl.frange(num_nodes):
+        for j in csdl.frange(nt):
+            dmu_d = dmu_d.set(csdl.slice[i,j,:], value=csdl.solve_linear(C[i,j,:,:], b[i,j,:]))
+
+    ql = -dmu_d[:,:,0::2]
+    qm = -dmu_d[:,:,1::2]
+
+    return ql, qm

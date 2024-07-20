@@ -4,26 +4,46 @@ from VortexAD.core.panel_method.source_doublet.initialize_unsteady_wake import i
 from VortexAD.core.panel_method.source_doublet.transient_solver import transient_solver
 from VortexAD.core.panel_method.source_doublet.transient_solver_new import transient_solver_new
 
-def mu_sigma_solver(num_nodes, nt, mesh_dict, dt, free_wake=False):
+from VortexAD.core.panel_method.source_doublet.unstructured_transient_solver import unstructured_transient_solver
 
-    surface_names = list(mesh_dict.keys())
-    num_tot_panels = 0
-    for surface in surface_names:
-        num_tot_panels += mesh_dict[surface]['num_panels']
+def mu_sigma_solver(num_nodes, nt, mesh_dict, dt, mesh_mode='structured', free_wake=False):
 
-    wake_mesh_dict = initialize_unsteady_wake(mesh_dict, num_nodes, dt, panel_fraction=1.)
+    if mesh_mode == 'structured':
+        surface_names = list(mesh_dict.keys())
+        num_tot_panels = 0
+        for surface in surface_names:
+            num_tot_panels += mesh_dict[surface]['num_panels']
+    elif mesh_mode == 'unstructured':
+        num_tot_panels = len(mesh_dict['cell_adjacency'])
 
-    # sigma = compute_source_strengths(mesh_dict, surface_names, num_nodes, nt, num_tot_panels) # shape=(num_nodes, nt, num_surf_panels)
+    wake_mesh_dict = initialize_unsteady_wake(mesh_dict, num_nodes, dt, mesh_mode=mesh_mode, panel_fraction=0.25)
 
+    if mesh_mode == 'structured':
+        mu, sigma, mu_wake = transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt, free_wake=free_wake)
+        # mu, sigma, mu_wake = transient_solver_new(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt, free_wake=free_wake)
+
+    elif mesh_mode == 'unstructured':
+        mu, sigma, mu_wake = unstructured_transient_solver(
+            mesh_dict,
+            wake_mesh_dict,
+            num_nodes,
+            nt,
+            num_tot_panels,
+            dt,
+            free_wake=free_wake
+        )
+
+    return mu, sigma, mu_wake, wake_mesh_dict
+
+    # OLD SETUP
+    # note that the prescribed wake solver was working previously, but not the free-wake mode
     if free_wake:
         mu, sigma, mu_wake = transient_solver_new(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt, free_wake=free_wake)
     
-        # return mu, sigma, wake_mesh_dict, induced_vel
-        return mu, sigma, mu_wake, wake_mesh_dict
     else:
-        mu, sigma, mu_wake = transient_solver_new(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt)
+        mu, sigma, mu_wake = transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt)
     
-        return mu, sigma, mu_wake, wake_mesh_dict
+    
 
     
 

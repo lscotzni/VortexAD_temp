@@ -1,7 +1,7 @@
 import numpy as np
 import gmsh
 
-def gen_gmsh_unstructured_mesh(span_array, thickness_array, chord_array, name='mesh'):
+def gen_gmsh_unstructured_mesh_quad(span_array, thickness_array, chord_array, name='mesh'):
     nc, ns = len(chord_array) - 1, len(span_array)
     gmsh.initialize()
     gmsh.option.setNumber("Mesh.Algorithm", 8)
@@ -84,6 +84,46 @@ def gen_gmsh_unstructured_mesh(span_array, thickness_array, chord_array, name='m
     gmsh_kernel.synchronize()
     gmsh.model.mesh.generate(2)
 
+
+    gmsh.write(f'{name}.msh')
+    gmsh.fltk.run()
+
+    exit()
+
+def gen_gmsh_unstructured_mesh(span_array, thickness_array, chord_array, name='mesh'):
+    nc, ns = len(chord_array) - 1, len(span_array)
+    gmsh.initialize()
+    gmsh.option.setNumber("Mesh.Algorithm", 8)
+    gmsh.model.add(name)
+    gmsh_kernel = gmsh.model.occ # geo or occ
+
+    spanwise_steps = (span_array[-1] - span_array[0]) / (ns-1)
+
+    # adding points
+    point_tags = []
+    for i in range(nc):
+        gmsh_kernel.add_point(chord_array[i], span_array[0], thickness_array[i], meshSize=spanwise_steps, tag=i+1)
+        point_tags.append(i+1)
+    point_tags.append(point_tags[0])
+    
+    chordwise_line_tags = []
+    for i in range(nc):
+        gmsh_kernel.add_line(point_tags[i], point_tags[i+1], tag=i+1)
+        chordwise_line_tags.append(i+1)
+        
+    gmsh_kernel.add_curve_loop(chordwise_line_tags, tag=1)
+    gmsh_kernel.add_plane_surface([1], tag=1)
+
+    gmsh_kernel.extrude([(2,1)], 0, (span_array[-1] - span_array[0]), 0)
+
+    gmsh_kernel.synchronize()
+
+    asdf = gmsh.model.getNormal(1, (0.5, 0.5))
+
+    # gmsh.model.mesh.setOutwardOrientation(tag)
+    gmsh.model.mesh.setReverse(2, 1, val=True) # reverses normal direction of surface 1 mesh
+
+    gmsh.model.mesh.generate(2)
 
     gmsh.write(f'{name}.msh')
     gmsh.fltk.run()

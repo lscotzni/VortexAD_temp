@@ -6,10 +6,15 @@ import matplotlib.pyplot as plt
 import time
 # from VortexAD.utils.plot import plot_wireframe
 
+from VortexAD.utils.cell_adjacency import find_cell_adjacency
+
+from VortexAD import SAMPLE_GEOMETRY_PATH
+import meshio
+
 b = 10
 c = 1.564
 ns = 11
-nc = 15
+nc = 5
 
 alpha = np.deg2rad(0.) # aoa
 
@@ -19,8 +24,27 @@ V_inf = np.array([sos*mach, 0., 0.])
 nt = 5
 num_nodes = 1
 
-points_orig, connectivity = gen_panel_mesh(nc, ns, c, b, frame='default', unstructured=True, plot_mesh=False)
+# points_orig, connectivity = gen_panel_mesh(nc, ns, c, b, frame='default', unstructured=True, plot_mesh=False)
+# exit()
 
+file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/naca0012_mesh.msh'
+mesh = meshio.read(
+    file_name,  # string, os.PathLike, or a buffer/open file
+    # file_format="stl",  # optional if filename is a path; inferred from extension
+    # see meshio-convert -h for all possible formats
+)
+# NOTE: THE THREE LISTS BELOW USE 1-BASE INDEXING; NEED TO SHIFT DOWN BY 1
+upper_TE_cells = np.array([260, 263, 265, 266, 268, 270, 272, 275, 276, 261]) - 112 - 1
+lower_TE_cells = np.array([119, 123, 125, 127, 129, 131, 132, 135, 137, 122]) - 112 - 1
+TE_node_indices = np.array([1, 17, 18, 19, 20, 21, 22, 23, 24, 25, 9]) - 1
+
+points_orig = mesh.points
+cells = mesh.cells
+cells_dict = mesh.cells_dict
+
+triangles = cells_dict['triangle']
+lines = cells_dict['line']
+points_orig, triangles, cell_adjacency = find_cell_adjacency(points=points_orig, cells=triangles)
 
 points = np.zeros((num_nodes, nt) + points_orig.shape)
 for i in range(num_nodes):
@@ -39,16 +63,24 @@ for i in range(num_nodes):
     for j in range(nt):
         point_velocities[i,j,:] = V_inf_rot
 
-recorder = csdl.Recorder(inline=False)
+recorder = csdl.Recorder(inline=True)
 recorder.start()
 
 points = csdl.Variable(value=points)
 point_velocities = csdl.Variable(value=point_velocities)
+TE_data = [TE_node_indices, (upper_TE_cells, lower_TE_cells)]
 
-point_list = [points]
-point_velocity_list = [point_velocities]
+connectivity_data = [triangles, cell_adjacency]
+
 start_time = time.time()
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(point_list, point_velocity_list, dt=0.01, connectivity=connectivity, mesh_mode='unstructured')
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(
+    points, 
+    connectivity_data, 
+    TE_data, 
+    point_velocities, 
+    dt=0.01, 
+    mesh_mode='unstructured'
+)
 run_stop = time.time()
 
 CL = output_dict['surface_0']['CL']

@@ -99,8 +99,8 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
     }
     airfoil_data['x'][:zero_ind] *= -1
 
-    # airfoil_data['z'][-1] = (airfoil_data['z'][0]+airfoil_data['z'][-1]) / 2.
-    # airfoil_data['z'][0] = airfoil_data['z'][-1] 
+    airfoil_data['z'][-1] = (airfoil_data['z'][0]+airfoil_data['z'][-1]) / 2.
+    airfoil_data['z'][0] = airfoil_data['z'][-1] 
 
     # origin at the wing LE center
     mesh = np.zeros((2*nc-1, ns, 3))
@@ -133,7 +133,7 @@ def gen_panel_mesh(nc, ns, chord, span, span_spacing='linear', airfoil='naca0012
         mesh[-1,:,:] = mesh[0,:,:]
 
     elif unstructured:
-        # mesh = gen_gmsh_unstructured_mesh(span_array, thickness_interp, c_mesh_interp*chord, name=airfoil+'_mesh')
+        mesh = gen_gmsh_unstructured_mesh(span_array, thickness_interp, c_mesh_interp*chord, name=airfoil+'_mesh')
         points, connectivity = convert_to_unstructured(mesh)
 
     airfoil_data['x'][:zero_ind] *= -1
