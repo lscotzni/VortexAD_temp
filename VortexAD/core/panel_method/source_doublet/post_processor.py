@@ -132,6 +132,8 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         surf_dict['CDi'] = CDi
         surf_dict['Fx_panel'] = Fx_panel
         surf_dict['Fz_panel'] = Fz_panel
+        surf_dict['panel_forces'] = dF
+        
         output_dict[surface_name] = surf_dict
 
         # print(CL.value)
@@ -143,6 +145,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
 def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
     x_dir_global = np.array([1., 0., 0.])
     z_dir_global = np.array([0., 0., 1.])
+    output_dict = {}
 
     qn = -sigma
     delta_coll_point = mesh_dict['delta_coll_point']
@@ -180,7 +183,6 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
     Fz_panel = csdl.tensordot(dF, z_dir_global, axes=([3],[0]))
     Fx_panel = csdl.tensordot(dF, x_dir_global, axes=([3],[0]))
 
-
     aoa = csdl.arctan(coll_vel[:,:,:,2]/coll_vel[:,:,:,0])
     cosa, sina = csdl.cos(aoa), csdl.sin(aoa)
 
@@ -196,4 +198,9 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
     CL = L/(0.5*rho*ref_area*Q_inf**2)
     CDi = Di/(0.5*rho*ref_area*Q_inf**2)
 
-    return
+    output_dict['CL'] = CL
+    output_dict['CDi'] = CDi
+    output_dict['Cp'] = Cp
+    output_dict['panel_forces'] = dF
+
+    return output_dict

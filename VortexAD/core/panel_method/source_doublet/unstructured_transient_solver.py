@@ -101,16 +101,20 @@ def unstructured_transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_
 
         kutta_condition = wake_doublet_influence[:,:,:num_first_wake_panels]
 
-        AIC_mu_adjustment = AIC_mu_adjustment.set(csdl.slice[:,t,:,list(lower_TE_cell_ind)], value=-kutta_condition.reshape((len(lower_TE_cell_ind), num_nodes, num_tot_panels)))
-        AIC_mu_adjustment = AIC_mu_adjustment.set(csdl.slice[:,t,:,list(upper_TE_cell_ind)], value=kutta_condition.reshape((len(lower_TE_cell_ind), num_nodes, num_tot_panels)))
+        kc_reshaped = kutta_condition.reshape((len(lower_TE_cell_ind), num_nodes, num_tot_panels))
+
+        AIC_mu_adjustment = AIC_mu_adjustment.set(csdl.slice[:,t,:,list(lower_TE_cell_ind)], value=-kc_reshaped)
+        AIC_mu_adjustment = AIC_mu_adjustment.set(csdl.slice[:,t,:,list(upper_TE_cell_ind)], value=kc_reshaped)
 
         mu_wake_minus_1 = mu_wake_minus_1.set(csdl.slice[:,t,:], value=mu_wake[:,t,num_first_wake_panels:])
 
         # solving linear system
-        AIC_mu_total = AIC_mu_total.set(csdl.slice[:,t,:,:], value=AIC_mu[:,t,:,:]+AIC_mu_adjustment[:,t,:,:])
+        # AIC_mu_total = AIC_mu_total.set(csdl.slice[:,t,:,:], value=AIC_mu[:,t,:,:]+AIC_mu_adjustment[:,t,:,:])
+        AIC_mu_total = AIC_mu_total.set(csdl.slice[:,t,:,:], value=AIC_mu[:,t,:,:])
         for nn in csdl.frange(num_nodes):
             wake_influence = csdl.matvec(AIC_wake[nn,t,:,:], mu_wake_minus_1[nn,t,:])
-            RHS = -sigma_BC_influence[nn,t,:] - wake_influence
+            # RHS = -sigma_BC_influence[nn,t,:] - wake_influence
+            RHS = -sigma_BC_influence[nn,t,:]
             mu_timestep = csdl.solve_linear(AIC_mu_total[nn,t,:,:], RHS)
             mu = mu.set(csdl.slice[nn,t,:], value=mu_timestep)
         
