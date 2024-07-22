@@ -13,7 +13,7 @@ b = 10.
 # c = 1.564
 c = 1.
 ns = 11
-nc = 41
+nc = 31
 
 alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
@@ -23,19 +23,19 @@ sos = 340.3
 # V_inf = np.array([sos*mach, 0., 0.])
 # V_inf = np.array([-10., 0., 0.])
 V_inf = np.array([-10., 0., 0.])
-nt = 15
+nt = 50
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False)
+mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
 # mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
 # mesh_orig[:,:,1] += 5.
 # exit()
 
-# filename = str(SAMPLE_GEOMETRY_PATH) + '/pm/wing_NACA0012_ar10.vtk'
-# nc, ns = 11, 5
-# mesh_data = pv.read(filename)
-# mesh_orig = mesh_data.points.reshape((2*nc-1,ns,3))
-# mesh_orig[:,:,1] -= 5.
+filename = str(SAMPLE_GEOMETRY_PATH) + '/pm/wing_NACA0012_ar10.vtk'
+nc, ns = 11, 5
+mesh_data = pv.read(filename)
+mesh_orig = mesh_data.points.reshape((2*nc-1,ns,3))
+mesh_orig[:,:,1] -= 5.
 
 
 mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
@@ -95,24 +95,24 @@ Cp = jax_sim[Cp]
 CL = jax_sim[CL]
 CDi = jax_sim[CDi]
 mu = jax_sim[mu]
+mu_wake = jax_sim[mu_wake]
+wake_mesh = jax_sim[wake_mesh]
 
 mu_value = mu[0,-2,:].reshape((nc-1)*2,ns-1)
-
-# CL = jax_sim[output_dict['surface_0']['CL']]
-
-# CL  = output_dict['surface_0']['CL'].value
-# CDi = output_dict['surface_0']['CDi'].value
-# mu_value = mu.value[0,-2,:].reshape((nc-1)*2,ns-1)
 
 print('doublet distribution:')
 print(mu_value)
 print(f'CL: {CL}')
 print(f'CDi: {CDi}')
 
-# >>> mesh_dict['surface_0'].keys()
-# dict_keys(['mesh', 'nodal_velocity', 'num_panels', 'nc', 'ns', 'panel_center', 'panel_corners', 'panel_area', 'panel_x_dir', 'panel_y_dir', 'panel_normal', 'panel_dl_norm', 'panel_dm_norm', 'delta_coll_point', 'dpij_global', 'local_coord_vec', 'dpij', 'dij', 'mij', 'coll_point_velocity', 'planform_area'])
-# >>> wake_mesh_dict['surface_0'].keys()
-# dict_keys(['mesh', 'nc', 'ns', 'num_panels', 'num_points', 'panel_center', 'panel_corners', 'panel_area', 'panel_x_dir', 'panel_y_dir', 'panel_normal', 'dpij', 'dij', 'mij', 'wake_nodal_velocity'])
+# import pickle
+# Cp_data = {
+#     'coll_points':coll_points[0,0,:,int((ns-1)/2),0] / mesh[0,0,0,int((ns-1)/2),0],
+#     'Cp': Cp[0,-2,:,int((ns-1)/2)]
+# }
+# filehandler = open(f'Cp_nc_{nc}_ns_{ns}_nt_{nt}', 'wb')
+# pickle.dump(Cp_data, filehandler)
+# filehandler.close
 
 save_data = False
 if save_data:
@@ -398,4 +398,4 @@ if False:
 
 if False:
     # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')
-    plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name='free_wake_demo')
+    plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive=False, backend='cv', name='free_wake_demo')

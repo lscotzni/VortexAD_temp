@@ -89,7 +89,8 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
             mesh_dict[key]['delta_coll_point'] = delta_coll_point
 
             # panel_center_mod = panel_center - panel_normal*0.00000001/csdl.expand(panel_area, panel_normal.shape, 'ijkl->ijkla')
-            panel_center_mod = panel_center - panel_normal*0.000001
+            # panel_center_mod = panel_center - panel_normal*0.000001
+            panel_center_mod = panel_center - panel_normal*0.0001
             # panel_center_mod = panel_center
             mesh_dict[key]['panel_center'] = panel_center_mod
 

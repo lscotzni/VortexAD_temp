@@ -14,7 +14,7 @@ def transient_solver_new(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panel
     surface_names = list(mesh_dict.keys())
     num_surfaces = len(surface_names)
 
-    sigma = compute_source_strengths(mesh_dict, surface_names, num_nodes, nt, num_tot_panels) # shape=(num_nodes, nt, num_surf_panels)
+    sigma = compute_source_strengths(mesh_dict, num_nodes, nt, num_tot_panels, mesh_mode='structured') # shape=(num_nodes, nt, num_surf_panels)
 
     AIC_sigma = csdl.Variable(shape=(num_nodes, nt, num_tot_panels, num_tot_panels), value=0.)
     AIC_mu = csdl.Variable(shape=(num_nodes, nt, num_tot_panels, num_tot_panels), value=0.)
