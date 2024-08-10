@@ -138,7 +138,7 @@ def vlm_solver(mesh_list,
 
     print('running post-processing')
     surface_output_dict, total_output_dict = post_processor(
-        num_nodes, mesh_dict, gamma, alpha_ML=alpha_ml,
+        num_nodes, mesh_dict, gamma, rho=atmos_states.density, alpha_ML=alpha_ml,
         airfoil_Cd_models=airfoil_Cd_models,
         airfoil_Cl_models=airfoil_Cl_models,
         airfoil_Cp_models=airfoil_Cp_models,

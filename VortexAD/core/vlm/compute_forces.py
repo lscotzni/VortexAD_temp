@@ -1,14 +1,16 @@
 import numpy as np
 import csdl_alpha as csdl 
 
-def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha_ML=None, 
-               airfoil_Cl_models=None,
-               airfoil_Cd_models=None,
-               airfoil_Cp_models=None,
-               airfoil_alpha_stall_models=None,
-               reynolds_numbers=None,
-               chord_length_mid_panel=None,
-               ref_point='default'):
+def compute_forces(num_nodes, mesh_dict, output_dict, rho,
+    V_inf=None, alpha_ML=None, 
+    airfoil_Cl_models=None,
+    airfoil_Cd_models=None,
+    airfoil_Cp_models=None,
+    airfoil_alpha_stall_models=None,
+    reynolds_numbers=None,
+    chord_length_mid_panel=None,
+    ref_point='default'
+):
     surface_names = list(mesh_dict.keys())
     num_surfaces = len(surface_names)
 
@@ -69,9 +71,9 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha_ML=None,
         # print(v_total.value)
         # exit()
 
-        rho=1.225
-
-        panel_forces = net_gamma_exp*csdl.cross(v_total, bound_vec, axis=3) * rho
+        # rho=1.225 # TODO: get from CADDEE
+        rho_exp = csdl.expand(rho, net_gamma_exp.shape, 'i->ijkl')
+        panel_forces = net_gamma_exp*csdl.cross(v_total, bound_vec, axis=3) * rho_exp
         output_dict[surface_name]['total_forces'] = panel_forces
         # print('panel_forces:')
         # print(panel_forces.value)
@@ -112,8 +114,9 @@ def compute_forces(num_nodes, mesh_dict, output_dict, V_inf=None, alpha_ML=None,
         panel_drag = panel_forces_z*sina + panel_forces_x*cosa
 
         spanwise_sec_lift = csdl.sum(panel_lift, axes=(1,)) # summing across chordwise direction
-        spanwise_Cl = spanwise_sec_lift / (0.5 * rho * csdl.norm(V_inf, axes=(2, ))**2 * spanwise_areas) * -1
-        Ma = csdl.Variable(shape=spanwise_sec_lift.shape, value=0.18)
+        rho_exp_2 = csdl.expand(rho, spanwise_sec_lift.shape, 'i->ij')
+        spanwise_Cl = spanwise_sec_lift / (0.5 * rho_exp_2 * csdl.norm(V_inf, axes=(2, ))**2 * spanwise_areas) * -1
+        Ma = csdl.Variable(shape=spanwise_sec_lift.shape, value=0.18) # TODO: mach number is hard coded here
 
         if airfoil_alpha_stall_models[i] is not None:
             alpha_min_max = airfoil_alpha_stall_models[i].evaluate(alpha=Ma, Re=reynolds_numbers[i], Ma=Ma)
