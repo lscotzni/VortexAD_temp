@@ -53,4 +53,4 @@ def find_cell_adjacency(points, cells):
     # cells = cells_new
     # points = np.array(new_points)
 
-    return points, cells, cell_adjacency
+    return points, cells, cell_adjacency, edges2cells

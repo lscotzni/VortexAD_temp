@@ -27,12 +27,11 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         # perturbation velocities
         qn = -sigma[:,:,start:stop].reshape((num_nodes, nt, nc-1, ns-1)) # num_nodes, nt, num_panels for surface
 
-        pos_dl_norm, neg_dl_norm = mesh_dict[surface_name]['panel_dl_norm']
-        pos_dm_norm, neg_dm_norm = mesh_dict[surface_name]['panel_dm_norm']
-
         if True:
             # region least squares method for perturbation velocities (derivatives)
             delta_coll_point = mesh_dict[surface_name]['delta_coll_point']
+            # print(delta_coll_point[0,0,-1,:,:,:].value)
+            # exit()
             # ql, qm = least_squares_velocity_old(mu_grid, delta_coll_point)
             ql, qm = least_squares_velocity(mu_grid, delta_coll_point)
             # endregion
@@ -40,6 +39,9 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
             # region updated fd method
             # FUTURE FIX: MAKE A GRID AT THE CENTER OF PANEL EDGES THAT HOLDS A DL BETWEEN CORRESPONDING PANEL CENTERS
             # WE SAVE 2X INFORMATION THIS WAY
+            pos_dl_norm, neg_dl_norm = mesh_dict[surface_name]['panel_dl_norm']
+            pos_dm_norm, neg_dm_norm = mesh_dict[surface_name]['panel_dm_norm']
+
             dl = csdl.Variable(shape=pos_dl_norm.shape + (2,), value=0.) # last dimension is (negative dl, positive dl)
             dl = dl.set(csdl.slice[:,:,1:,:,0], value=neg_dl_norm[:,:,1:,:] + pos_dl_norm[:,:,:-1,:])
             dl = dl.set(csdl.slice[:,:,0,:,0], value=neg_dl_norm[:,:,0,:] + pos_dl_norm[:,:,-1])
@@ -75,16 +77,23 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         panel_x_dir = mesh_dict[surface_name]['panel_x_dir']
         panel_y_dir = mesh_dict[surface_name]['panel_y_dir']
         panel_normal = mesh_dict[surface_name]['panel_normal']
+        nodal_cp_velocity = mesh_dict[surface_name]['nodal_cp_velocity']
         coll_vel = mesh_dict[surface_name]['coll_point_velocity']
+        if coll_vel:
+            total_vel = nodal_cp_velocity+coll_vel
+        else:
+            total_vel = nodal_cp_velocity
 
-        free_stream_l = csdl.einsum(coll_vel, panel_x_dir, action='ijklm,ijklm->ijkl')
-        free_stream_m = csdl.einsum(coll_vel, panel_y_dir, action='ijklm,ijklm->ijkl')
-        free_stream_n = csdl.einsum(coll_vel, panel_normal, action='ijklm,ijklm->ijkl')
-
+        free_stream_l = csdl.einsum(total_vel, panel_x_dir, action='ijklm,ijklm->ijkl')
+        free_stream_m = csdl.einsum(total_vel, panel_y_dir, action='ijklm,ijklm->ijkl')
+        free_stream_n = csdl.einsum(total_vel, panel_normal, action='ijklm,ijklm->ijkl')
+        # print(mu_grid[0,0,:,:].value)
+        # print(ql[0,0,:,:].value)
+        # exit()
         Ql = free_stream_l + ql
         Qm = free_stream_m + qm
         Qn = free_stream_n + qn
-        Q_inf_norm = csdl.norm(coll_vel, axes=(4,))
+        Q_inf_norm = csdl.norm(total_vel, axes=(4,))
 
         dmu_dt = csdl.Variable(shape=Q_inf_norm.shape, value=0)
         if nt > 2:
@@ -96,10 +105,11 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         Cp = Cp_static + Cp_dynamic
         # Cp = 1 - (Ql**2 + Qm**2 + Qn**2)/Q_inf_norm**2 - dmu_dt*2./Q_inf_norm**2
         # Cp = 1 - (Ql**2 + Qn**2)/Q_inf_norm**2 - dmu_dt*2./Q_inf_norm**2
-
+        
         panel_area = mesh_dict[surface_name]['panel_area']
 
         rho = 1.225
+        # rho = 1000.
         dF_no_normal = -0.5*rho*Q_inf_norm**2*panel_area*Cp
         dF = csdl.expand(dF_no_normal, panel_normal.shape, 'ijkl->ijkla') * panel_normal
 
@@ -108,7 +118,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
 
         nc_panels = int(num_panels/(ns-1))
 
-        LE_velocity = (coll_vel[:,:,int((nc_panels/2)-1),:,:] + coll_vel[:,:,int(nc_panels/2),:,:])/2.
+        LE_velocity = (total_vel[:,:,int((nc_panels/2)-1),:,:] + total_vel[:,:,int(nc_panels/2),:,:])/2.
         aoa = csdl.arctan(LE_velocity[:,:,:,2]/LE_velocity[:,:,:,0])
 
         aoa_exp = csdl.expand(aoa, Fz_panel.shape, 'ijk->ijak')
@@ -138,6 +148,8 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
 
         # print(CL.value)
         # print(CDi.value)
+
+        start += num_panels
 
 
     return output_dict

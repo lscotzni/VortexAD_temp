@@ -16,7 +16,14 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
 
     sigma = compute_source_strengths(mesh_dict, num_nodes, nt, num_tot_panels, mesh_mode='structured') # shape=(num_nodes, nt, num_surf_panels)
     AIC_mu, AIC_sigma = static_AIC_computation(mesh_dict, num_nodes, nt, num_tot_panels, surface_names)
-    
+    asdf = list(np.arange(0,AIC_mu.shape[-1]))
+    # AIC_mu = (AIC_mu**2)**0.5
+    # AIC_mu = AIC_mu.set(csdl.slice[:,:,asdf,asdf], value=(AIC_mu[:,:,asdf,asdf]**2)**0.5)
+    # print(AIC_mu[0,0,asdf,asdf].value)
+    # print(AIC_mu[0,0,0,:].value)
+    # print(AIC_sigma[0,0,asdf,asdf].value)
+    # print(AIC_sigma[0,0,0,:].value)
+    # exit()
     '''
     AIC_sigma = csdl.Variable(shape=(num_nodes, nt, num_tot_panels, num_tot_panels), value=0.)
     AIC_mu = csdl.Variable(shape=(num_nodes, nt, num_tot_panels, num_tot_panels), value=0.)
@@ -126,7 +133,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
             print(f'timestep {t}')
             start_i, stop_i = 0, 0
             for i in range(num_surfaces): # surface where BC is applied
-
+                # print(f'i: {i}')
                 surf_i_name = surface_names[i]
                 coll_point_i = mesh_dict[surf_i_name]['panel_center'][:,t,:,:,:] # evaluation point
                 nc_i, ns_i = mesh_dict[surf_i_name]['nc'], mesh_dict[surf_i_name]['ns']
@@ -136,7 +143,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                 start_j, stop_j = 0, 0
                 start_j_surf, stop_j_surf = 0, 0
                 for j in range(num_surfaces): # looping through wakes
-
+                    # print(f'j: {j}')
                     surf_j_name = surface_names[j]
                     nc_j, ns_j = wake_mesh_dict[surf_j_name]['nc'], wake_mesh_dict[surf_j_name]['ns']
                     num_panels_j = wake_mesh_dict[surf_j_name]['num_panels']
@@ -214,7 +221,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                     # AIC_mu = AIC_mu.set(csdl.slice[:,t,start_i:stop_i, (stop_j_surf-(ns_j-1)):stop_j_surf], value=kutta_condition+AIC_mu[:,t,start_i:stop_i, (stop_j_surf-(ns_j-1)):stop_j_surf])
                     1
 
-                    start_j += num_panels_j - ns_j
+                    start_j += num_panels_j - (ns_j-1)
                     start_j_surf += num_panels_j_surf
 
                 start_i += num_panels_i
@@ -296,7 +303,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                 wake_velocity_timestep = wake_velocity[:,t,:,:,:]
 
                 if free_wake:
-                    total_vel = wake_velocity_timestep - induced_vel[:,:].reshape((num_nodes, nc_w, ns_w, 3))
+                    total_vel = wake_velocity_timestep + induced_vel[:,:].reshape((num_nodes, nc_w, ns_w, 3))
                 else:
                     total_vel = wake_velocity_timestep
                 dx = total_vel*dt
@@ -310,8 +317,12 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                 wake_mesh_dict[surface_name]['wake_nodal_velocity'] = wake_velocity
 
                 wake_mesh_dict[surface_name] = wake_geometry(surf_wake_mesh_dict=wake_mesh_dict[surface_name], time_ind=t+1)
-            1
 
+                start_i_s += num_panels_s
+                start_i_w += num_panels_w
+            1
+    # print(mu[0,-2,:].value)
+    # exit()
     return mu, sigma, mu_wake
 
 def static_AIC_computation(mesh_dict, num_nodes, nt, num_tot_panels, surface_names):

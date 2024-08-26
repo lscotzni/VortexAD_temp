@@ -125,11 +125,118 @@ def gen_gmsh_unstructured_mesh(span_array, thickness_array, chord_array, name='m
 
     gmsh.model.mesh.generate(2)
 
-    gmsh.write(f'{name}.msh')
+    gmsh.write(f'{name}_new.msh')
     gmsh.fltk.run()
 
     exit()
 
+def gen_gmsh_unstructured_mesh_new(span_array, thickness_array, chord_array, name='mesh'):
+    nc, ns = len(chord_array)-1, len(span_array)
+    gmsh.initialize()
+    gmsh.option.setNumber("Mesh.Algorithm", 8)
+    # gmsh.option.setNumber("General.Verbosity", 99)
+    # gmsh.option.setNumber("Geometry.AbortOnError", 0)
+    gmsh.model.add(name)
+    gmsh_kernel = gmsh.model.occ # geo or occ
+
+    LE_ind = int(nc/2)
+    spanwise_steps = (span_array[-1] - span_array[0]) / (ns-1)
+    chord_step = (chord_array[0] - chord_array[LE_ind]) / (nc/2) 
+
+    step = chord_step
+    
+    # spanwise_steps = .05
+    '''
+    Steps to build wing mesh:
+    - define chord points at span_array[0]
+    - set up lines for chord
+    - define chord points at span_array[1] in REVERSE ORDER
+    - set up lines for chord (same ordering, do in reverse again)
+    - add line from TE of first chord points to TE of last chord points
+    - add line for LE
+    '''
+
+    # adding points of chord at span_array_0
+    point_tags_0 = []
+    for i in range(nc):
+        point_tag = i+1
+        gmsh_kernel.add_point(chord_array[i], span_array[0], thickness_array[i], meshSize=step, tag=point_tag)
+        point_tags_0.append(point_tag)
+    point_tags_0.append(point_tags_0[0])
+
+    
+
+    print(point_tags_0)
+    # exit()
+
+    # adding points of chord at span_array_1
+    point_tags_1 = []
+    for i in range(nc):
+        point_tag = len(point_tags_0)+i+1
+        gmsh_kernel.add_point(chord_array[-i-1], span_array[-1], thickness_array[-i-1], meshSize=step, tag=point_tag)
+        point_tags_1.append(point_tag)
+    point_tags_1.append(point_tags_1[0])
+    
+    # adding_lines of chord at span_array_0
+    chordwise_line_tags_0 = []
+    for i in range(nc):
+        line_tag = i+1
+        gmsh_kernel.add_line(point_tags_0[i], point_tags_0[i+1], tag=line_tag)
+        chordwise_line_tags_0.append(line_tag)
+
+    # adding_lines of chord at span_array_1
+    chordwise_line_tags_1 = []
+    for i in range(nc):
+        line_tag = len(chordwise_line_tags_0)+i+1
+        gmsh_kernel.add_line(point_tags_1[i], point_tags_1[i+1], tag=line_tag)
+        chordwise_line_tags_1.append(line_tag)
+
+    gmsh_kernel.synchronize()
+    
+    num_lines = len(chordwise_line_tags_0) + len(chordwise_line_tags_1)
+    TE_line = gmsh_kernel.addLine(point_tags_0[0], point_tags_1[0], num_lines+1) # TE
+    
+    LE_line = gmsh_kernel.addLine(point_tags_1[LE_ind], point_tags_0[LE_ind], num_lines+2) # LE
+
+    gmsh_kernel.synchronize()
+
+    # gmsh.model.addPhysicalGroup(1, [TE_line], 1, name='trailing_edge')
+    # gmsh.model.addPhysicalGroup(1, [LE_line], 2,name='leading_edge')
+
+    # 4 SURFACES: TOP, BOTTOM, WING TIPS
+    # SURFACE 1: TOP SURFACE
+    s1_list = chordwise_line_tags_0[LE_ind:] + [num_lines+1] + chordwise_line_tags_1[:LE_ind]+ [num_lines+2]
+    asdf = gmsh_kernel.add_curve_loop(s1_list)
+    gmsh_kernel.add_surface_filling(asdf, tag=1)
+
+    # SURFACE 2: BOTTOM SURFACE
+    s2_list = chordwise_line_tags_0[:LE_ind] + [num_lines+2] + chordwise_line_tags_1[LE_ind:]+ [num_lines+1]
+    asdf = gmsh_kernel.add_curve_loop(s2_list)
+    gmsh_kernel.add_surface_filling(asdf, tag=2)
+
+
+    # SURFACE 3: one wing tip
+    asdf = gmsh_kernel.add_curve_loop(chordwise_line_tags_0)
+    gmsh_kernel.add_surface_filling(asdf, tag=3)
+
+    # SURFACE 4: one wing tip
+    asdf = gmsh_kernel.add_curve_loop(chordwise_line_tags_1)
+    gmsh_kernel.add_surface_filling(asdf, tag=4)
+
+    gmsh_kernel.synchronize()
+
+    # asdf = gmsh.model.getNormal(1, (0.5, 0.5))
+
+    # gmsh.model.mesh.setOutwardOrientation(tag)
+    # gmsh.model.mesh.setReverse(2, 3, val=True) # reverses normal direction of surface 1 mesh
+    # gmsh.model.mesh.setReverse(2, 4, val=True) # reverses normal direction of surface 1 mesh
+
+    gmsh.model.mesh.generate(2)
+
+    gmsh.write(f'{name}_fine.msh')
+    gmsh.fltk.run()
+
+    exit()
 
 def convert_to_unstructured(mesh):
     nc, ns = mesh.shape[0], mesh.shape[1]

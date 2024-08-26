@@ -4,8 +4,9 @@ from VortexAD.core.geometry.gen_panel_mesh import gen_panel_mesh
 
 b = 10
 c = 1
+# ns = 11
 ns = 11
-nc = 5
+nc = 11
 
 alpha = np.deg2rad(0.) # aoa
 

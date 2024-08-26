@@ -12,13 +12,20 @@ def compute_source_strengths(mesh_dict, num_nodes, nt, num_panels, mesh_mode='st
             num_surf_panels = mesh_dict[surface]['num_panels']
             stop += num_surf_panels
 
-            coll_point_velocity = mesh_dict[surface]['coll_point_velocity']
+            center_pt_velocity = mesh_dict[surface]['nodal_cp_velocity']
+            coll_point_vel = mesh_dict[surface]['coll_point_velocity']
             panel_normal = mesh_dict[surface]['panel_normal']
 
+            if coll_point_vel:
+                total_vel = center_pt_velocity-coll_point_vel
+            else:
+                total_vel = center_pt_velocity
+
             # vel_projection = csdl.einsum(coll_point_velocity, panel_normal, action='ijklm,ijklm->ijkl')
-            vel_projection = csdl.sum(coll_point_velocity*panel_normal, axes=(4,))
+            vel_projection = csdl.sum(total_vel*panel_normal, axes=(4,))
 
             sigma = sigma.set(csdl.slice[:,:,start:stop], value=csdl.reshape(vel_projection, shape=(num_nodes, nt, num_surf_panels)))
+            start += num_surf_panels
 
     elif mesh_mode == 'unstructured':
         coll_point_velocity = mesh_dict['coll_point_velocity']
@@ -47,14 +54,21 @@ def compute_source_influence(dij, mij, dpij, dx, dy, dz, rk, ek, hk, sigma=1., m
             n = i+1
             if i == num_edges-1: # end
                 n = 0
+
             source_only_term = ((dx[i]*dpij[i][1] - dy[i]*dpij[i][0])/(dij[i]+1.e-12)*csdl.log((rk[i] + rk[n] + dij[i]+1.e-12)/(rk[i] + rk[n] - dij[i] + 1.e-12)))
             term_1.append(source_only_term)
 
-            t_y = dz[i]*dpij[i][0] * ((ek[i]*dpij[i][1]-hk[i]*dpij[i][0])*rk[n] - (ek[n]*dpij[i][1]-hk[n]*dpij[i][0])*rk[i])
-            t_x = dz[i]**2*rk[i]*rk[n]*dpij[i][0]**2 + (ek[i]*dpij[i][1]-hk[i]*dpij[i][0])*(ek[n]*dpij[i][1]-hk[n]*dpij[i][0])
+            atan2_mode = 'atan2'
 
-            # atan2_term = 2*csdl.arctan(t_y / ((t_x**2 + t_y**2 + 1.e-12)**0.5 + t_x))
-            atan2_term = 2*csdl.arctan(((t_x**2 + t_y**2)**0.5 - t_x) / (t_y + 1.e-12))
+            if atan2_mode == 'K_P': # original arctan term from K&P
+                atan2_term = csdl.arctan((mij[i]*ek[i]-hk[i])/(dz[i]*rk[i]+1.e-12)) - csdl.arctan((mij[i]*ek[n]-hk[n])/(dz[i]*rk[n]+1.e-12))
+                
+            elif atan2_mode == 'atan2': # arctan terms combined using atan2
+                t_y = dz[i]*dpij[i][0] * ((ek[i]*dpij[i][1]-hk[i]*dpij[i][0])*rk[n] - (ek[n]*dpij[i][1]-hk[n]*dpij[i][0])*rk[i])
+                t_x = dz[i]**2*rk[i]*rk[n]*dpij[i][0]**2 + (ek[i]*dpij[i][1]-hk[i]*dpij[i][0])*(ek[n]*dpij[i][1]-hk[n]*dpij[i][0])
+                # atan2_term = 2*csdl.arctan(t_y / ((t_x**2 + t_y**2 + 1.e-12)**0.5 + t_x))
+                atan2_term = 2*csdl.arctan(((t_x**2 + t_y**2)**0.5 - t_x) / (t_y + 1.e-12))
+
             term_2.append(atan2_term)
 
         source_influence = -sigma/(4*np.pi) * (sum(term_1) - dz[0] * sum(term_2))
@@ -87,11 +101,11 @@ def compute_source_influence(dij, mij, dpij, dx, dy, dz, rk, ek, hk, sigma=1., m
         #     ((dx[3]*dpij[3][1] - dy[3]*dpij[3][0])/(dij[3]+1.e-12)*csdl.log((rk[3] + rk[0] + dij[3]+1.e-12)/(rk[3] + rk[0] - dij[3] + 1.e-12)))
         # )
         # - dz[0] * ( 
-        #     atan2_1 + atan2_2 + atan2_3 + atan2_4
-        #     # csdl.arctan((mij[0]*ek[0]-hk[0])/(dz[0]*rk[0]+1.e-12)) - csdl.arctan((mij[0]*ek[1]-hk[1])/(dz[0]*rk[1]+1.e-12)) + 
-        #     # csdl.arctan((mij[1]*ek[1]-hk[1])/(dz[1]*rk[1]+1.e-12)) - csdl.arctan((mij[1]*ek[2]-hk[2])/(dz[1]*rk[2]+1.e-12)) + 
-        #     # csdl.arctan((mij[2]*ek[2]-hk[2])/(dz[2]*rk[2]+1.e-12)) - csdl.arctan((mij[2]*ek[3]-hk[3])/(dz[2]*rk[3]+1.e-12)) + 
-        #     # csdl.arctan((mij[3]*ek[3]-hk[3])/(dz[3]*rk[3]+1.e-12)) - csdl.arctan((mij[3]*ek[0]-hk[0])/(dz[3]*rk[0]+1.e-12))
+        #     # atan2_1 + atan2_2 + atan2_3 + atan2_4
+        #     csdl.arctan((mij[0]*ek[0]-hk[0])/(dz[0]*rk[0]+1.e-12)) - csdl.arctan((mij[0]*ek[1]-hk[1])/(dz[0]*rk[1]+1.e-12)) + 
+        #     csdl.arctan((mij[1]*ek[1]-hk[1])/(dz[1]*rk[1]+1.e-12)) - csdl.arctan((mij[1]*ek[2]-hk[2])/(dz[1]*rk[2]+1.e-12)) + 
+        #     csdl.arctan((mij[2]*ek[2]-hk[2])/(dz[2]*rk[2]+1.e-12)) - csdl.arctan((mij[2]*ek[3]-hk[3])/(dz[2]*rk[3]+1.e-12)) + 
+        #     csdl.arctan((mij[3]*ek[3]-hk[3])/(dz[3]*rk[3]+1.e-12)) - csdl.arctan((mij[3]*ek[0]-hk[0])/(dz[3]*rk[0]+1.e-12))
         # )) # note that dk[:,i,2] is the same for all i
         return source_influence
 
@@ -119,3 +133,40 @@ def compute_source_influence(dij, mij, dpij, dx, dy, dz, rk, ek, hk, sigma=1., m
         )
         
         return u, v, w
+    
+def compute_source_influence_new(A, AM, B, BM, SL, SM, A1, PN, S, mode='potential', mu=1.):
+    '''
+    Function to compute induced potential of a source panel based on the 
+    VSAERO documentation found here: https://ntrs.nasa.gov/citations/19900004884
+
+    This function takes inputs related to panel parameters and data about
+    the point where potential is induced.
+
+    Each input is a list (all of the same length), where the number of panel
+    sides equals the length of the lists.
+    '''
+    if mode == 'potential':
+
+        panel_segment_potential = []
+        num_sides = len(A)
+        
+        for i in range(num_sides):
+
+            PA = PN[i]**2*SL[i] + A1[i]*AM[i]
+            PB = PN[i]**2*SL[i] + A1[i]*BM[i]
+    
+            RNUM = SM[i]*PN[i]*(B[i]*PA - A[i]*PB)
+            DNOM = PA*PB + PN[i]**2*A[i]*B[i]*SM[i]**2
+    
+            atan_term = csdl.arctan(RNUM/DNOM) # NOTE: add some numerical softening here
+            atan_term = 2*csdl.arctan(((RNUM**2 + DNOM**2)**0.5 - DNOM) / (RNUM+1.e-12)) # half angle formula
+
+            GL = (1/S[i]) * csdl.log((A[i]+B[i]+S[i])/(A[i]+B[i]-S[i]))
+
+            side_potential = A1[i]*GL - PN[i]*atan_term
+
+            panel_segment_potential.append(side_potential)
+
+        source_potential = mu/(4*np.pi) * sum(panel_segment_potential)
+
+        return source_potential

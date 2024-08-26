@@ -1,4 +1,5 @@
 import csdl_alpha as csdl 
+import numpy as np
 
 from VortexAD.core.panel_method.source_doublet.source_functions import compute_source_strengths, compute_source_influence
 from VortexAD.core.panel_method.source_doublet.doublet_functions import compute_doublet_influence
@@ -9,6 +10,11 @@ from VortexAD.core.panel_method.source_doublet.free_wake_comp import free_wake_c
 def unstructured_transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt, free_wake=False):
     sigma = compute_source_strengths(mesh_dict, num_nodes, nt, num_tot_panels, mesh_mode='unstructured')
     AIC_mu, AIC_sigma = static_AIC_computation(mesh_dict, num_nodes, nt, num_tot_panels)
+
+    asdf = list(np.arange(AIC_mu.shape[2]))
+    print(AIC_mu[0,0,asdf,asdf].value)
+    print(AIC_mu[0,0,1,:].value)
+    # exit()
 
     sigma_BC_influence = csdl.einsum(AIC_sigma, sigma, action='ijlk,ijk->ijl')
 
@@ -113,8 +119,8 @@ def unstructured_transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_
         AIC_mu_total = AIC_mu_total.set(csdl.slice[:,t,:,:], value=AIC_mu[:,t,:,:])
         for nn in csdl.frange(num_nodes):
             wake_influence = csdl.matvec(AIC_wake[nn,t,:,:], mu_wake_minus_1[nn,t,:])
-            # RHS = -sigma_BC_influence[nn,t,:] - wake_influence
-            RHS = -sigma_BC_influence[nn,t,:]
+            RHS = -sigma_BC_influence[nn,t,:] - wake_influence
+            # RHS = -sigma_BC_influence[nn,t,:]
             mu_timestep = csdl.solve_linear(AIC_mu_total[nn,t,:,:], RHS)
             mu = mu.set(csdl.slice[nn,t,:], value=mu_timestep)
         
@@ -202,7 +208,7 @@ def static_AIC_computation(mesh_dict, num_nodes, nt, num_tot_panels):
     sum_ind = len(dp.shape) - 1
     dx = csdl.sum(dp*panel_x_dir_exp_vec, axes=(sum_ind,))
     dy = csdl.sum(dp*panel_y_dir_exp_vec, axes=(sum_ind,))
-    dz = csdl.sum(dp*panel_normal_exp_vec, axes=(sum_ind,))
+    dz = csdl.sum(dp*panel_normal_exp_vec, axes=(sum_ind,)) - 1.e-6
     rk = (dx**2 + dy**2 + dz**2 + 1.e-12)**0.5
     ek = dx**2 + dz**2
     hk = dx*dy

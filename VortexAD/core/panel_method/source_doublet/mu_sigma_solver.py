@@ -1,8 +1,12 @@
 import numpy as np 
 
 from VortexAD.core.panel_method.source_doublet.initialize_unsteady_wake import initialize_unsteady_wake
+# from VortexAD.core.panel_method.source_doublet.initialize_unsteady_wake_new import initialize_unsteady_wake
+
+
 from VortexAD.core.panel_method.source_doublet.transient_solver import transient_solver
-from VortexAD.core.panel_method.source_doublet.transient_solver_new import transient_solver_new
+# from VortexAD.core.panel_method.source_doublet.transient_solver_new import transient_solver
+# from VortexAD.core.panel_method.source_doublet.transient_solver_noKC import transient_solver # version with no AIC adjustment
 
 from VortexAD.core.panel_method.source_doublet.unstructured_transient_solver import unstructured_transient_solver
 
@@ -38,7 +42,7 @@ def mu_sigma_solver(num_nodes, nt, mesh_dict, dt, mesh_mode='structured', free_w
     # OLD SETUP
     # note that the prescribed wake solver was working previously, but not the free-wake mode
     if free_wake:
-        mu, sigma, mu_wake = transient_solver_new(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt, free_wake=free_wake)
+        mu, sigma, mu_wake = transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt, free_wake=free_wake)
     
     else:
         mu, sigma, mu_wake = transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, dt)

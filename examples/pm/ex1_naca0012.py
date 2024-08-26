@@ -13,20 +13,20 @@ b = 10.
 # c = 1.564
 c = .8698
 ns = 11
-nc = 21
+nc = 41
 
-alpha_deg = 10.
+alpha_deg = 0.
 alpha = np.deg2rad(alpha_deg) # aoa
 
 mach = 0.15
 sos = 340.3
 V_inf = np.array([-sos*mach, 0., 0.])
 # V_inf = np.array([-10., 0., 0.])
-V_inf = np.array([-10., 0., 0.])
-nt = 40
+# V_inf = np.array([-10., 0., 0.])
+nt = 30
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False)
+mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
 # mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
 # mesh_orig[:,:,1] += 5.
 # exit()
@@ -36,7 +36,6 @@ mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default'
 # mesh_data = pv.read(filename)
 # mesh_orig = mesh_data.points.reshape((2*nc-1,ns,3))
 # mesh_orig[:,:,1] -= 5.
-# mesh_orig[:,:,1] += 25.
 
 
 mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
@@ -65,7 +64,7 @@ mesh_velocities = csdl.Variable(value=mesh_velocities)
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=True)
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=False)
 
 
 # mesh = mesh_dict['surface_0']['mesh'].value
@@ -105,7 +104,7 @@ print('doublet distribution:')
 print(mu_value)
 print(f'CL: {CL}')
 print(f'CDi: {CDi}')
-
+# exit()
 # import pickle
 # Cp_data = {
 #     'coll_points':coll_points[0,0,:,int((ns-1)/2),0] / mesh[0,0,0,int((ns-1)/2),0],
@@ -394,9 +393,9 @@ if verif and alpha_deg == 10.:
 1
 
 
-if False:
+if True:
     plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
-if True:
+if False:
     # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')
     plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive=False, backend='cv', name='free_wake_demo')

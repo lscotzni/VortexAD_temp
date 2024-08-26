@@ -43,14 +43,14 @@ def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive = False, plot_m
         # Any rendering loop goes here, e.g.
         draw_scalarbar = True
         color = wake_color
-        mesh_points = mesh[:, :, :] # does not vary with time here
-        nx = mesh_points.shape[2]
-        ny = mesh_points.shape[3]
+        mesh_points = mesh[:, i, :] # does not vary with time here
+        nx = mesh_points.shape[1]
+        ny = mesh_points.shape[2]
         connectivity = []
         for k in range(nx-1):
             for j in range(ny-1):
                 connectivity.append([k*ny+j,(k+1)*ny+j,(k+1)*ny+j+1,k*ny+j+1])
-            vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.).linecolor('black')
+            vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.)
         mu_color = np.reshape(mu[:,i,:], (-1,1))
         
         vps.cmap(cmap, mu_color, on='cells', vmin=min_mu, vmax=max_mu)
@@ -127,8 +127,8 @@ def plot_pressure_distribution(mesh, Cp, surface_color='white', cmap='jet', inte
         vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.)
     Cp_color = np.reshape(Cp[:,-2,:,:], (-1,1))
     Cp_min, Cp_max = np.min(Cp[:,-2,:,:]), np.max(Cp[:,0,:,:])
-    # Cp_min, Cp_max = -0.4, 1.
-    Cp_min, Cp_max = -5., 1.
+    Cp_min, Cp_max = -0.4, 1.
+    # Cp_min, Cp_max = -5., 1.
     vps.cmap(cmap, Cp_color, on='cells', vmin=Cp_min, vmax=Cp_max)
     # vps.cmap(cmap, Cp_color, on='cells', vmin=-0.4, vmax=1)
     vps.add_scalarbar()

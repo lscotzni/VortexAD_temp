@@ -15,10 +15,15 @@ def wake_geometry(surf_wake_mesh_dict, time_ind):
     # surf_wake_mesh_dict['nt'] = nt
     # surf_wake_mesh_dict['ns'] = ns
 
+    # p1 = mesh[:,time_ind,:-1,:-1,:]
+    # p2 = mesh[:,time_ind,:-1,1:,:]
+    # p3 = mesh[:,time_ind,1:,1:,:]
+    # p4 = mesh[:,time_ind,1:,:-1,:]
+
     p1 = mesh[:,time_ind,:-1,:-1,:]
-    p2 = mesh[:,time_ind,:-1,1:,:]
+    p2 = mesh[:,time_ind,1:,:-1,:]
     p3 = mesh[:,time_ind,1:,1:,:]
-    p4 = mesh[:,time_ind,1:,:-1,:]
+    p4 = mesh[:,time_ind,:-1,1:,:]
 
     panel_center = surf_wake_mesh_dict['panel_center']
     panel_center = panel_center.set(csdl.slice[:,time_ind,:,:,:], value=(p1+p2+p3+p4)/4.)
@@ -33,7 +38,8 @@ def wake_geometry(surf_wake_mesh_dict, time_ind):
 
     panel_area = surf_wake_mesh_dict['panel_area']
     panel_diag_1 = p3-p1
-    panel_diag_2 = p2-p4
+    # panel_diag_2 = p2-p4
+    panel_diag_2 = p4-p2
     panel_normal_vec = csdl.cross(panel_diag_1, panel_diag_2, axis=3)
     panel_area = panel_area.set(csdl.slice[:,time_ind,:,:], value=csdl.norm(panel_normal_vec+1.e-12, axes=(3,)) / 2.)
     surf_wake_mesh_dict['panel_area'] = panel_area
@@ -42,8 +48,11 @@ def wake_geometry(surf_wake_mesh_dict, time_ind):
     panel_y_dir = surf_wake_mesh_dict['panel_y_dir']
     panel_normal = surf_wake_mesh_dict['panel_normal']
 
-    panel_x_vec = (p3+p4)/2. - (p1+p2)/2.
-    panel_y_vec = (p2+p3)/2. - (p1+p4)/2.
+    # panel_x_vec = (p3+p4)/2. - (p1+p2)/2.
+    # panel_y_vec = (p2+p3)/2. - (p1+p4)/2.
+
+    panel_x_vec = (p3+p2)/2. - (p1+p4)/2.
+    panel_y_vec = (p4+p3)/2. - (p1+p2)/2.
 
     panel_x_dir_val = panel_x_vec / csdl.expand(csdl.norm(panel_x_vec+1.e-12, axes=(3,)), panel_x_vec.shape, 'ijk->ijka')
     panel_y_dir_val = panel_y_vec / csdl.expand(csdl.norm(panel_y_vec+1.e-12, axes=(3,)), panel_y_vec.shape, 'ijk->ijka')

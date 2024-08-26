@@ -23,6 +23,11 @@ def unsteady_panel_solver(*args, dt, mesh_mode='structured', mode='source-double
         connectivity=False
         mesh_list = args[0]
         mesh_velocity_list = args[1]
+        try:
+            coll_vel_list = args[2]
+            coll_vel = True
+        except:
+            coll_vel = False
 
         exp_orig_mesh_dict = {}
         surface_counter = 0
@@ -31,6 +36,10 @@ def unsteady_panel_solver(*args, dt, mesh_mode='structured', mode='source-double
             exp_orig_mesh_dict[surface_name] = {}
             exp_orig_mesh_dict[surface_name]['mesh'] = mesh_list[i]
             exp_orig_mesh_dict[surface_name]['nodal_velocity'] = mesh_velocity_list[i] * -1. 
+            if coll_vel:
+                exp_orig_mesh_dict[surface_name]['coll_point_velocity'] = coll_vel_list[i] * -1. 
+            else:
+                exp_orig_mesh_dict[surface_name]['coll_point_velocity'] = coll_vel
             if i == 0:
                 num_nodes = mesh_list[i].shape[0] # NOTE: CHECK THIS LINE
                 nt = mesh_list[i].shape[1]

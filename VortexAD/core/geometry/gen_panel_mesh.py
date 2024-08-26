@@ -1,7 +1,7 @@
 import numpy as np
 from VortexAD import AIRFOIL_PATH
 
-from VortexAD.core.geometry.gen_gmsh_unstructured_mesh import gen_gmsh_unstructured_mesh, convert_to_unstructured
+from VortexAD.core.geometry.gen_gmsh_unstructured_mesh import gen_gmsh_unstructured_mesh, gen_gmsh_unstructured_mesh_new, convert_to_unstructured
 
 def gen_panel_mesh_new(nc, ns, chord, span, airfoil='naca0012', frame='default', plot_mesh=False):
     if airfoil not in ['naca0012']:

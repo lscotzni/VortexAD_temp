@@ -4,9 +4,10 @@ from VortexAD.core.geometry.gen_panel_mesh import gen_panel_mesh
 from VortexAD.core.panel_method.unsteady_panel_solver import unsteady_panel_solver
 import matplotlib.pyplot as plt
 import time
-from VortexAD.utils.plot_unstructured import plot_pressure_distribution
+from VortexAD.utils.plot_unstructured import plot_pressure_distribution, plot_wireframe
 
 from VortexAD.utils.cell_adjacency import find_cell_adjacency
+from VortexAD.utils.get_TE_data import get_TE_data
 
 from VortexAD import SAMPLE_GEOMETRY_PATH
 import meshio
@@ -16,7 +17,7 @@ c = 1.564
 ns = 11
 nc = 5
 
-alpha = np.deg2rad(0.) # aoa
+alpha = np.deg2rad(10.) # aoa
 
 mach = 0.25
 sos = 340.3
@@ -27,16 +28,23 @@ num_nodes = 1
 # points_orig, connectivity = gen_panel_mesh(nc, ns, c, b, frame='default', unstructured=True, plot_mesh=False)
 # exit()
 
+# file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/naca0012_mesh.msh'
+# mesh = meshio.read(
+#     file_name,  # string, os.PathLike, or a buffer/open file
+#     # file_format="stl",  # optional if filename is a path; inferred from extension
+#     # see meshio-convert -h for all possible formats
+# )
+# # NOTE: THE THREE LISTS BELOW USE 1-BASE INDEXING; NEED TO SHIFT DOWN BY 1
+# upper_TE_cells = np.array([260, 263, 265, 266, 268, 270, 272, 275, 276, 261]) - 112 - 1
+# lower_TE_cells = np.array([119, 123, 125, 127, 129, 131, 132, 135, 137, 122]) - 112 - 1
+# TE_node_indices = np.array([1, 17, 18, 19, 20, 21, 22, 23, 24, 25, 9]) - 1
+
 file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/naca0012_mesh.msh'
 mesh = meshio.read(
     file_name,  # string, os.PathLike, or a buffer/open file
     # file_format="stl",  # optional if filename is a path; inferred from extension
     # see meshio-convert -h for all possible formats
 )
-# NOTE: THE THREE LISTS BELOW USE 1-BASE INDEXING; NEED TO SHIFT DOWN BY 1
-upper_TE_cells = np.array([260, 263, 265, 266, 268, 270, 272, 275, 276, 261]) - 112 - 1
-lower_TE_cells = np.array([119, 123, 125, 127, 129, 131, 132, 135, 137, 122]) - 112 - 1
-TE_node_indices = np.array([1, 17, 18, 19, 20, 21, 22, 23, 24, 25, 9]) - 1
 
 points_orig = mesh.points
 cells = mesh.cells
@@ -44,7 +52,9 @@ cells_dict = mesh.cells_dict
 
 triangles = cells_dict['triangle']
 lines = cells_dict['line']
-points_orig, triangles, cell_adjacency = find_cell_adjacency(points=points_orig, cells=triangles)
+points_orig, triangles, cell_adjacency, edges2cells = find_cell_adjacency(points=points_orig, cells=triangles)
+
+upper_TE_cells, lower_TE_cells, TE_node_indices = get_TE_data(points_orig, triangles, cell_adjacency, edges2cells)
 
 points = np.zeros((num_nodes, nt) + points_orig.shape)
 for i in range(num_nodes):
@@ -63,7 +73,7 @@ for i in range(num_nodes):
     for j in range(nt):
         point_velocities[i,j,:] = V_inf_rot
 
-recorder = csdl.Recorder(inline=True)
+recorder = csdl.Recorder(inline=False)
 recorder.start()
 
 points = csdl.Variable(value=points)
@@ -83,11 +93,41 @@ output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solv
 )
 run_stop = time.time()
 
-CL = output_dict['CL']
+recorder.stop()
+use_jax = True
+if use_jax:
 
-mesh = mesh_dict['points'].value
-coll_points = mesh_dict['panel_center'].value
-Cp = output_dict['Cp'].value
+    CL = output_dict['CL']
+    coll_points = mesh_dict['panel_center']
+    Cp = output_dict['Cp']
+
+    wake_mesh = wake_mesh_dict['mesh']
+
+    jax_sim = csdl.experimental.JaxSimulator(
+        recorder=recorder,
+        additional_inputs=[points],
+        additional_outputs = [mu, mu_wake, wake_mesh, coll_points, Cp, CL]
+    )
+    jax_sim.run()
+    CL = jax_sim[CL]
+    points = jax_sim[points]
+    coll_points = jax_sim[coll_points]
+    Cp = jax_sim[Cp]
+    wake_mesh = jax_sim[wake_mesh]
+    mu = jax_sim[mu]
+    mu_wake = jax_sim[mu_wake]
+else:
+
+    CL = output_dict['CL']
+
+    mesh = mesh_dict['points'].value
+    coll_points = mesh_dict['panel_center'].value
+    Cp = output_dict['Cp'].value
+
+    wake_mesh = wake_mesh_dict['mesh'].value
+    mu = mu.value
+    mu_wake = mu_wake.value
+
 
 if False:
     chord_station = coll_points[0,0,:,int((ns-1)/2),0]
@@ -232,6 +272,6 @@ if False:
     plt.show()
 
 if True:
-    plot_pressure_distribution(mesh[0,0,:], Cp[0,-2,:], connectivity=triangles, interactive=True, top_view=False)
-# if False:
-#     plot_wireframe(mesh, wake_mesh, mu_b, mu_wake, nt, interactive=False)
+    plot_pressure_distribution(points[0,0,:], Cp[0,-2,:], connectivity=triangles, interactive=True, top_view=False)
+if False:
+    plot_wireframe(points, wake_mesh, mu, mu_wake, connectivity=triangles, nt=nt, interactive=True)

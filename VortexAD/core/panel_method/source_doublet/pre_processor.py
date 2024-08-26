@@ -24,10 +24,15 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
             # p3 =  mesh[base_slice + (slice(1, nc), slice(1, ns), slice(0,3))]
             # p4 =  mesh[base_slice + (slice(1, nc), slice(0, ns-1), slice(0,3))]
 
+            # p1 = mesh[:,:,:-1,:-1,:]
+            # p2 = mesh[:,:,:-1,1:,:]
+            # p3 = mesh[:,:,1:,1:,:]
+            # p4 = mesh[:,:,1:,:-1,:]
+
             p1 = mesh[:,:,:-1,:-1,:]
-            p2 = mesh[:,:,:-1,1:,:]
+            p2 = mesh[:,:,1:,:-1,:]
             p3 = mesh[:,:,1:,1:,:]
-            p4 = mesh[:,:,1:,:-1,:]
+            p4 = mesh[:,:,:-1,1:,:]
 
             panel_center = (p1 + p2 + p3 + p4)/4.
             mesh_dict[key]['panel_center'] = panel_center
@@ -40,14 +45,18 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
             mesh_dict[key]['panel_corners'] = panel_corners
 
             panel_diag_1 = p3-p1
-            panel_diag_2 = p2-p4
+            # panel_diag_2 = p2-p4
+            panel_diag_2 = p4-p2
             
             panel_normal_vec = csdl.cross(panel_diag_1, panel_diag_2, axis=4)
             panel_area = csdl.norm(panel_normal_vec, axes=(4,)) / 2.
             mesh_dict[key]['panel_area'] = panel_area
 
-            panel_x_vec = (p3+p4)/2. - (p1+p2)/2.
-            panel_y_vec = (p2+p3)/2. - (p1+p4)/2.
+            # panel_x_vec = (p3+p4)/2. - (p1+p2)/2.
+            # panel_y_vec = (p2+p3)/2. - (p1+p4)/2.
+
+            panel_x_vec = (p3+p2)/2. - (p1+p4)/2.
+            panel_y_vec = (p4+p3)/2. - (p1+p2)/2.
 
             panel_x_dir = panel_x_vec / csdl.expand((csdl.norm(panel_x_vec, axes=(4,))), panel_x_vec.shape, 'ijkl->ijkla')
             panel_y_dir = panel_y_vec / csdl.expand((csdl.norm(panel_y_vec, axes=(4,))), panel_y_vec.shape, 'ijkl->ijkla')
@@ -59,10 +68,15 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
 
             # COMPUTE DISTANCE FROM PANEL CENTER TO SEGMENT CENTERS
 
-            pos_l = (p3+p4)/2.
-            neg_l = (p1+p2)/2.
-            pos_m = (p2+p3)/2.
-            neg_m = (p1+p4)/2.
+            # pos_l = (p3+p4)/2.
+            # neg_l = (p1+p2)/2.
+            # pos_m = (p2+p3)/2.
+            # neg_m = (p1+p4)/2.
+
+            pos_l = (p3+p2)/2.
+            neg_l = (p1+p4)/2.
+            pos_m = (p4+p3)/2.
+            neg_m = (p1+p2)/2.
 
             pos_l_norm = csdl.norm(pos_l-panel_center, axes=(4,))
             neg_l_norm = -csdl.norm(neg_l-panel_center, axes=(4,))
@@ -89,8 +103,8 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
             mesh_dict[key]['delta_coll_point'] = delta_coll_point
 
             # panel_center_mod = panel_center - panel_normal*0.00000001/csdl.expand(panel_area, panel_normal.shape, 'ijkl->ijkla')
-            # panel_center_mod = panel_center - panel_normal*0.000001
             panel_center_mod = panel_center - panel_normal*0.0001
+            # panel_center_mod = panel_center - panel_normal*0.0001*csdl.expand(panel_area, panel_normal.shape, 'ijkl->ijkla')
             # panel_center_mod = panel_center
             mesh_dict[key]['panel_center'] = panel_center_mod
 
@@ -160,7 +174,8 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
             mesh_dict[key]['mij'] = mij
 
             nodal_vel = mesh_dict[key]['nodal_velocity']
-            mesh_dict[key]['coll_point_velocity'] = (nodal_vel[:,:,:-1,:-1,:]+nodal_vel[:,:,:-1,1:,:]+nodal_vel[:,:,1:,1:,:]+nodal_vel[:,:,1:,:-1,:]) / 4.
+            mesh_dict[key]['nodal_cp_velocity'] = (nodal_vel[:,:,:-1,:-1,:]+nodal_vel[:,:,:-1,1:,:]+nodal_vel[:,:,1:,1:,:]+nodal_vel[:,:,1:,:-1,:]) / 4.
+            # mesh_dict[key]['coll_point_velocity'] = (nodal_vel[:,:,:-1,:-1,:]+nodal_vel[:,:,:-1,1:,:]+nodal_vel[:,:,1:,1:,:]+nodal_vel[:,:,1:,:-1,:]) / 4.
 
             # computing planform area
             panel_width_spanwise = csdl.norm((mesh[:,:,:,1:,:] - mesh[:,:,:,:-1,:]), axes=(4,))
@@ -217,7 +232,7 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
         mesh_dict['panel_normal'] = n_vec
 
         panel_center_mod = panel_center - n_vec*0.000001
-        mesh_dict['panel_center'] = panel_center_mod
+        # mesh_dict['panel_center'] = panel_center_mod
 
         cp_deltas = csdl.Variable(shape=panel_corners.shape, value=0.)
         cp_deltas = cp_deltas.set(csdl.slice[:,:,:,0,:], value=panel_center[:,:,list(cell_adjacency[:,0]),:] - panel_center)

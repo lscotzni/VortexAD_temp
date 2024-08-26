@@ -1,7 +1,7 @@
 import numpy as np
 import csdl_alpha as csdl 
 
-from VortexAD.core.panel_method.source_doublet.wake_geometry import wake_geometry
+from VortexAD.core.panel_method.source_doublet.wake_geometry_new import wake_geometry
 
 def initialize_unsteady_wake(mesh_dict, num_nodes, dt, mesh_mode='structured' ,panel_fraction=0.25):
     if mesh_mode == 'structured':
@@ -21,13 +21,7 @@ def initialize_unsteady_wake(mesh_dict, num_nodes, dt, mesh_mode='structured' ,p
             TE = (surface_mesh[:,:,0,:,:] + surface_mesh[:,:,-1,:,:])/2.
             # TE = surface_mesh[:,:,-1,:,:]
             TE_vel = (mesh_velocity[:,:,0,:,:] + mesh_velocity[:,:,-1,:,:])/2.
-            try:
-                coll_point_velocity = mesh_dict[surface_name]['coll_point_velocity']
-                TE_coll_vel = (coll_point_velocity[:,:,0,:,:] + coll_point_velocity[:,:,-1,:,:])/2.
-            except:
-                TE_coll_vel = 0.
-            
-            init_wake_pos = TE + panel_fraction*(TE_vel)*dt
+            init_wake_pos = TE + panel_fraction*TE_vel*dt
 
             nc_w = nt # we initialize small wake which is t = 0, so the wake MESH has +1 rows (+1 panels)
 
@@ -53,9 +47,9 @@ def initialize_unsteady_wake(mesh_dict, num_nodes, dt, mesh_mode='structured' ,p
             surf_wake_mesh_dict['panel_x_dir'] = csdl.Variable(shape=(num_nodes, nt, nc_w-1, ns-1, 3), value=0.)
             surf_wake_mesh_dict['panel_y_dir'] = csdl.Variable(shape=(num_nodes, nt, nc_w-1, ns-1, 3), value=0.)
             surf_wake_mesh_dict['panel_normal'] = csdl.Variable(shape=(num_nodes, nt, nc_w-1, ns-1, 3), value=0.)
-            surf_wake_mesh_dict['dpij'] = csdl.Variable(value=np.zeros((num_nodes, nt, nc_w-1, ns-1, 4, 2)))
-            surf_wake_mesh_dict['dij'] = csdl.Variable(value=np.zeros((num_nodes, nt, nc_w-1, ns-1, 4)))
-            surf_wake_mesh_dict['mij'] = csdl.Variable(shape=(num_nodes, nt, nc_w-1, ns-1, 4), value=0.)
+            surf_wake_mesh_dict['S'] = csdl.Variable(value=np.zeros((num_nodes, nt, nc_w-1, ns-1, 4)))
+            surf_wake_mesh_dict['SL'] = csdl.Variable(value=np.zeros((num_nodes, nt, nc_w-1, ns-1, 4)))
+            surf_wake_mesh_dict['SM'] = csdl.Variable(shape=(num_nodes, nt, nc_w-1, ns-1, 4), value=0.)
 
             surf_wake_mesh_dict['wake_nodal_velocity'] = wake_mesh_velocity
 

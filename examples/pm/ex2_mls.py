@@ -13,7 +13,7 @@ b = 10.
 # c = 1.564
 c = .8698
 ns = 11
-nc = 21
+nc = 11
 
 alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
@@ -22,11 +22,11 @@ mach = 0.15
 sos = 340.3
 V_inf = np.array([-sos*mach, 0., 0.])
 # V_inf = np.array([-10., 0., 0.])
-V_inf = np.array([-10., 0., 0.])
-nt = 40
+# V_inf = np.array([-10., 0., 0.])
+nt = 30
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False)
+mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
 # mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
 # mesh_orig[:,:,1] += 5.
 # exit()
@@ -36,13 +36,15 @@ mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default'
 # mesh_data = pv.read(filename)
 # mesh_orig = mesh_data.points.reshape((2*nc-1,ns,3))
 # mesh_orig[:,:,1] -= 5.
-# mesh_orig[:,:,1] += 25.
 
-
-mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
+mesh_1 = np.zeros((num_nodes, nt) + mesh_orig.shape)
 for i in range(num_nodes):
     for j in range(nt):
-        mesh[i,j,:] = mesh_orig
+        mesh_1[i,j,:] = mesh_orig
+
+C = 20
+mesh_2 = mesh_1.copy()
+mesh_2[:,:,:,:,1] += C*b
 
 V_rot_mat = np.zeros((3,3))
 V_rot_mat[1,1] = 1.
@@ -51,7 +53,7 @@ V_rot_mat[2,0] = np.sin(alpha)
 V_rot_mat[0,2] = -np.sin(alpha)
 V_inf_rot = np.matmul(V_rot_mat, V_inf)
 
-mesh_velocities = np.zeros_like(mesh)
+mesh_velocities = np.zeros_like(mesh_1)
 for i in range(num_nodes):
     for j in range(nt):
         mesh_velocities[i,j,:] = V_inf_rot
@@ -59,21 +61,22 @@ for i in range(num_nodes):
 recorder = csdl.Recorder(inline=False)
 recorder.start()
 
-mesh = csdl.Variable(value=mesh)
-mesh_velocities = csdl.Variable(value=mesh_velocities)
+mesh_1 = csdl.Variable(value=mesh_1)
+mesh_2 = csdl.Variable(value=mesh_2)
+mesh_velocities_1 = csdl.Variable(value=mesh_velocities)
+mesh_velocities_2 = csdl.Variable(value=mesh_velocities)
 
-mesh_list = [mesh]
-mesh_velocity_list = [mesh_velocities]
+mesh_list = [mesh_1, mesh_2]
+mesh_velocity_list = [mesh_velocities_1, mesh_velocities_2]
 
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=True)
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=False)
 
 
-# mesh = mesh_dict['surface_0']['mesh'].value
-coll_points = mesh_dict['surface_0']['panel_center']
-Cp = output_dict['surface_0']['Cp']
-CL  = output_dict['surface_0']['CL']
-CDi = output_dict['surface_0']['CDi']
-wake_mesh = wake_mesh_dict['surface_0']['mesh']
+coll_points_1, coll_points_2 = mesh_dict['surface_0']['panel_center'], mesh_dict['surface_1']['panel_center']
+Cp_1, Cp_2 = output_dict['surface_0']['Cp'], output_dict['surface_1']['Cp']
+CL_1, CL_2  = output_dict['surface_0']['CL'], output_dict['surface_1']['CL']
+CDi_1, CDi_2 = output_dict['surface_0']['CDi'], output_dict['surface_1']['CDi']
+wake_mesh_1, wake_mesh_2 = wake_mesh_dict['surface_0']['mesh'], wake_mesh_dict['surface_1']['mesh']
 
 
 # CL = output_dict['surface_0']['CL'].value
@@ -81,79 +84,30 @@ wake_mesh = wake_mesh_dict['surface_0']['mesh']
 # CL_norm = csdl.norm(output_dict['surface_0']['CL'])
 
 # dCL_dmesh = csdl.derivative(CL_norm, mesh_velocities)
-
+additional_outputs = [mu, sigma, mu_wake, wake_mesh_1, wake_mesh_2, coll_points_1, coll_points_2, Cp_1, Cp_2, CL_1, CL_2, CDi_1, CDi_2]
 recorder.stop()
 jax_sim = csdl.experimental.JaxSimulator(
     recorder=recorder,
-    additional_inputs=[mesh, mesh_velocities], # list of outputs (put in csdl variable)
-    additional_outputs=[mu, sigma, mu_wake, wake_mesh, coll_points, Cp, CL, CDi], # list of outputs (put in csdl variable)
+    additional_inputs=[mesh_1, mesh_2], # list of outputs (put in csdl variable)
+    additional_outputs=additional_outputs, # list of outputs (put in csdl variable)
 )
 jax_sim.run()
 
-mesh = jax_sim[mesh]
-coll_points = jax_sim[coll_points]
-Cp = jax_sim[Cp]
-CL = jax_sim[CL]
-CDi = jax_sim[CDi]
+mesh_1, mesh_2 = jax_sim[mesh_1], jax_sim[mesh_2]
+wake_mesh_1, wake_mesh_2 = jax_sim[wake_mesh_1], jax_sim[wake_mesh_2]
+coll_points_1, coll_points_2 = jax_sim[coll_points_1], jax_sim[coll_points_2]
+Cp_1, Cp_2 = jax_sim[Cp_1], jax_sim[Cp_2]
+CL_1, CL_2 = jax_sim[CL_1], jax_sim[CL_2]
+CDi_1, CDi_2 = jax_sim[CDi_1], jax_sim[CDi_2]
 mu = jax_sim[mu]
 mu_wake = jax_sim[mu_wake]
-wake_mesh = jax_sim[wake_mesh]
 
-mu_value = mu[0,-2,:].reshape((nc-1)*2,ns-1)
+print(f'Wing 1 CL: {CL_1}')
+print(f'Wing 2 CL: {CL_2}')
+print(f'Wing 1 CDi: {CDi_1}')
+print(f'Wing 2 CDi: {CDi_2}')
 
-print('doublet distribution:')
-print(mu_value)
-print(f'CL: {CL}')
-print(f'CDi: {CDi}')
-
-# import pickle
-# Cp_data = {
-#     'coll_points':coll_points[0,0,:,int((ns-1)/2),0] / mesh[0,0,0,int((ns-1)/2),0],
-#     'Cp': Cp[0,-2,:,int((ns-1)/2)]
-# }
-# filehandler = open(f'Cp_nc_{nc}_ns_{ns}_nt_{nt}', 'wb')
-# pickle.dump(Cp_data, filehandler)
-# filehandler.close
-
-save_data = False
-if save_data:
-    time_ind = 0
-    data_to_save = {
-        'time_ind': time_ind,
-        'grid_size': [nc, ns, nt],
-        'mu': mu.value[0,time_ind,:].reshape((nc-1)*2, ns-1),
-        'sigma': sigma.value[0,time_ind,:].reshape((nc-1)*2, ns-1),
-
-        'mesh': mesh_dict['surface_0']['mesh'].value[0,time_ind,:],
-        'panel_center': mesh_dict['surface_0']['panel_center'].value[0,time_ind,:],
-        'local_coord_vec': mesh_dict['surface_0']['local_coord_vec'].value[0,time_ind,:],
-        'panel_corners': mesh_dict['surface_0']['panel_corners'].value[0,time_ind,:],
-        'dpij': mesh_dict['surface_0']['dpij'].value[0,time_ind,:],
-        'mij': mesh_dict['surface_0']['mij'].value[0,time_ind,:],
-        'dij': mesh_dict['surface_0']['dij'].value[0,time_ind,:],
-        
-        'wake_mesh': wake_mesh_dict['surface_0']['mesh'].value[0,time_ind,:],
-        'wake_panel_center': wake_mesh_dict['surface_0']['panel_center'].value[0,time_ind,:],
-        'wake_local_coord_vec': mesh_dict['surface_0']['local_coord_vec'].value[0,time_ind,:],
-        'wake_panel_corners': wake_mesh_dict['surface_0']['panel_corners'].value[0,time_ind,:],
-        'wake_dpij': wake_mesh_dict['surface_0']['dpij'].value[0,time_ind,:],
-        'wake_mij': wake_mesh_dict['surface_0']['mij'].value[0,time_ind,:],
-        'wake_dij': wake_mesh_dict['surface_0']['dij'].value[0,time_ind,:],
-    }
-    # for key in mesh_dict['surface_0'].keys():
-    #     data_to_save[key] = mesh_dict['surface_0'][key].value[0,time_ind,:]
-
-    # for key in wake_mesh_dict['surface_0'].keys():
-    #     data_to_save[key+'_wake'] = wake_mesh_dict['surface_0'][key].value[0,time_ind,:]
-
-    import pickle
-    filehandler = open('streamline_analysis_data', 'wb')
-    pickle.dump(data_to_save, filehandler)
-    filehandler.close()
-
-
-# exit()
-
+exit()
 
 verif = True
 if verif and alpha_deg == 0.:
@@ -397,6 +351,6 @@ if verif and alpha_deg == 10.:
 if False:
     plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
-if True:
+if False:
     # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')
     plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive=False, backend='cv', name='free_wake_demo')
