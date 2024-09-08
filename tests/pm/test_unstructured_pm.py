@@ -39,7 +39,10 @@ num_nodes = 1
 # lower_TE_cells = np.array([119, 123, 125, 127, 129, 131, 132, 135, 137, 122]) - 112 - 1
 # TE_node_indices = np.array([1, 17, 18, 19, 20, 21, 22, 23, 24, 25, 9]) - 1
 
-file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/naca0012_mesh.msh'
+# file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/naca0012_mesh.msh'
+file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/NACA0012_rec_wing_11_4.stl'
+file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/NACA0012_rec_wing_11_11_round_tip.stl'
+# file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/NACA0012_rec_wing_11_31_round_tip.stl'
 mesh = meshio.read(
     file_name,  # string, os.PathLike, or a buffer/open file
     # file_format="stl",  # optional if filename is a path; inferred from extension
@@ -51,7 +54,6 @@ cells = mesh.cells
 cells_dict = mesh.cells_dict
 
 triangles = cells_dict['triangle']
-lines = cells_dict['line']
 points_orig, triangles, cell_adjacency, edges2cells = find_cell_adjacency(points=points_orig, cells=triangles)
 
 upper_TE_cells, lower_TE_cells, TE_node_indices = get_TE_data(points_orig, triangles, cell_adjacency, edges2cells)
@@ -73,7 +75,7 @@ for i in range(num_nodes):
     for j in range(nt):
         point_velocities[i,j,:] = V_inf_rot
 
-recorder = csdl.Recorder(inline=False)
+recorder = csdl.Recorder(inline=True)
 recorder.start()
 
 points = csdl.Variable(value=points)
@@ -273,5 +275,5 @@ if False:
 
 if True:
     plot_pressure_distribution(points[0,0,:], Cp[0,-2,:], connectivity=triangles, interactive=True, top_view=False)
-if False:
+if True:
     plot_wireframe(points, wake_mesh, mu, mu_wake, connectivity=triangles, nt=nt, interactive=True)

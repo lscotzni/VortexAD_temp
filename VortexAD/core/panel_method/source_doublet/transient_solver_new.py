@@ -21,10 +21,10 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
     # AIC_mu = (AIC_mu**2)**0.5
     # AIC_mu = AIC_mu.set(csdl.slice[:,:,asdf,asdf], value=(AIC_mu[:,:,asdf,asdf]**2)**0.5)
     print(AIC_mu[0,0,asdf,asdf].value)
-    print(AIC_mu[0,0,0,:].value)
-    print(AIC_sigma[0,0,asdf,asdf].value)
-    print(AIC_sigma[0,0,0,:].value)
-    print(AIC_sigma[0,0,:,0].value)
+    # print(AIC_mu[0,0,0,:].value)
+    # print(AIC_sigma[0,0,asdf,asdf].value)
+    # print(AIC_sigma[0,0,0,:].value)
+    # print(AIC_sigma[0,0,:,0].value)
     # exit()
 
     sigma_BC_influence = csdl.einsum(AIC_sigma, sigma, action='ijlk,ijk->ijl')
@@ -219,6 +219,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
             # update mu and position of mesh
             start_i_s, stop_i_s = 0, 0
             start_i_w, stop_i_w = 0, 0
+            start_i_w_pts, stop_i_w_pts = 0, 0
             for i in range(num_surfaces):
                 surface_name = surface_names[i]
                 nc_s, ns_s =  mesh_dict[surface_name]['nc'], mesh_dict[surface_name]['ns']
@@ -229,6 +230,8 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                 num_panels_w = wake_mesh_dict[surface_name]['num_panels']
                 # stop_i_w += num_panels_w - (ns_w-1)
                 stop_i_w += num_panels_w
+                num_pts_w = nc_w*ns_w
+                stop_i_w_pts += num_pts_w
 
                 # shift wake doublet strengths
                 mu_surf_grid = mu[:,t, start_i_s:stop_i_s].reshape((num_nodes, nc_s-1, ns_s-1))
@@ -250,7 +253,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                 wake_velocity_timestep = wake_velocity[:,t,:,:,:]
 
                 if free_wake:
-                    total_vel = wake_velocity_timestep - induced_vel[:,:].reshape((num_nodes, nc_w, ns_w, 3))
+                    total_vel = wake_velocity_timestep - induced_vel[:,start_i_w_pts:stop_i_w_pts,:].reshape((num_nodes, nc_w, ns_w, 3))
                 else:
                     total_vel = wake_velocity_timestep
                 dx = total_vel*dt
@@ -267,6 +270,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
 
                 start_i_s += num_panels_s
                 start_i_w += num_panels_w
+                start_i_w_pts += num_pts_w
             1
     print(mu[0,0,:].value)
     # exit()

@@ -231,7 +231,7 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
         mesh_dict['panel_y_dir'] = m_vec
         mesh_dict['panel_normal'] = n_vec
 
-        panel_center_mod = panel_center - n_vec*0.000001
+        panel_center_mod = panel_center - n_vec*0.0001
         # mesh_dict['panel_center'] = panel_center_mod
 
         cp_deltas = csdl.Variable(shape=panel_corners.shape, value=0.)

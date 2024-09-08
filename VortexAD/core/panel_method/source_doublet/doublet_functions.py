@@ -10,7 +10,7 @@ def compute_doublet_influence(dpij, mij, ek, hk, rk, dx, dy, dz, mu=1., mode='po
     num_edges = len(dx) # tells us the number of vertices per panel (hence the edges)
     if mode == 'potential':
 
-        atan2_terms = []
+        atan_terms = []
         for i in range(num_edges):
             n = i+1
             if i == num_edges-1: # end
@@ -19,17 +19,17 @@ def compute_doublet_influence(dpij, mij, ek, hk, rk, dx, dy, dz, mu=1., mode='po
             atan2_mode = 'atan2'
 
             if atan2_mode == 'K_P': # original arctan term from K&P
-                atan2_term = csdl.arctan((mij[i]*ek[i]-hk[i])/(dz[i]*rk[i]+1.e-12)) - csdl.arctan((mij[i]*ek[n]-hk[n])/(dz[i]*rk[n]+1.e-12))
+                atan_term = csdl.arctan((mij[i]*ek[i]-hk[i])/(dz[i]*rk[i]+1.e-12)) - csdl.arctan((mij[i]*ek[n]-hk[n])/(dz[i]*rk[n]+1.e-12))
                 
             elif atan2_mode == 'atan2': # arctan terms combined using atan2
                 t_y = dz[i]*dpij[i][0] * ((ek[i]*dpij[i][1]-hk[i]*dpij[i][0])*rk[n] - (ek[n]*dpij[i][1]-hk[n]*dpij[i][0])*rk[i])
                 t_x = dz[i]**2*rk[i]*rk[n]*dpij[i][0]**2 + (ek[i]*dpij[i][1]-hk[i]*dpij[i][0])*(ek[n]*dpij[i][1]-hk[n]*dpij[i][0])
                 # atan2_term = 2*csdl.arctan(t_y / ((t_x**2 + t_y**2 + 1.e-12)**0.5 + t_x))
-                atan2_term = 2*csdl.arctan(((t_x**2 + t_y**2)**0.5 - t_x) / (t_y + 1.e-12))
+                atan_term = 2*csdl.arctan(((t_x**2 + t_y**2)**0.5 - t_x) / (t_y + 1.e-12))
 
-            atan2_terms.append(atan2_term)
+            atan_terms.append(atan_term)
 
-        doublet_potential = mu/(4*np.pi) * sum(atan2_terms)
+        doublet_potential = mu/(4*np.pi) * sum(atan_terms)
 
 
         # t1_y = dz[0]*dpij[0][0] * ((ek[0]*dpij[0][1]-hk[0]*dpij[0][0])*rk[1] - (ek[1]*dpij[0][1]-hk[1]*dpij[0][0])*rk[0])
@@ -107,6 +107,39 @@ def compute_doublet_influence(dpij, mij, ek, hk, rk, dx, dy, dz, mu=1., mode='po
         # doublet_velocity = doublet_velocity.set(csdl.slice[], value=v)
         # doublet_velocity = doublet_velocity.set(csdl.slice[], value=w)
         return u, v, w
+    
+def compute_doublet_influence_H_S(dij, dpij, r, dx, dy, dz, mu=1.):
+    # each input is a list of length 4, holding the values for the corners
+    # ex: mij = [mij_1. mij_2, mij_3, mij_4]
+
+    num_edges = len(dx) # tells us the number of vertices per panel (hence the edges)
+
+    atan_terms = []
+    for i in range(num_edges):
+        n = i+1
+        if i == num_edges-1: # end
+            n = 0
+
+        Cij = dpij[i][0]/dij[i]
+        Sij = dpij[i][1]/dij[i]
+
+        sij_i = dx[i]*Cij + dy[i]*Sij
+        sij_j = dx[n]*Cij + dy[n]*Sij
+
+        Rij = dx[i]*Sij - dy[i]*Cij
+        ri = r[i]
+        rj = r[n]
+        
+        t_y = Rij*(dz[i]**2)**0.5*(ri*sij_j - rj*sij_i)
+        t_x = ri*rj*Rij**2 + dz[i]**2*sij_i*sij_j
+        atan_term = -2*csdl.arctan(((t_x**2 + t_y**2)**0.5 - t_x) / (t_y + 1.e-12))
+        # atan_term = csdl.arctan(t_y/t_x)
+
+        atan_terms.append(atan_term)
+
+    doublet_potential = mu/(4*np.pi) * (sum(atan_terms))
+
+    return doublet_potential
     
 def compute_doublet_influence_new(A, AM, B, BM, SL, SM, A1, PN, mode='potential', mu=1.):
     '''

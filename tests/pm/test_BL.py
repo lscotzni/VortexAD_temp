@@ -10,30 +10,55 @@ from VortexAD import SAMPLE_GEOMETRY_PATH
 import pyvista as pv
 
 b = 10.
-# c = 1.564
-c = .8698
+c = 1
+u_1mil = 1e6*(1.52e-5)/c
+Re_ratio = 6. # target Re / 1e6
+u_inf = u_1mil*Re_ratio # 
 ns = 11
-nc = 21
+nc = 41
 
-alpha_deg = 10.
+'''
+We have comparison data for Re = 5.4e5, 7.5e5, 1e6, 6e6
+We choose a chord of 1 and find the velocity for Re = 1e6 as our reference
+'''
+
+alpha_deg = 0.
 alpha = np.deg2rad(alpha_deg) # aoa
 
-mach = 0.15
+mach = 0.35
 sos = 340.3
-V_inf = np.array([-sos*mach, 0., 0.])
-V_inf = np.array([-10., 0., 0.])
-nt = 30
+# V_inf = np.array([-sos*mach, 0., 0.])
+# V_inf = np.array([-10., 0., 0.])
+V_inf = np.array([-u_inf, 0., 0.])
+nt = 15
 num_nodes = 1
 
-# mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False) # even chordwise spacing
-mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False) # uneven chordwise spacing
+mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
+# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
 # mesh_orig[:,:,1] += 5.
 # exit()
 
+# filename = str(SAMPLE_GEOMETRY_PATH) + '/pm/wing_NACA0012_ar10.vtk'
+# nc, ns = 11, 5
+# mesh_data = pv.read(filename)
+# mesh_orig = mesh_data.points.reshape((2*nc-1,ns,3))
+# mesh_orig[:,:,1] -= 5.
+# mesh_orig[:,:,1] += 25.
+nc_one_way = int((nc+1)/2)
+nc_BL_one_way = 4*(nc_one_way-1) + 1
+nc_BL = int(2*nc_BL_one_way-1)
+# nc_BL = (nc+1)*4
+BL_grid = gen_panel_mesh(nc_BL, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
+# BL_grid = gen_panel_mesh_new(nc_BL, ns, c, b,  frame='default', plot_mesh=False)
+BL_grid = BL_grid[int(nc_BL-1/2):,:,:]
+
+
 mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
+BL_mesh = np.zeros((num_nodes, nt) + BL_grid.shape)
 for i in range(num_nodes):
     for j in range(nt):
         mesh[i,j,:] = mesh_orig
+        BL_mesh[i,j,:] = BL_grid
 
 V_rot_mat = np.zeros((3,3))
 V_rot_mat[1,1] = 1.
@@ -47,16 +72,17 @@ for i in range(num_nodes):
     for j in range(nt):
         mesh_velocities[i,j,:] = V_inf_rot
 
-recorder = csdl.Recorder(inline=False)
+recorder = csdl.Recorder(inline=True)
 recorder.start()
 
 mesh = csdl.Variable(value=mesh)
 mesh_velocities = csdl.Variable(value=mesh_velocities)
+BL_mesh = csdl.Variable(value=BL_mesh)
 
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=True)
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=True, boundary_layer=[BL_mesh])
 
 
 # mesh = mesh_dict['surface_0']['mesh'].value
@@ -66,6 +92,12 @@ CL  = output_dict['surface_0']['CL']
 CDi = output_dict['surface_0']['CDi']
 wake_mesh = wake_mesh_dict['surface_0']['mesh']
 
+
+# CL = output_dict['surface_0']['CL'].value
+
+# CL_norm = csdl.norm(output_dict['surface_0']['CL'])
+
+# dCL_dmesh = csdl.derivative(CL_norm, mesh_velocities)
 
 recorder.stop()
 jax_sim = csdl.experimental.JaxSimulator(
@@ -90,7 +122,7 @@ print('doublet distribution:')
 print(mu_value)
 print(f'CL: {CL}')
 print(f'CDi: {CDi}')
-# exit()
+
 # import pickle
 # Cp_data = {
 #     'coll_points':coll_points[0,0,:,int((ns-1)/2),0] / mesh[0,0,0,int((ns-1)/2),0],
@@ -379,9 +411,9 @@ if verif and alpha_deg == 10.:
 1
 
 
-if True:
+if False:
     plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
-if False:
+if True:
     # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')
-    plot_wireframe([mesh], [wake_mesh], [mu], [mu_wake], nt, interactive=False, backend='cv', name='free_wake_demo')
+    plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive=False, backend='cv', name='free_wake_demo')

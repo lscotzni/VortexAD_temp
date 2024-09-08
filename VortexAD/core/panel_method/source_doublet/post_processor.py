@@ -90,10 +90,16 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         # print(mu_grid[0,0,:,:].value)
         # print(ql[0,0,:,:].value)
         # exit()
-        Ql = free_stream_l + ql
-        Qm = free_stream_m + qm
+        Ql = free_stream_l - ql
+        Qm = free_stream_m - qm
         Qn = free_stream_n + qn
         Q_inf_norm = csdl.norm(total_vel, axes=(4,))
+
+        body_vel = csdl.Variable(shape=Ql.shape + (3,), value=0.)
+        body_vel = body_vel.set(csdl.slice[:,:,:,:,0], value=Ql)
+        body_vel = body_vel.set(csdl.slice[:,:,:,:,1], value=Qm)
+        body_vel = body_vel.set(csdl.slice[:,:,:,:,2], value=Qn)
+        body_vel_norm = csdl.norm(body_vel, axes=(4,))
 
         dmu_dt = csdl.Variable(shape=Q_inf_norm.shape, value=0)
         if nt > 2:
@@ -143,6 +149,8 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         surf_dict['Fx_panel'] = Fx_panel
         surf_dict['Fz_panel'] = Fz_panel
         surf_dict['panel_forces'] = dF
+
+        surf_dict['body_vel'] = body_vel_norm
         
         output_dict[surface_name] = surf_dict
 
@@ -150,7 +158,6 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         # print(CDi.value)
 
         start += num_panels
-
 
     return output_dict
 

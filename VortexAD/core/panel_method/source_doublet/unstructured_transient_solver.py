@@ -2,7 +2,7 @@ import csdl_alpha as csdl
 import numpy as np
 
 from VortexAD.core.panel_method.source_doublet.source_functions import compute_source_strengths, compute_source_influence
-from VortexAD.core.panel_method.source_doublet.doublet_functions import compute_doublet_influence
+from VortexAD.core.panel_method.source_doublet.doublet_functions import compute_doublet_influence, compute_doublet_influence_H_S
 from VortexAD.core.panel_method.source_doublet.wake_geometry import wake_geometry
 
 from VortexAD.core.panel_method.source_doublet.free_wake_comp import free_wake_comp
@@ -13,8 +13,11 @@ def unstructured_transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_
 
     asdf = list(np.arange(AIC_mu.shape[2]))
     print(AIC_mu[0,0,asdf,asdf].value)
-    print(AIC_mu[0,0,1,:].value)
-    # exit()
+    print(AIC_mu[0,0,0,:].value)
+
+    # AIC_mu = AIC_mu.set(csdl.slice[:,:,asdf,asdf], value=0.5)
+
+    exit()
 
     sigma_BC_influence = csdl.einsum(AIC_sigma, sigma, action='ijlk,ijk->ijl')
 
@@ -208,8 +211,8 @@ def static_AIC_computation(mesh_dict, num_nodes, nt, num_tot_panels):
     sum_ind = len(dp.shape) - 1
     dx = csdl.sum(dp*panel_x_dir_exp_vec, axes=(sum_ind,))
     dy = csdl.sum(dp*panel_y_dir_exp_vec, axes=(sum_ind,))
-    dz = csdl.sum(dp*panel_normal_exp_vec, axes=(sum_ind,)) - 1.e-6
-    rk = (dx**2 + dy**2 + dz**2 + 1.e-12)**0.5
+    dz = csdl.sum(dp*panel_normal_exp_vec, axes=(sum_ind,))
+    rk = (dx**2 + dy**2 + dz**2)**0.5
     ek = dx**2 + dz**2
     hk = dx*dy
 
@@ -237,18 +240,32 @@ def static_AIC_computation(mesh_dict, num_nodes, nt, num_tot_panels):
     )
     source_influence = source_influence_vec.reshape((num_nodes, nt, num_tot_panels, num_tot_panels))
 
-    doublet_influence_vec = compute_doublet_influence(
-        dpij_list, 
-        0, # we don't use this input for now 
-        ek_list, 
-        hk_list, 
-        rk_list, 
-        dx_list, 
-        dy_list, 
-        dz_list, 
-        mode='potential'
+    # doublet_influence_vec = compute_doublet_influence(
+    #     dpij_list, 
+    #     0, # we don't use this input for now 
+    #     ek_list, 
+    #     hk_list, 
+    #     rk_list, 
+    #     dx_list, 
+    #     dy_list, 
+    #     dz_list, 
+    #     mode='potential'
+    # )
+    # doublet_influence = doublet_influence_vec.reshape((num_nodes, nt, num_tot_panels, num_tot_panels))
+
+    doublet_influence_vec = compute_doublet_influence_H_S(
+        dij_list,
+        dpij_list,
+        rk_list,
+        dx_list,
+        dy_list,
+        dz_list
     )
-    doublet_influence = doublet_influence_vec.reshape((num_nodes, nt, num_tot_panels, num_tot_panels))
+    diag_terms = np.zeros((num_nodes, nt, num_tot_panels, num_tot_panels))
+    asdf = list(np.arange(num_tot_panels))
+    diag_terms[:,:,asdf,asdf] = 0.5
+    diag_terms = csdl.Variable(value=diag_terms)
+    doublet_influence = doublet_influence_vec.reshape((num_nodes, nt, num_tot_panels, num_tot_panels)) + diag_terms
 
     AIC_sigma = source_influence
     AIC_mu = doublet_influence

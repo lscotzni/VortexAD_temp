@@ -5,7 +5,24 @@ from vedo import *
 import matplotlib.pyplot as plt
 plt.rcParams.update(plt.rcParamsDefault)
 
-def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive = False, plot_mirror = True, wake_color='cyan', rotor_wake_color='red', surface_color='gray', cmap='jet', absolute=True, side_view=False, name='sample_gif', backend='imageio'):
+def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, extra_mesh=False, interactive = False, plot_mirror = True, wake_color='cyan', rotor_wake_color='red', surface_color='gray', cmap='jet', absolute=True, view='iso', name='sample_gif', backend='imageio'):
+    num_surfaces = len(mesh)
+    min_mu_list, max_mu_list = [], []
+    for i in range(num_surfaces):
+        min_mu_b = np.min(mu[i])
+        max_mu_b = np.max(mu[i])
+        min_mu_w = np.min(mu_wake[i])
+        max_mu_w = np.max(mu_wake[i])
+
+        min_mu = np.min((min_mu_b, min_mu_w))
+        max_mu = np.max((max_mu_b, max_mu_w))
+
+        min_mu_list.append(min_mu)
+        max_mu_list.append(max_mu)
+
+    min_mu = min(min_mu_list)
+    max_mu = max(max_mu_list)
+
     vedo.settings.default_backend = 'vtk'
     axs = Axes(
         xrange=(0,3),
@@ -14,13 +31,13 @@ def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive = False, plot_m
     )
     video = Video(name+".mp4", fps=5, backend=backend)
     # first get min and max mu value:
-    min_mu_b = np.min(mu)
-    max_mu_b = np.max(mu)
-    min_mu_w = np.min(mu_wake)
-    max_mu_w = np.max(mu_wake)
+    # min_mu_b = np.min(mu)
+    # max_mu_b = np.max(mu)
+    # min_mu_w = np.min(mu_wake)
+    # max_mu_w = np.max(mu_wake)
 
-    min_mu = np.min((min_mu_b, min_mu_w))
-    max_mu = np.max((max_mu_b, max_mu_w))
+    # min_mu = np.min((min_mu_b, min_mu_w))
+    # max_mu = np.max((max_mu_b, max_mu_w))
 
     for i in range(nt-1):
 
@@ -31,6 +48,7 @@ def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive = False, plot_m
 
         # min_mu = np.min((min_mu_b, min_mu_w))
         # max_mu = np.max((max_mu_b, max_mu_w))
+
         vp = Plotter(
             bg='white',
             # bg2='white',
@@ -38,57 +56,99 @@ def plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive = False, plot_m
             #  pos=(0, 0),
             offscreen=False,
             interactive=1,
-            size=(2500,2500))
-
-        # Any rendering loop goes here, e.g.
-        draw_scalarbar = True
-        color = wake_color
-        mesh_points = mesh[:, i, :] # does not vary with time here
-        nx = mesh_points.shape[1]
-        ny = mesh_points.shape[2]
-        connectivity = []
-        for k in range(nx-1):
-            for j in range(ny-1):
-                connectivity.append([k*ny+j,(k+1)*ny+j,(k+1)*ny+j+1,k*ny+j+1])
-            vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.)
-        mu_color = np.reshape(mu[:,i,:], (-1,1))
+            # size=(2500,2500))
+            size=(4000,4000))
         
-        vps.cmap(cmap, mu_color, on='cells', vmin=min_mu, vmax=max_mu)
-        vp += vps
-        vp += __doc__
-        wake_points = wake_mesh[:,i,:(i+1),:]
-        # mu_w = np.reshape(sim['system_model.wig.wig.wig.operation.prob.' + 'op_' + surface_name+'_mu_w'][i, 0:i, :], (-1,1))
-        # if absolute:
-        #     mu_w = np.absolute(mu_w)
-        # wake_points = np.concatenate((np.reshape(mesh_points[-1,:,:],(1,ny,3)), wake_points))
-        nx = wake_points.shape[1]
-        ny = wake_points.shape[2]
-        connectivity = []
-        for k in range(nx-1):
-            for j in range(ny-1):
-                connectivity.append([k*ny+j,(k+1)*ny+j,(k+1)*ny+j+1,k*ny+j+1])
-        vps = Mesh([np.reshape(wake_points, (-1, 3)), connectivity], c=color, alpha=1)
-        if i > 0:
-            mu_wake_color = np.reshape(mu_wake[:,i,:(i)*(ny-1)], (-1,1))
-            vps.cmap(cmap, mu_wake_color, on='cells', vmin=min_mu, vmax=max_mu)
-        if draw_scalarbar:
-            vps.add_scalarbar()
-            draw_scalarbar = False
-        vps.linewidth(1)
-        vp += vps
-        vp += __doc__
-        # cam1 = dict(focalPoint=(3.133, 1.506, -3.132))
-        # video.action(cameras=[cam1, cam1])
-        # vp.show(axs, elevation=-60, azimuth=45, roll=-45,
-        #         axes=False, interactive=False)  # render the scene
-        # vp.show(axs, elevation=-60, azimuth=-90, roll=90,
-        #         axes=False, interactive=False, zoom=True)  # render the scene
-        if side_view:
-            vp.show(axs, elevation=-90, azimuth=0, roll=0,
-                    axes=False, interactive=interactive)  # render the scene
+    
+        if extra_mesh:
+            num_extra_surf = len(extra_mesh)
+            for s in range(num_extra_surf):
+                mesh_points = extra_mesh[s] # does not vary with time here
+                nx = mesh_points.shape[0]
+                ny = mesh_points.shape[1]
+                connectivity = []
+                for k in range(nx-1):
+                    for j in range(ny-1):
+                        connectivity.append([k*ny+j,(k+1)*ny+j,(k+1)*ny+j+1,k*ny+j+1])
+                    vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c='light gray', alpha=1.)
+                vp += vps
+                vp += __doc__
+
+        
+        for s in range(num_surfaces):
+
+            # Any rendering loop goes here, e.g.
+            draw_scalarbar = True
+            color = wake_color
+            mesh_points = mesh[s][:, i, :] # does not vary with time here
+            nx = mesh_points.shape[1]
+            ny = mesh_points.shape[2]
+            connectivity = []
+            for k in range(nx-1):
+                for j in range(ny-1):
+                    connectivity.append([k*ny+j,(k+1)*ny+j,(k+1)*ny+j+1,k*ny+j+1])
+                vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c='light gray', alpha=1.)
+            mu_color = np.reshape(mu[s][:,i,:], (-1,1))
+            
+            vps.cmap(cmap, mu_color, on='cells', vmin=min_mu, vmax=max_mu)
+            vp += vps
+            vp += __doc__
+            wake_points = wake_mesh[s][:,i,:(i+1),:]
+            # mu_w = np.reshape(sim['system_model.wig.wig.wig.operation.prob.' + 'op_' + surface_name+'_mu_w'][i, 0:i, :], (-1,1))
+            # if absolute:
+            #     mu_w = np.absolute(mu_w)
+            # wake_points = np.concatenate((np.reshape(mesh_points[-1,:,:],(1,ny,3)), wake_points))
+            nx = wake_points.shape[1]
+            ny = wake_points.shape[2]
+            connectivity = []
+            for k in range(nx-1):
+                for j in range(ny-1):
+                    connectivity.append([k*ny+j,(k+1)*ny+j,(k+1)*ny+j+1,k*ny+j+1])
+            vps = Mesh([np.reshape(wake_points, (-1, 3)), connectivity], c=color, alpha=1)
+            if i > 0:
+                mu_wake_color = np.reshape(mu_wake[s][:,i,:(i)*(ny-1)], (-1,1))
+                vps.cmap(cmap, mu_wake_color, on='cells', vmin=min_mu, vmax=max_mu, alpha=1.)
+            if draw_scalarbar:
+                vps.add_scalarbar()
+                draw_scalarbar = False
+            vps.linewidth(1)
+            vp += vps
+            vp += __doc__
+            # cam1 = dict(focalPoint=(3.133, 1.506, -3.132))
+            # video.action(cameras=[cam1, cam1])
+            # vp.show(axs, elevation=-60, azimuth=45, roll=-45,
+            #         axes=False, interactive=False)  # render the scene
+            # vp.show(axs, elevation=-60, azimuth=-90, roll=90,
+            #         axes=False, interactive=False, zoom=True)  # render the scene
+        if interactive and i == nt-2:
+            interactive_t = True
+            print('yes')
         else:
+            interactive_t = False
+        interactive_t = interactive
+        
+        if view == 'side':
+            vp.show(axs, elevation=-90, azimuth=0, roll=0,
+                    axes=False, interactive=interactive_t)  # render the scene
+        elif view == 'front':
+            vp.show(axs, 
+                    elevation=0., azimuth=90, roll=-90,
+                    axes=False, interactive=interactive_t)  # render the scene
+        elif view  == 'iso':
             vp.show(axs, elevation=-45, azimuth=-45, roll=45,
-                    axes=False, interactive=interactive)  # render the scene
+                    axes=False, interactive=interactive_t)  # render the scene
+            # vp.show(elevation=45, azimuth=45, roll=-135,
+            #         axes=False, interactive=interactive_t)  # render the scene
+        elif view == 'turbine':
+            camera = {
+                'pos': (700,200,3000)
+            }
+            vp.show(axs, elevation=15., azimuth=45, roll=-105,
+                    camera=camera,
+                    axes=False, interactive=interactive_t)  # render the scene
+        else:
+            raise ValueError('Invalid view type')
+        
         video.add_frame()  # add individual frame
         # time.sleep(0.1)
         # vp.interactive().close()
@@ -127,7 +187,7 @@ def plot_pressure_distribution(mesh, Cp, surface_color='white', cmap='jet', inte
         vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.)
     Cp_color = np.reshape(Cp[:,-2,:,:], (-1,1))
     Cp_min, Cp_max = np.min(Cp[:,-2,:,:]), np.max(Cp[:,0,:,:])
-    Cp_min, Cp_max = -0.4, 1.
+    # Cp_min, Cp_max = -0.4, 1.
     # Cp_min, Cp_max = -5., 1.
     vps.cmap(cmap, Cp_color, on='cells', vmin=Cp_min, vmax=Cp_max)
     # vps.cmap(cmap, Cp_color, on='cells', vmin=-0.4, vmax=1)
