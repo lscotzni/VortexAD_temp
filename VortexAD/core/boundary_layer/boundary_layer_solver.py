@@ -73,20 +73,20 @@ def boundary_layer_solver(mesh_dict, output_dict, boundary_layer, num_nodes, nt,
                 csdl.slice[:,:,ind,:],
                 value=csdl.sum(vel_integrand[:,:,:ind,:], axes=(2,))
             )
-        theta = (0.45*nu/Ue**6 * vel_integration)**0.5
+        theta_lam = (0.45*nu/Ue**6 * vel_integration)**0.5
 
         # theta_0 = (0.075/dUe_dx[:,:,0,:])**0.5
         # theta = (0.45*nu/Ue**6 * vel_integration)**0.5 + csdl.expand(theta_0, Ue.shape, 'ijk->ijak')
         # NOTE: SET THE INITIAL FINITE MOMENTUM THICKNESS HERE TO AVOID NAN
         # theta = theta.set(csdl.slice[:,:,0,:], value=(0.075/dUe_dx[:,:,0,:])**0.5)
 
-        lam = theta**2/nu * dUe_dx
+        lam = theta_lam**2/nu * dUe_dx
 
         H_func_list = [
             0.0731/(0.14 + lam) + 2.088,
             2.61 - 3.75*lam + 5.24*lam**2,
         ]
-        H = switch_func(lam, H_func_list, [0], scale=100.)
+        H_lam = switch_func(lam, H_func_list, [0], scale=100.)
 
         l_func_list = [
             0.22 +1.402*lam + 0.018*lam/(0.107+lam),
@@ -94,10 +94,10 @@ def boundary_layer_solver(mesh_dict, output_dict, boundary_layer, num_nodes, nt,
         ]
         l = switch_func(lam, l_func_list, [0], scale=100.)
 
-        C_f = 2*nu/Ue/theta * l
-        disp_thickness = H*theta
+        C_f_lam = 2*nu/Ue/theta_lam * l
+        disp_thickness_lam = H_lam*theta_lam
 
-        Re_theta = Ue*theta/nu
+        Re_theta = Ue*theta_lam/nu
         Re_x = Ue*dx_grid/nu
         Michel_criterion = 1.174*(1+(22400/Re_x))*Re_x**0.46
 
@@ -110,12 +110,12 @@ def boundary_layer_solver(mesh_dict, output_dict, boundary_layer, num_nodes, nt,
     for s in range(ns-1):
         ind = np.where(delta_MC_val[:,:,s] > 0)[1][0]
         sep_ind_span.append(ind)
-    sep_ind = sep_ind_span[0]
+    sep_ind = min(sep_ind_span)
 
     # separation index based on lambda
-    # asdf = lam.value[0,-2,:,centerline_ind]
-    # aaa = np.where(asdf < -0.0842)
-    # sep_ind = aaa[0][0]
+    asdf = lam.value[0,-2,:,centerline_ind]
+    aaa = np.where(asdf < -0.0842)
+    sep_ind = aaa[0][0]
 
     # Ozone integration for turbulent boundary layer
     # NOTE: we are only doing this for time ind -2 to save cost
@@ -127,9 +127,9 @@ def boundary_layer_solver(mesh_dict, output_dict, boundary_layer, num_nodes, nt,
     dUe_dx_reshaped = dUe_dx[:,-2,sep_ind:,:].reshape(target_shape)
 
     # compute initial state values here
-    H0 = H[:,-2,sep_ind,:].reshape((ns-1,))
+    H0 = H_lam[:,-2,sep_ind,:].reshape((ns-1,))
     H0 = 1.4
-    theta_0_ode = theta[:,-2,sep_ind,:].reshape((ns-1,))
+    theta_0_ode = theta_lam[:,-2,sep_ind,:].reshape((ns-1,))
 
     H1_0 = 3.0445 + 0.8702/(H0-1.1)**1.271
     Ue_H1_theta_0_ode = Ue_reshaped[0,:]*H1_0*theta_0_ode
@@ -156,68 +156,79 @@ def boundary_layer_solver(mesh_dict, output_dict, boundary_layer, num_nodes, nt,
 
     # plotting for laminar region ONLY
     BL_mesh_centerline = BL_mesh.value[0,0,:,centerline_ind,0] /BL_mesh.value[0,0,-1,centerline_ind,0]
-    C_f_centerline = C_f.value[0,-2,:,centerline_ind]
-    delta_star_centerline = disp_thickness.value[0,-2,:,centerline_ind]
+    C_f_centerline = C_f_lam.value[0,-2,:,centerline_ind]
+    delta_star_centerline = disp_thickness_lam.value[0,-2,:,centerline_ind]
 
-    import matplotlib.pyplot as plt
-    # plt.figure()
-    # plt.plot(BL_mesh_centerline, C_f_centerline, '-^', label='Cf')
-    # plt.plot(BL_mesh_centerline, delta_star_centerline, '-*', label='disp. thickness')
-    # plt.plot(BL_mesh_centerline, theta[0,-2,:,centerline_ind].value, '-<', label='mom. thickness')
-    # plt.ylim([-.002, 0.006])
-    # plt.grid()
-    # plt.legend()
+    delta_star = csdl.Variable(value=np.zeros((Ue.shape[0],) + Ue.shape[2:]))
+    delta_star = delta_star.set(csdl.slice[:,:sep_ind,:], value=disp_thickness_lam[:,-2,:sep_ind,:])
+    delta_star = delta_star.set(csdl.slice[:,sep_ind:,:], value=disp_thickness_turb.reshape(1,nc_BL-sep_ind,ns-1))
+    
+    theta = csdl.Variable(value=np.zeros((Ue.shape[0],) + Ue.shape[2:]))
+    theta = theta.set(csdl.slice[:,:sep_ind,:], value=theta_lam[:,-2,:sep_ind,:])
+    theta = theta.set(csdl.slice[:,sep_ind:,:], value=theta_turb.reshape(1,nc_BL-sep_ind,ns-1))
+    
+    H = csdl.Variable(value=np.zeros((Ue.shape[0],) + Ue.shape[2:]))
+    H = H.set(csdl.slice[:,:sep_ind,:], value=H_lam[:,-2,:sep_ind,:])
+    H = H.set(csdl.slice[:,sep_ind:,:], value=H_turb.reshape(1,nc_BL-sep_ind,ns-1))
+    
+    Cf =csdl.Variable(value=np.zeros((Ue.shape[0],) + Ue.shape[2:]))
+    Cf = Cf.set(csdl.slice[:,:sep_ind,:], value=C_f_lam[:,-2,:sep_ind,:])
+    Cf = Cf.set(csdl.slice[:,sep_ind:,:], value=Cf_turb.reshape(1,nc_BL-sep_ind,ns-1))
 
-    # plt.figure()
-    # plt.plot(BL_mesh_centerline, delta_MC[0,-2,:,centerline_ind].value, '-^', label='Re_theta - Re_x')
-    # # plt.plot(BL_mesh_centerline, delta_star_centerline, '-*', label='disp. thickness')
-    # # plt.ylim([-.002, 0.006])
-    # plt.grid()
-    # plt.legend()
+    if True:
 
-    # plt.figure()
-    # plt.plot(BL_mesh_centerline, H[0,-2,:,centerline_ind].value, '-^', label='H')
-    # # plt.plot(BL_mesh_centerline, delta_star_centerline, '-*', label='disp. thickness')
-    # # plt.ylim([-.002, 0.006])
-    # plt.grid()
-    # plt.legend()
+        import matplotlib.pyplot as plt
+        # plt.figure()
+        # plt.plot(BL_mesh_centerline, C_f_centerline, '-^', label='Cf')
+        # plt.plot(BL_mesh_centerline, delta_star_centerline, '-*', label='disp. thickness')
+        # plt.plot(BL_mesh_centerline, theta[0,-2,:,centerline_ind].value, '-<', label='mom. thickness')
+        # plt.ylim([-.002, 0.006])
+        # plt.grid()
+        # plt.legend()
 
-    C_f_centerline_turb = np.zeros(C_f_centerline.shape)
-    C_f_centerline_turb[:sep_ind] = C_f_centerline[:sep_ind]
-    C_f_centerline_turb[sep_ind:] = Cf_turb.value[:,centerline_ind]
+        # plt.figure()
+        # plt.plot(BL_mesh_centerline, delta_MC[0,-2,:,centerline_ind].value, '-^', label='Re_theta - Re_x')
+        # # plt.plot(BL_mesh_centerline, delta_star_centerline, '-*', label='disp. thickness')
+        # # plt.ylim([-.002, 0.006])
+        # plt.grid()
+        # plt.legend()
 
-    delta_star_turb = np.zeros(delta_star_centerline.shape)
-    delta_star_turb[:sep_ind] = delta_star_centerline[:sep_ind]
-    delta_star_turb[sep_ind:] = disp_thickness_turb.value[:,centerline_ind]
+        # plt.figure()
+        # plt.plot(BL_mesh_centerline, H[0,-2,:,centerline_ind].value, '-^', label='H')
+        # # plt.plot(BL_mesh_centerline, delta_star_centerline, '-*', label='disp. thickness')
+        # # plt.ylim([-.002, 0.006])
+        # plt.grid()
+        # plt.legend()
 
-    theta_turb_centerline = np.zeros(C_f_centerline.shape)
-    theta_turb_centerline[:sep_ind] = theta[0,-2,:sep_ind,centerline_ind].value
-    theta_turb_centerline[sep_ind:] = theta_turb[:,centerline_ind].value
+        C_f_centerline = Cf.value[0,:,int((ns-1)/2)]
+        delta_star_centerline = delta_star.value[0,:,int((ns-1)/2)]
+        theta_turb_centerline = theta.value[0,:,int((ns-1)/2)]
 
-    plt.figure()
-    plt.plot(BL_mesh_centerline, C_f_centerline_turb, '-^', label='Cf')
-    plt.plot(BL_mesh_centerline, delta_star_turb, '-*', label='displacement thickness (m)')
-    # plt.plot(BL_mesh_centerline, theta_turb_centerline, '-<', label='mom. thickness')
-    plt.ylim([-.002, 0.006])
-    plt.xlabel('x/c')
-    plt.grid()
-    plt.legend()
+        plt.figure()
+        plt.plot(BL_mesh_centerline, C_f_centerline, '-^', label='Cf')
+        plt.plot(BL_mesh_centerline, delta_star_centerline, '-*', label='displacement thickness (m)')
+        # plt.plot(BL_mesh_centerline, theta_turb_centerline, '-<', label='mom. thickness')
+        plt.ylim([-.002, 0.006])
+        plt.xlabel('x/c')
+        plt.grid()
+        plt.legend()
 
-    H_turb_centerline = np.zeros(C_f_centerline.shape)
-    H_turb_centerline[:sep_ind] = H[0,-2,:sep_ind,centerline_ind].value
-    H_turb_centerline[sep_ind:] = H_turb[:,centerline_ind].value
+        # H_turb_centerline = np.zeros(C_f_centerline.shape)
+        # H_turb_centerline[:sep_ind] = H[0,-2,:sep_ind,centerline_ind].value
+        # H_turb_centerline[sep_ind:] = H_turb[:,centerline_ind].value
+        H_centerline = H.value[0,:,int((ns-1)/2)]
 
-    plt.figure()
-    plt.plot(BL_mesh_centerline, H_turb_centerline, '-^', label='H')
-    # plt.plot(BL_mesh_centerline, delta_star_centerline, '-*', label='disp. thickness')
-    # plt.ylim([-.002, 0.006])
-    plt.grid()
-    plt.legend()
+        plt.figure()
+        plt.plot(BL_mesh_centerline, H_centerline, '-^', label='H')
+        # plt.plot(BL_mesh_centerline, delta_star_centerline, '-*', label='disp. thickness')
+        # plt.ylim([-.002, 0.006])
+        plt.grid()
+        plt.legend()
 
 
-    plt.show()
+        plt.show()
 
-    pass
+    return delta_star, theta, H, Cf
 
 def turbulent_BL_ode_function(ozone_vars:ozone.FuncVars,nu):
     theta = ozone_vars.states['theta']

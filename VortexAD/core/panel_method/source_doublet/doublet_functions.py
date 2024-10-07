@@ -164,14 +164,19 @@ def compute_doublet_influence_new(A, AM, B, BM, SL, SM, A1, PN, mode='potential'
 
             RNUM = SM[i]*PN[i]*(B[i]*PA - A[i]*PB)
             DNOM = PA*PB + PN[i]**2*A[i]*B[i]*SM[i]**2
-    
-            asdf = csdl.arctan(RNUM/(DNOM+1.e-12)) # NOTE: add some numerical softening here
 
-            asdf = 2*csdl.arctan(((RNUM**2 + DNOM**2)**0.5 - DNOM) / (RNUM+1.e-12)) # half angle formula
+            # aaa = csdl.average(RNUM[0,0,:])
+            # bbb = csdl.average(DNOM[0,0,:])
+            # print(aaa.value)
+            # print(bbb.value)
+    
+            asdf = csdl.arctan(RNUM/(DNOM)) # NOTE: add some numerical softening here
+
+            asdf = 2*csdl.arctan(((RNUM**2 + DNOM**2)**0.5 - DNOM) / (RNUM+1.e-24)) # half angle formula
             # asdf = 2*csdl.arctan((RNUM/((RNUM**2+DNOM**2)**0.5+DNOM)))
 
             panel_segment_potential.append(asdf)
-
+        # exit()
         doublet_potential = mu/(4*np.pi) * sum(panel_segment_potential)
 
         return doublet_potential

@@ -45,6 +45,7 @@ def pre_processor_new(mesh_dict, mode='structured'):
             mesh_dict[key]['panel_normal'] = normal_vec
 
             panel_center_mod = Rc - normal_vec*0.001
+            panel_center_mod = Rc
             mesh_dict[key]['panel_center_mod'] = panel_center_mod
 
             m_dir = S3 - Rc
@@ -70,6 +71,7 @@ def pre_processor_new(mesh_dict, mode='structured'):
             m_exp = csdl.expand(m_vec, panel_corners.shape, 'ijklm->ijklam')
             
             S = csdl.norm(s+1.e-12, axes=(5,)) # NOTE: ADD NUMERICAL SOFTENING HERE BECAUSE OVERLAPPING NODES WILL CAUSE THIS TO BE 0
+            # S = csdl.norm(s, axes=(5,)) # NOTE: ADD NUMERICAL SOFTENING HERE BECAUSE OVERLAPPING NODES WILL CAUSE THIS TO BE 0
             SL = csdl.sum(s*l_exp, axes=(5,))
             SM = csdl.sum(s*m_exp, axes=(5,))
 

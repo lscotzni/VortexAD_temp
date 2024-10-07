@@ -11,9 +11,9 @@ import pyvista as pv
 
 b = 10.
 # c = 1.564
-c = .8698
+c = 1
 ns = 11
-nc = 21
+nc = 31
 
 alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
@@ -23,11 +23,11 @@ sos = 340.3
 V_inf = np.array([-sos*mach, 0., 0.])
 # V_inf = np.array([-10., 0., 0.])
 V_inf = np.array([-10., 0., 0.])
-nt = 40
+nt = 15
 num_nodes = 1
 
 mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False)
-# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
+mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
 # mesh_orig[:,:,1] += 5.
 # exit()
 

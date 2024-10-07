@@ -12,7 +12,7 @@ from VortexAD.core.panel_method.vortex_ring.vortex_ring_solver import vortex_rin
 # from VortexAD.core.panel_method.post_processor import post_processor
 
 # def unsteady_panel_solver(mesh_list, mesh_velocity_list, dt, mesh_mode='structured', mode='source-doublet', connectivity=None, free_wake=False):
-def unsteady_panel_solver(*args, dt, mesh_mode='structured', mode='source-doublet', free_wake=False, boundary_layer=False):
+def unsteady_panel_solver(*args, dt, mesh_mode='structured', mode='source-doublet', free_wake=False, boundary_layer=False, boundary_layer_coupling=False):
     '''
     2 modes:
     - source doublet (Dirichlet (no-perturbation potential in the body))
@@ -71,15 +71,18 @@ def unsteady_panel_solver(*args, dt, mesh_mode='structured', mode='source-double
 
 
     if mode == 'source-doublet':
-        outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, nt, dt, mesh_mode, free_wake, boundary_layer)
+        outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, nt, dt, mesh_mode, free_wake, boundary_layer, boundary_layer_coupling)
         output_dict = outputs[0]
         mesh_dict = outputs[1]
         wake_mesh_dict = outputs[2]
         mu = outputs[3]
         sigma = outputs[4]
         mu_wake = outputs[5]
-
-        return output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake
+        try:
+            BL_outputs = outputs[6]
+            return output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake, BL_outputs
+        except:
+            return output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake
 
     elif mode == 'vortex-ring':
         outputs = vortex_ring_solver(exp_orig_mesh_dict, num_nodes, nt, dt, mesh_mode, connectivity, free_wake)

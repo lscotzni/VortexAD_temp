@@ -20,7 +20,8 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
     asdf = list(np.arange(0,AIC_mu.shape[-1]))
     # AIC_mu = (AIC_mu**2)**0.5
     # AIC_mu = AIC_mu.set(csdl.slice[:,:,asdf,asdf], value=(AIC_mu[:,:,asdf,asdf]**2)**0.5)
-    print(AIC_mu[0,0,asdf,asdf].value)
+    # AIC_mu = AIC_mu.set(csdl.slice[:,:,asdf,asdf], value=0.5)
+    # print(AIC_mu[0,0,asdf,asdf].value)
     # print(AIC_mu[0,0,0,:].value)
     # print(AIC_sigma[0,0,asdf,asdf].value)
     # print(AIC_sigma[0,0,0,:].value)

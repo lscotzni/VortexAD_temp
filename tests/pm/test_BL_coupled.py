@@ -15,14 +15,14 @@ u_1mil = 1e6*(1.52e-5)/c
 Re_ratio = 0.54 # target Re / 1e6
 u_inf = u_1mil*Re_ratio # 
 ns = 11
-nc = 51
+nc = 31
 
 '''
 We have comparison data for Re = 5.4e5, 7.5e5, 1e6, 6e6
 We choose a chord of 1 and find the velocity for Re = 1e6 as our reference
 '''
 
-alpha_deg = 10.
+alpha_deg = 0.
 alpha = np.deg2rad(alpha_deg) # aoa
 
 mach = 0.35
@@ -30,22 +30,14 @@ sos = 340.3
 # V_inf = np.array([-sos*mach, 0., 0.])
 # V_inf = np.array([-10., 0., 0.])
 V_inf = np.array([-u_inf, 0., 0.])
-nt = 15
+nt = 25
 num_nodes = 1
 
 mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
 # mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
-# mesh_orig[:,:,1] += 5.
-# exit()
 
-# filename = str(SAMPLE_GEOMETRY_PATH) + '/pm/wing_NACA0012_ar10.vtk'
-# nc, ns = 11, 5
-# mesh_data = pv.read(filename)
-# mesh_orig = mesh_data.points.reshape((2*nc-1,ns,3))
-# mesh_orig[:,:,1] -= 5.
-# mesh_orig[:,:,1] += 25.
 nc_one_way = int((nc+1)/2)
-nc_BL_one_way = 1*(nc_one_way-1) + 1
+nc_BL_one_way = 4*(nc_one_way-1) + 1
 nc_BL = int(2*nc_BL_one_way-1)
 # nc_BL = (nc+1)*4
 BL_grid = gen_panel_mesh(nc_BL, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
@@ -82,7 +74,12 @@ BL_mesh = csdl.Variable(value=BL_mesh)
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake, BL_outputs = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=True, boundary_layer=[BL_mesh])
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, 
+    mesh_velocity_list, 
+    dt=0.05, 
+    free_wake=True, 
+    boundary_layer_coupling=[BL_mesh]
+)
 
 
 # mesh = mesh_dict['surface_0']['mesh'].value
@@ -92,13 +89,6 @@ CL  = output_dict['surface_0']['CL']
 CDi = output_dict['surface_0']['CDi']
 wake_mesh = wake_mesh_dict['surface_0']['mesh']
 
-delta_star = BL_outputs['delta_star']
-theta = BL_outputs['theta']
-H = BL_outputs['H']
-Cf = BL_outputs['Cf']
-
-
-
 
 # CL = output_dict['surface_0']['CL'].value
 
@@ -107,10 +97,11 @@ Cf = BL_outputs['Cf']
 # dCL_dmesh = csdl.derivative(CL_norm, mesh_velocities)
 
 recorder.stop()
+exit()
 jax_sim = csdl.experimental.JaxSimulator(
     recorder=recorder,
     additional_inputs=[mesh, mesh_velocities], # list of outputs (put in csdl variable)
-    additional_outputs=[mu, sigma, mu_wake, wake_mesh, coll_points, Cp, CL, CDi, delta_star, theta, H, Cf], # list of outputs (put in csdl variable)
+    additional_outputs=[mu, sigma, mu_wake, wake_mesh, coll_points, Cp, CL, CDi], # list of outputs (put in csdl variable)
 )
 jax_sim.run()
 
@@ -122,25 +113,6 @@ CDi = jax_sim[CDi]
 mu = jax_sim[mu]
 mu_wake = jax_sim[mu_wake]
 wake_mesh = jax_sim[wake_mesh]
-
-delta_star = jax_sim[delta_star]
-theta = jax_sim[theta]
-H = jax_sim[H]
-Cf = jax_sim[Cf]
-# exit()
-
-# data = {
-#     'Cp': Cp[0,-2,:,int((ns-1)/2)],
-#     'delta_star': delta_star[0,:,int((ns-1)/2)],
-#     'Cf': Cf[0,:,int((ns-1)/2)]
-# }
-
-# import pickle
-# filename = f'data_aoa_{int(alpha_deg)}'
-# file_handle = open(filename,'wb')
-# pickle.dump(data, file_handle)
-# file_handle.close()
-
 
 mu_value = mu[0,-2,:].reshape((nc-1)*2,ns-1)
 
