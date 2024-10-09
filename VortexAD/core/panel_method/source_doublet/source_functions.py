@@ -155,8 +155,8 @@ def compute_source_influence_new(A, AM, B, BM, SL, SM, A1, PN, S, mode='potentia
             PA = PN[i]**2*SL[i] + A1[i]*AM[i]
             PB = PN[i]**2*SL[i] + A1[i]*BM[i]
     
-            RNUM = SM[i]*PN[i]*(B[i]*PA - A[i]*PB)
-            DNOM = PA*PB + PN[i]**2*A[i]*B[i]*SM[i]**2
+            RNUM = SM[i]*PN[i]*(B[i]*PA - A[i]*PB) + 1.e-24
+            DNOM = PA*PB + PN[i]**2*A[i]*B[i]*SM[i]**2 + 1.e-24
     
             atan_term = csdl.arctan(RNUM/DNOM) # NOTE: add some numerical softening here
             atan_term = 2*csdl.arctan(((RNUM**2 + DNOM**2)**0.5 - DNOM) / (RNUM+1.e-24)) # half angle formula

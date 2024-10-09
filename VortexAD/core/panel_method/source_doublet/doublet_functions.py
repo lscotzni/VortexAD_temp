@@ -162,17 +162,21 @@ def compute_doublet_influence_new(A, AM, B, BM, SL, SM, A1, PN, mode='potential'
             PA = PN[i]**2*SL[i] + A1[i]*AM[i]
             PB = PN[i]**2*SL[i] + A1[i]*BM[i]
 
-            RNUM = SM[i]*PN[i]*(B[i]*PA - A[i]*PB)
-            DNOM = PA*PB + PN[i]**2*A[i]*B[i]*SM[i]**2
+            RNUM = SM[i]*PN[i]*(B[i]*PA - A[i]*PB) + 1.e-24
+            DNOM = PA*PB + PN[i]**2*A[i]*B[i]*SM[i]**2 + 1.e-24
 
             # aaa = csdl.average(RNUM[0,0,:])
             # bbb = csdl.average(DNOM[0,0,:])
             # print(aaa.value)
             # print(bbb.value)
     
-            asdf = csdl.arctan(RNUM/(DNOM)) # NOTE: add some numerical softening here
+            # asdf = csdl.arctan(RNUM/(DNOM)) # NOTE: add some numerical softening here
 
-            asdf = 2*csdl.arctan(((RNUM**2 + DNOM**2)**0.5 - DNOM) / (RNUM+1.e-24)) # half angle formula
+            atan2_num = (RNUM**2 + DNOM**2)**0.5 - DNOM
+            atan2_den = RNUM+1.e-24
+            asdf = 2*csdl.arctan(atan2_num/atan2_den)
+
+            # asdf = 2*csdl.arctan(((RNUM**2 + DNOM**2+1.e-12)**0.5 - DNOM) / (RNUM+1.e-24)) # half angle formula
             # asdf = 2*csdl.arctan((RNUM/((RNUM**2+DNOM**2)**0.5+DNOM)))
 
             panel_segment_potential.append(asdf)
