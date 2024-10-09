@@ -149,8 +149,8 @@ def compute_doublet_influence_new(A, AM, B, BM, SL, SM, A1, PN, mode='potential'
     This function takes inputs related to panel parameters and data about
     the point where potential is induced.
 
-    Each input is a list (all of the same length), where the number of panel
-    sides equals the length of the lists.
+    Each input is a list (all of the same length), where the length of
+    the lists eqals the number of panel edges. 
     '''
     if mode == 'potential':
 

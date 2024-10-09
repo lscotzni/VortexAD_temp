@@ -25,7 +25,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         mu_grid = mu[:,:,start:stop].reshape((num_nodes, nt, nc-1, ns-1))
 
         # perturbation velocities
-        qn = -sigma[:,:,start:stop].reshape((num_nodes, nt, nc-1, ns-1)) # num_nodes, nt, num_panels for surface
+        qn = sigma[:,:,start:stop].reshape((num_nodes, nt, nc-1, ns-1)) # num_nodes, nt, num_panels for surface
 
         if True:
             # region least squares method for perturbation velocities (derivatives)
@@ -90,8 +90,8 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         # print(mu_grid[0,0,:,:].value)
         # print(ql[0,0,:,:].value)
         # exit()
-        Ql = free_stream_l - ql
-        Qm = free_stream_m - qm
+        Ql = free_stream_l + ql
+        Qm = free_stream_m + qm
         Qn = free_stream_n + qn
         Q_inf_norm = csdl.norm(total_vel, axes=(4,))
 

@@ -44,7 +44,7 @@ def pre_processor_new(mesh_dict, mode='structured'):
             normal_vec = D1D2_cross / csdl.expand(D1D2_cross_norm, D1D2_cross.shape, 'ijkl->ijkla')
             mesh_dict[key]['panel_normal'] = normal_vec
 
-            panel_center_mod = Rc - normal_vec*0.001
+            panel_center_mod = Rc - normal_vec*1.e-3
             panel_center_mod = Rc
             mesh_dict[key]['panel_center_mod'] = panel_center_mod
 

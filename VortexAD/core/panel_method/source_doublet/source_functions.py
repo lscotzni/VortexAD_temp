@@ -17,12 +17,12 @@ def compute_source_strengths(mesh_dict, num_nodes, nt, num_panels, mesh_mode='st
             panel_normal = mesh_dict[surface]['panel_normal']
 
             if coll_point_vel:
-                total_vel = center_pt_velocity-coll_point_vel
+                total_vel = center_pt_velocity+coll_point_vel
             else:
                 total_vel = center_pt_velocity
 
             # vel_projection = csdl.einsum(coll_point_velocity, panel_normal, action='ijklm,ijklm->ijkl')
-            vel_projection = csdl.sum(total_vel*panel_normal, axes=(4,))
+            vel_projection = csdl.sum(-total_vel*panel_normal, axes=(4,))
 
             sigma = sigma.set(csdl.slice[:,:,start:stop], value=csdl.reshape(vel_projection, shape=(num_nodes, nt, num_surf_panels)))
             start += num_surf_panels

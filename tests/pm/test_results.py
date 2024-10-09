@@ -13,7 +13,7 @@ b = 10.
 # c = 1.564
 c = 1
 ns = 11
-nc = 31
+nc = 11
 
 alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
@@ -27,7 +27,7 @@ nt = 15
 num_nodes = 1
 
 mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False)
-mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
+# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
 # mesh_orig[:,:,1] += 5.
 # exit()
 
@@ -56,7 +56,7 @@ for i in range(num_nodes):
     for j in range(nt):
         mesh_velocities[i,j,:] = V_inf_rot
 
-recorder = csdl.Recorder(inline=False)
+recorder = csdl.Recorder(inline=True)
 recorder.start()
 
 mesh = csdl.Variable(value=mesh)
