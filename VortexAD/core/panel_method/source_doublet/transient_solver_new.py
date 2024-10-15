@@ -254,7 +254,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                 wake_velocity_timestep = wake_velocity[:,t,:,:,:]
 
                 if free_wake:
-                    total_vel = wake_velocity_timestep - induced_vel[:,start_i_w_pts:stop_i_w_pts,:].reshape((num_nodes, nc_w, ns_w, 3))
+                    total_vel = wake_velocity_timestep + induced_vel[:,start_i_w_pts:stop_i_w_pts,:].reshape((num_nodes, nc_w, ns_w, 3))
                 else:
                     total_vel = wake_velocity_timestep
                 dx = total_vel*dt
