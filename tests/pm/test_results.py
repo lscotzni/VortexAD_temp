@@ -14,6 +14,7 @@ b = 10.
 c = 1
 ns = 11
 nc = 21
+dt = 0.05
 
 alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
@@ -23,11 +24,11 @@ sos = 340.3
 V_inf = np.array([-sos*mach, 0., 0.])
 # V_inf = np.array([-10., 0., 0.])
 V_inf = np.array([-10., 0., 0.])
-nt = 15
+nt = 30
 num_nodes = 1
 
 mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False)
-# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
+mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
 # mesh_orig[:,:,1] += 5.
 # exit()
 
@@ -65,7 +66,7 @@ mesh_velocities = csdl.Variable(value=mesh_velocities)
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=True)
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=dt, free_wake=True)
 
 
 # mesh = mesh_dict['surface_0']['mesh'].value
@@ -74,6 +75,12 @@ Cp = output_dict['surface_0']['Cp']
 CL  = output_dict['surface_0']['CL']
 CDi = output_dict['surface_0']['CDi']
 wake_mesh = wake_mesh_dict['surface_0']['mesh']
+
+panel_normal = mesh_dict['surface_0']['panel_normal']
+panel_area = mesh_dict['surface_0']['panel_area']
+panel_center = mesh_dict['surface_0']['panel_center']
+panel_pressure = output_dict['surface_0']['panel_pressure']
+surface_vel = output_dict['surface_0']['surface_vel']
 
 
 # CL = output_dict['surface_0']['CL'].value
@@ -86,7 +93,7 @@ recorder.stop()
 jax_sim = csdl.experimental.JaxSimulator(
     recorder=recorder,
     additional_inputs=[mesh, mesh_velocities], # list of outputs (put in csdl variable)
-    additional_outputs=[mu, sigma, mu_wake, wake_mesh, coll_points, Cp, CL, CDi], # list of outputs (put in csdl variable)
+    additional_outputs=[mu, sigma, mu_wake, wake_mesh, coll_points, Cp, CL, CDi, panel_pressure, surface_vel, panel_normal, panel_area, panel_center], # list of outputs (put in csdl variable)
 )
 jax_sim.run()
 
@@ -99,6 +106,12 @@ mu = jax_sim[mu]
 mu_wake = jax_sim[mu_wake]
 wake_mesh = jax_sim[wake_mesh]
 
+panel_pressure = jax_sim[panel_pressure]
+surface_vel = jax_sim[surface_vel]
+panel_area = jax_sim[panel_area]
+panel_normal = jax_sim[panel_normal]
+panel_center = jax_sim[panel_center]
+
 mu_value = mu[0,-2,:].reshape((nc-1)*2,ns-1)
 
 print('doublet distribution:')
@@ -106,14 +119,21 @@ print(mu_value)
 print(f'CL: {CL}')
 print(f'CDi: {CDi}')
 
-# import pickle
-# Cp_data = {
-#     'coll_points':coll_points[0,0,:,int((ns-1)/2),0] / mesh[0,0,0,int((ns-1)/2),0],
-#     'Cp': Cp[0,-2,:,int((ns-1)/2)]
-# }
-# filehandler = open(f'Cp_nc_{nc}_ns_{ns}_nt_{nt}', 'wb')
-# pickle.dump(Cp_data, filehandler)
-# filehandler.close
+if False:
+    import pickle
+    FWH_inputs = {
+        'mesh': mesh[:,:-1,:],
+        'panel_pressure': panel_pressure[:,:-1,:],
+        'surface_vel': surface_vel[:,:-1,:],
+        'panel_normal': panel_normal[:,:-1,:],
+        'panel_center': panel_center[:,:-1,:],
+        'panel_area': panel_area[:,:-1,:],
+        'time': np.linspace(0, dt*(nt-1), nt)[:-1]
+    }
+    filehandler = open('sample_panel_code_acoustics_data', 'wb')
+    pickle.dump(FWH_inputs, filehandler)
+    filehandler.close()
+    exit()
 
 save_data = False
 if save_data:
@@ -397,6 +417,6 @@ if verif and alpha_deg == 10.:
 if True:
     plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
-if True:
+if False:
     # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')
     plot_wireframe([mesh], [wake_mesh], [mu], [mu_wake], nt, interactive=False, backend='cv', name='free_wake_demo')

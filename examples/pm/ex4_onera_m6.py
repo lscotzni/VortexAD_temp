@@ -1,64 +1,32 @@
 import csdl_alpha as csdl
 import numpy as np 
-from VortexAD.core.geometry.gen_panel_mesh import gen_panel_mesh, gen_panel_mesh_new
+from VortexAD.core.geometry.gen_onera_m6_mesh import gen_onera_m6_mesh
 from VortexAD.core.panel_method.unsteady_panel_solver import unsteady_panel_solver
 import matplotlib.pyplot as plt
 
 from VortexAD.utils.plot import plot_wireframe, plot_pressure_distribution
-from VortexAD import SAMPLE_GEOMETRY_PATH
 
 import pyvista as pv
 
-b = 10.
-c = 1
-u_1mil = 1e6*(1.52e-5)/c
-Re_ratio = 0.54 # target Re / 1e6
-u_inf = u_1mil*Re_ratio # 
-ns = 11
+ns = 21
 nc = 21
-
-'''
-We have comparison data for Re = 5.4e5, 7.5e5, 1e6, 6e6
-We choose a chord of 1 and find the velocity for Re = 1e6 as our reference
-'''
-
+dt = .005
 alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
 
-mach = 0.35
+mach = 0.8372
 sos = 340.3
-# V_inf = np.array([-sos*mach, 0., 0.])
+V_inf = np.array([-sos*mach, 0., 0.])
 # V_inf = np.array([-10., 0., 0.])
-V_inf = np.array([-u_inf, 0., 0.])
 nt = 15
 num_nodes = 1
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
-# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False)
-# mesh_orig[:,:,1] += 5.
-# exit()
-
-# filename = str(SAMPLE_GEOMETRY_PATH) + '/pm/wing_NACA0012_ar10.vtk'
-# nc, ns = 11, 5
-# mesh_data = pv.read(filename)
-# mesh_orig = mesh_data.points.reshape((2*nc-1,ns,3))
-# mesh_orig[:,:,1] -= 5.
-# mesh_orig[:,:,1] += 25.
-nc_one_way = int((nc+1)/2)
-nc_BL_one_way = 2*(nc_one_way-1) + 1
-nc_BL = int(2*nc_BL_one_way-1)
-# nc_BL = (nc+1)*4
-BL_grid = gen_panel_mesh(nc_BL, ns, c, b, span_spacing='default',  frame='default', plot_mesh=False)
-# BL_grid = gen_panel_mesh_new(nc_BL, ns, c, b,  frame='default', plot_mesh=False)
-BL_grid = BL_grid[int(nc_BL-1/2):,:,:]
-
+mesh_orig = gen_onera_m6_mesh(nc=nc, ns=ns, chord_spacing='default', span_spacing='default', plot_mesh=True)
 
 mesh = np.zeros((num_nodes, nt) + mesh_orig.shape)
-BL_mesh = np.zeros((num_nodes, nt) + BL_grid.shape)
 for i in range(num_nodes):
     for j in range(nt):
         mesh[i,j,:] = mesh_orig
-        BL_mesh[i,j,:] = BL_grid
 
 V_rot_mat = np.zeros((3,3))
 V_rot_mat[1,1] = 1.
@@ -72,17 +40,16 @@ for i in range(num_nodes):
     for j in range(nt):
         mesh_velocities[i,j,:] = V_inf_rot
 
-recorder = csdl.Recorder(inline=True)
+recorder = csdl.Recorder(inline=False)
 recorder.start()
 
 mesh = csdl.Variable(value=mesh)
 mesh_velocities = csdl.Variable(value=mesh_velocities)
-BL_mesh = csdl.Variable(value=BL_mesh)
 
 mesh_list = [mesh]
 mesh_velocity_list = [mesh_velocities]
 
-output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake, BL_outputs = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=0.05, free_wake=True, boundary_layer=[BL_mesh])
+output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solver(mesh_list, mesh_velocity_list, dt=dt, free_wake=True)
 
 
 # mesh = mesh_dict['surface_0']['mesh'].value
@@ -92,25 +59,12 @@ CL  = output_dict['surface_0']['CL']
 CDi = output_dict['surface_0']['CDi']
 wake_mesh = wake_mesh_dict['surface_0']['mesh']
 
-delta_star = BL_outputs['delta_star']
-theta = BL_outputs['theta']
-H = BL_outputs['H']
-Cf = BL_outputs['Cf']
-
-
-
-
-# CL = output_dict['surface_0']['CL'].value
-
-# CL_norm = csdl.norm(output_dict['surface_0']['CL'])
-
-# dCL_dmesh = csdl.derivative(CL_norm, mesh_velocities)
 
 recorder.stop()
 jax_sim = csdl.experimental.JaxSimulator(
     recorder=recorder,
     additional_inputs=[mesh, mesh_velocities], # list of outputs (put in csdl variable)
-    additional_outputs=[mu, sigma, mu_wake, wake_mesh, coll_points, Cp, CL, CDi, delta_star, theta, H, Cf], # list of outputs (put in csdl variable)
+    additional_outputs=[mu, sigma, mu_wake, wake_mesh, coll_points, Cp, CL, CDi], # list of outputs (put in csdl variable)
 )
 jax_sim.run()
 
@@ -123,32 +77,13 @@ mu = jax_sim[mu]
 mu_wake = jax_sim[mu_wake]
 wake_mesh = jax_sim[wake_mesh]
 
-delta_star = jax_sim[delta_star]
-theta = jax_sim[theta]
-H = jax_sim[H]
-Cf = jax_sim[Cf]
-# exit()
-
-data = {
-    'Cp': Cp[0,-2,:,int((ns-1)/2)],
-    'delta_star': delta_star[0,:,int((ns-1)/2)],
-    'Cf': Cf[0,:,int((ns-1)/2)]
-}
-
-import pickle
-filename = f'data_aoa_{int(alpha_deg)}'
-file_handle = open(filename,'wb')
-pickle.dump(data, file_handle)
-file_handle.close()
-exit()
-
 mu_value = mu[0,-2,:].reshape((nc-1)*2,ns-1)
 
 print('doublet distribution:')
 print(mu_value)
 print(f'CL: {CL}')
 print(f'CDi: {CDi}')
-
+# exit()
 # import pickle
 # Cp_data = {
 #     'coll_points':coll_points[0,0,:,int((ns-1)/2),0] / mesh[0,0,0,int((ns-1)/2),0],
@@ -332,8 +267,8 @@ if verif and alpha_deg == 0.:
     params = {'mathtext.default': 'regular' }          
     plt.rcParams.update(params)
 
-    plt.plot(LHJ_data_Re9[:,0], LHJ_data_Re9[:,1], 'vb', label='Ladson et al. ')
-    plt.plot(Gregory_data[:,0], Gregory_data[:,1], '>r', label='Gregory et al. ')
+    # plt.plot(LHJ_data_Re9[:,0], LHJ_data_Re9[:,1], 'vb', label='Ladson et al. ')
+    # plt.plot(Gregory_data[:,0], Gregory_data[:,1], '>r', label='Gregory et al. ')
     plt.plot(chord_station/chord, Cp_station, 'k*', label='CSDL panel code')
 
     plt.gca().invert_yaxis()
@@ -347,6 +282,7 @@ if verif and alpha_deg == 10.:
     chord_station = coll_points[0,0,:,int((ns-1)/2),0]
     chord = mesh[0,0,0,int((ns-1)/2),0]
     Cp_station = Cp[0,-2,:,int((ns-1)/2)]
+    # Cp_station = Cp[0,-2,:,-2]
 
     LHJ_data_Re9 = np.array([
     [.9483,   .1147],
@@ -424,8 +360,8 @@ if verif and alpha_deg == 10.:
     params = {'mathtext.default': 'regular' }          
     plt.rcParams.update(params)
 
-    plt.plot(LHJ_data_Re9[:,0], LHJ_data_Re9[:,1], 'vb', fillstyle='none', label='Ladson et al. ')
-    plt.plot(Gregory_data[:,0], Gregory_data[:,1], '>r', label='Gregory et al. ')
+    # plt.plot(LHJ_data_Re9[:,0], LHJ_data_Re9[:,1], 'vb', fillstyle='none', label='Ladson et al. ')
+    # plt.plot(Gregory_data[:,0], Gregory_data[:,1], '>r', label='Gregory et al. ')
     plt.plot(chord_station/chord, Cp_station, 'k*-', label='CSDL panel code')
 
     plt.gca().invert_yaxis()
@@ -437,9 +373,9 @@ if verif and alpha_deg == 10.:
 1
 
 
-if False:
+if True:
     plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
-if True:
+if False:
     # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')
-    plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive=False, backend='cv', name='free_wake_demo')
+    plot_wireframe([mesh], [wake_mesh], [mu], [mu_wake], nt, interactive=False, backend='cv', name='free_wake_demo')

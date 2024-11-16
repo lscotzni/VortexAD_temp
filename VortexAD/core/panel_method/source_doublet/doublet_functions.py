@@ -184,3 +184,6 @@ def compute_doublet_influence_new(A, AM, B, BM, SL, SM, A1, PN, mode='potential'
         doublet_potential = mu/(4*np.pi) * sum(panel_segment_potential)
 
         return doublet_potential
+    
+def compute_doublet_velocity():
+    return

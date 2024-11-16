@@ -5,7 +5,7 @@ from VortexAD.core.panel_method.source_doublet.initialize_unsteady_wake_new impo
 
 
 # from VortexAD.core.panel_method.source_doublet.transient_solver import transient_solver
-from VortexAD.core.panel_method.source_doublet.transient_solver_new import transient_solver
+from VortexAD.core.panel_method.source_doublet.transient_solver_VSAERO import transient_solver
 # from VortexAD.core.panel_method.source_doublet.transient_solver_noKC import transient_solver # version with no AIC adjustment
 
 from VortexAD.core.panel_method.source_doublet.transient_solver_BL_new import transient_solver_BL_new

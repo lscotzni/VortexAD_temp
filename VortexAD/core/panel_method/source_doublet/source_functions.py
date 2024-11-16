@@ -170,3 +170,6 @@ def compute_source_influence_new(A, AM, B, BM, SL, SM, A1, PN, S, mode='potentia
         source_potential = mu/(4*np.pi) * sum(panel_segment_potential)
 
         return source_potential
+    
+def compute_source_velocity():
+    return

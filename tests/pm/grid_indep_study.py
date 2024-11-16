@@ -34,23 +34,25 @@ data_dict = {
     41: ns_41
 }
 
-true_val = 1.074902
+true_val = 1.0194
 margin_5 = 0.95*true_val
 margin_10 = 0.9*true_val
 margin_15 = 0.85*true_val
+
+params = {'mathtext.default': 'regular' }          
+plt.rcParams.update(params)
  
-plt.plot([5,41], [true_val, true_val], 'k', label='experimental data')
+plt.plot([5,41], [true_val, true_val], 'k', label='Flightstream')
 plt.plot([5,41], [margin_5, margin_5], 'k--', label='5% error margin')
 plt.plot([5,41], [margin_10, margin_10], 'k-.', label='10% error margin')
-plt.plot([5,41], [margin_15, margin_15], 'k:', label='15% error margin')
 
 for ns in data_dict.keys():
     plt.plot(np.array(data_dict[ns]['nc']) - 1, data_dict[ns]['CL'], '-*', label=f'ns = {ns-1} panels')
 
 # plt.plot([3,41], [1.074902, 1.074902], 'k-*', label='experimental data')
 # plt.ylim([1., 1.2])
-plt.xlabel('chordwise panels (one-way)')
-plt.ylabel('CL')
+plt.xlabel('chordwise panels (one-way)', fontsize=15)
+plt.ylabel('$C_L$', fontsize=15)
 plt.grid()
 plt.legend()
 

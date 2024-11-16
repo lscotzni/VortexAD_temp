@@ -81,10 +81,10 @@ mu = jax_sim[mu]
 mu_wake = jax_sim[mu_wake]
 wake_mesh = jax_sim[wake_mesh]
 
-if False:
+if True:
     plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
-if True:
+if False:
     # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')
     plot_wireframe(mesh, wake_mesh, mu, mu_wake, nt, interactive=False, backend='cv', name='cylinder_pw_side', side_view=False)
 
@@ -92,11 +92,14 @@ if True:
 Cp_analytical = 1 - 4*np.sin((theta[:-1] + theta[1:])/2)**2
 Cp_csdl = Cp[0,-2,:,int((num_span-1)/2)]
 
+params = {'mathtext.default': 'regular' }          
+plt.rcParams.update(params)
+
 plt.figure()
 plt.plot((theta[:-1] + theta[1:])/2*180/np.pi, Cp_analytical, 'k-', label='Analytical')
 plt.plot((theta[:-1] + theta[1:])/2*180/np.pi, Cp_csdl, 'rv', label='CSDL')
-plt.xlabel('Angle (degrees)')
-plt.ylabel('Cp')
+plt.xlabel('Angle ($^{\circ}$)', fontsize=15)
+plt.ylabel('$C_p$', fontsize=15)
 plt.grid()
-plt.legend()
+plt.legend(fontsize=15)
 plt.show()

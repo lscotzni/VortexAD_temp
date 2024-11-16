@@ -74,9 +74,13 @@ def boundary_layer_solver(mesh_dict, output_dict, boundary_layer, num_nodes, nt,
                 value=csdl.sum(vel_integrand[:,:,:ind,:], axes=(2,))
             )
         theta_lam = (0.45*nu/Ue**6 * vel_integration)**0.5
+       
+        theta_0 = (0.075*nu/((dUe_dx[:,:,0,:])**2)**0.5)**0.5
+        # theta_lam = (0.45*nu/Ue**6 * vel_integration)**0.5 + csdl.expand(theta_0, Ue.shape, 'ijk->ijak')
+        theta_lam = csdl.Variable(value=np.zeros(Ue.shape))
+        theta_lam = theta_lam.set(csdl.slice[:,:,0,:], value=theta_0)
+        theta_lam = theta_lam.set(csdl.slice[:,:,1:,:], value=(0.45*nu/Ue[:,:,1:,:]**6 * vel_integration[:,:,1:,:])**0.5)
 
-        # theta_0 = (0.075/dUe_dx[:,:,0,:])**0.5
-        # theta = (0.45*nu/Ue**6 * vel_integration)**0.5 + csdl.expand(theta_0, Ue.shape, 'ijk->ijak')
         # NOTE: SET THE INITIAL FINITE MOMENTUM THICKNESS HERE TO AVOID NAN
         # theta = theta.set(csdl.slice[:,:,0,:], value=(0.075/dUe_dx[:,:,0,:])**0.5)
 
@@ -175,7 +179,7 @@ def boundary_layer_solver(mesh_dict, output_dict, boundary_layer, num_nodes, nt,
     Cf = Cf.set(csdl.slice[:,:sep_ind,:], value=C_f_lam[:,-2,:sep_ind,:])
     Cf = Cf.set(csdl.slice[:,sep_ind:,:], value=Cf_turb.reshape(1,nc_BL-sep_ind,ns-1))
 
-    if True:
+    if False:
 
         import matplotlib.pyplot as plt
         # plt.figure()

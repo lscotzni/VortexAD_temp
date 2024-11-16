@@ -101,6 +101,9 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         body_vel = body_vel.set(csdl.slice[:,:,:,:,2], value=Qn)
         body_vel_norm = csdl.norm(body_vel, axes=(4,))
 
+        rot_mat = mesh_dict[surface_name]['rot_mat']
+        body_vel_global = csdl.einsum(body_vel, rot_mat, action='ijklm,ijklmn->ijkln')
+
         dmu_dt = csdl.Variable(shape=Q_inf_norm.shape, value=0)
         if nt > 2:
             dmu_dt = dmu_dt.set(csdl.slice[:,1:,:,:], value=(mu_grid[:,1:,:,:] - mu_grid[:,:-1,:,:])/dt)
@@ -110,14 +113,13 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         Cp_dynamic = -dmu_dt*2./Q_inf_norm**2
         Cp = Cp_static + Cp_dynamic
         # Cp = Cp_static
-        # Cp = 1 - (Ql**2 + Qm**2 + Qn**2)/Q_inf_norm**2 - dmu_dt*2./Q_inf_norm**2
-        # Cp = 1 - (Ql**2 + Qn**2)/Q_inf_norm**2 - dmu_dt*2./Q_inf_norm**2
         
         panel_area = mesh_dict[surface_name]['panel_area']
 
         rho = 1.225
         # rho = 1000.
-        dF_no_normal = -0.5*rho*Q_inf_norm**2*panel_area*Cp
+        dP = -0.5*rho*Q_inf_norm**2*Cp
+        dF_no_normal = dP*panel_area
         dF = csdl.expand(dF_no_normal, panel_normal.shape, 'ijkl->ijkla') * panel_normal
 
         Fz_panel = csdl.tensordot(dF, z_dir_global, axes=([4],[0]))
@@ -150,8 +152,11 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         surf_dict['Fx_panel'] = Fx_panel
         surf_dict['Fz_panel'] = Fz_panel
         surf_dict['panel_forces'] = dF
-
+        
         surf_dict['body_vel'] = body_vel_norm
+
+        surf_dict['panel_pressure'] = dP
+        surf_dict['surface_vel'] = body_vel_global
         
         output_dict[surface_name] = surf_dict
 

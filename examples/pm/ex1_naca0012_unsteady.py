@@ -47,7 +47,7 @@ for i in range(num_nodes):
     for j in range(nt):
         mesh_velocities[i,j,:] = V_inf_rot
 
-recorder = csdl.Recorder(inline=False)
+recorder = csdl.Recorder(inline=True)
 recorder.start()
 
 mesh = csdl.Variable(value=mesh)
@@ -382,6 +382,6 @@ if verif and alpha_deg == 10.:
 if True:
     plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
 
-if False:
+if True:
     # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')
     plot_wireframe([mesh], [wake_mesh], [mu], [mu_wake], nt, interactive=False, backend='cv', name='free_wake_demo')

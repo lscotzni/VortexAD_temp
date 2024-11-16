@@ -45,7 +45,7 @@ def pre_processor_new(mesh_dict, mode='structured'):
             mesh_dict[key]['panel_normal'] = normal_vec
 
             panel_center_mod = Rc - normal_vec*1.e-3
-            panel_center_mod = Rc
+            # panel_center_mod = Rc
             mesh_dict[key]['panel_center_mod'] = panel_center_mod
 
             m_dir = S3 - Rc
@@ -56,6 +56,12 @@ def pre_processor_new(mesh_dict, mode='structured'):
 
             mesh_dict[key]['panel_x_dir'] = l_vec
             mesh_dict[key]['panel_y_dir'] = m_vec
+
+            rot_mat = csdl.Variable(value=np.zeros(normal_vec.shape + (3,))) # taken from dissertation of Pranav Prashant Ladkat, Pg. 26 eq. 4.5 
+            rot_mat = rot_mat.set(csdl.slice[:,:,:,:,:,0], value=l_vec)
+            rot_mat = rot_mat.set(csdl.slice[:,:,:,:,:,1], value=m_vec)
+            rot_mat = rot_mat.set(csdl.slice[:,:,:,:,:,2], value=normal_vec)
+            mesh_dict[key]['rot_mat'] = rot_mat # rotation matrix transforms panel coordinates to global coordinates
 
             SMP = csdl.norm((S2)/2 - Rc, axes=(4,))
             SMQ = csdl.norm((S3)/2 - Rc, axes=(4,)) # same as m_norm

@@ -1,7 +1,7 @@
 import csdl_alpha as csdl
 
 from VortexAD.core.panel_method.source_doublet.pre_processor import pre_processor
-from VortexAD.core.panel_method.source_doublet.pre_processor_new import pre_processor_new
+from VortexAD.core.panel_method.source_doublet.pre_processor_VSAERO import pre_processor_new
 from VortexAD.core.panel_method.source_doublet.mu_sigma_solver import mu_sigma_solver
 from VortexAD.core.panel_method.source_doublet.post_processor import post_processor, unstructured_post_processor
 from VortexAD.core.boundary_layer.boundary_layer_solver import boundary_layer_solver

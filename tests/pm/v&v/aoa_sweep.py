@@ -19,17 +19,20 @@ Ladson_data = {
 
 code_data = {
     'alpha': np.array([-10, -7.5, -5, -2.5, 0, 2.5, 5, 7.5, 10, 12.5, 15]),
-    'CL': np.array([-0.98285139, -0.74257443, -0.4976574, -0.24961491, 1.91E-14, 0.24961491, 0.4976574, 0.74257443, 0.98285139, 1.21703071, 1.44372966])
+    'CL': np.array([-1.01979587, -0.7662831, -0.51154176, -0.25597716, 1.24E-13, 0.25597712, 0.51154172, 0.76628304, 1.01979591, 1.27166927, 1.52150666])
 }
 
 McCroskey_data = McCroskey_fit(code_data['alpha'])
+
+params = {'mathtext.default': 'regular' }          
+plt.rcParams.update(params)
 
 plt.figure()
 plt.plot(Abbott_data['alpha'], Abbott_data['CL'], 'sr', label='Abbott data')
 plt.plot(Ladson_data['alpha'], Ladson_data['CL'], '>b', label='Ladson data')
 plt.plot(code_data['alpha'], code_data['CL'], '-*k', label='CSDL panel code')
-plt.xlabel('alpha (deg)')
-plt.ylabel('CL')
+plt.xlabel('Angle of attack $(^{\circ})$', fontsize=15)
+plt.ylabel('$C_L$', fontsize=15)
 plt.legend()
 plt.grid()
 
