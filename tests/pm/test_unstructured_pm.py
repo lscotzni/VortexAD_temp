@@ -19,10 +19,12 @@ nc = 5
 
 alpha = np.deg2rad(10.) # aoa
 
-mach = 0.25
+mach = 0.1
 sos = 340.3
-V_inf = np.array([sos*mach, 0., 0.])
-nt = 5
+# V_inf = np.array([-sos*mach, 0., 0.])
+V_inf = np.array([-10., 0., 0.])
+nt = 20
+dt = 0.05
 num_nodes = 1
 
 # points_orig, connectivity = gen_panel_mesh(nc, ns, c, b, frame='default', unstructured=True, plot_mesh=False)
@@ -40,9 +42,11 @@ num_nodes = 1
 # TE_node_indices = np.array([1, 17, 18, 19, 20, 21, 22, 23, 24, 25, 9]) - 1
 
 # file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/naca0012_mesh.msh'
-file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/NACA0012_rec_wing_11_4.stl'
-file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/NACA0012_rec_wing_11_11_round_tip.stl'
+# file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/NACA0012_rec_wing_11_4.stl'
+# file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/NACA0012_rec_wing_11_11_round_tip.stl'
 # file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/NACA0012_rec_wing_11_31_round_tip.stl'
+# file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/naca0012_fine.stl'
+file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/naca0012_LE_TE_cluster.stl'
 mesh = meshio.read(
     file_name,  # string, os.PathLike, or a buffer/open file
     # file_format="stl",  # optional if filename is a path; inferred from extension
@@ -54,6 +58,7 @@ cells = mesh.cells
 cells_dict = mesh.cells_dict
 
 triangles = cells_dict['triangle']
+# exit()
 points_orig, triangles, cell_adjacency, edges2cells = find_cell_adjacency(points=points_orig, cells=triangles)
 
 upper_TE_cells, lower_TE_cells, TE_node_indices = get_TE_data(points_orig, triangles, cell_adjacency, edges2cells)
@@ -75,7 +80,7 @@ for i in range(num_nodes):
     for j in range(nt):
         point_velocities[i,j,:] = V_inf_rot
 
-recorder = csdl.Recorder(inline=True)
+recorder = csdl.Recorder(inline=False)
 recorder.start()
 
 points = csdl.Variable(value=points)
@@ -90,7 +95,7 @@ output_dict, mesh_dict, wake_mesh_dict, mu, sigma, mu_wake = unsteady_panel_solv
     connectivity_data, 
     TE_data, 
     point_velocities, 
-    dt=0.01, 
+    dt=dt, 
     mesh_mode='unstructured'
 )
 run_stop = time.time()
@@ -102,13 +107,14 @@ if use_jax:
     CL = output_dict['CL']
     coll_points = mesh_dict['panel_center']
     Cp = output_dict['Cp']
+    Qn = output_dict['Qn']
 
     wake_mesh = wake_mesh_dict['mesh']
 
     jax_sim = csdl.experimental.JaxSimulator(
         recorder=recorder,
         additional_inputs=[points],
-        additional_outputs = [mu, mu_wake, wake_mesh, coll_points, Cp, CL]
+        additional_outputs = [mu, mu_wake, wake_mesh, coll_points, Cp, CL, Qn]
     )
     jax_sim.run()
     CL = jax_sim[CL]
@@ -118,6 +124,7 @@ if use_jax:
     wake_mesh = jax_sim[wake_mesh]
     mu = jax_sim[mu]
     mu_wake = jax_sim[mu_wake]
+    # exit()
 else:
 
     CL = output_dict['CL']
@@ -275,5 +282,5 @@ if False:
 
 if True:
     plot_pressure_distribution(points[0,0,:], Cp[0,-2,:], connectivity=triangles, interactive=True, top_view=False)
-if True:
-    plot_wireframe(points, wake_mesh, mu, mu_wake, connectivity=triangles, nt=nt, interactive=True)
+if False:
+    plot_wireframe(points, wake_mesh, mu, mu_wake, connectivity=triangles, nt=nt, interactive=False)

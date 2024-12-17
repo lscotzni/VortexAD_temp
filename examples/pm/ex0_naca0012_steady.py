@@ -54,7 +54,7 @@ inputs to the solver:
 - list of mesh velocities
 - actuation velocities (if rotating bodies) -> not applicable for now
 '''
-output_dict, mesh_dict, mu, sigma = steady_panel_solver(
+output_dict, mesh_dict, mu, sigma, wake_dict = steady_panel_solver(
     mesh_list, 
     mesh_velocity_list
 )

@@ -9,8 +9,8 @@ from VortexAD.utils.plot import plot_wireframe, plot_transient_pressure_distribu
 # ============ blade operating conditions ============
 RPM = 5500
 dt = 0.00025
-RPM = 10
-dt = 0.2
+# RPM = 10
+# dt = 0.2
 omega = RPM*2*np.pi/60. # ~ 576 rad/sec or 92 rev/sec 
 omega_vec = np.array([0., 0., omega])
 nt = 60
@@ -23,12 +23,12 @@ num_blades = len(blade_mesh_list)
 
 blade_meshes = np.zeros((num_blades,2*nc-1, ns, 3))
 for i in range(num_blades):
-    blade_meshes[i,:,:,:] = blade_mesh_list[i] * 4
+    blade_meshes[i,:,:,:] = blade_mesh_list[i]
 
 # ============ computing blade position and collocation velocity in time ============
 blade_mesh_array = np.zeros((1,nt,num_blades, 2*nc-1, ns, 3)) # nn, nt, num_blades, nc, ns, 3
 blade_mesh_velocity_array = np.zeros_like(blade_mesh_array) # freestream, set to zero
-blade_mesh_velocity_array[:,:,:,:,:,2] = 0.
+blade_mesh_velocity_array[:,:,:,:,:,2] = 1.
 blade_mesh_coll_vel_array = np.zeros((1,nt,num_blades,2*nc-2, ns-1,3))
 
 rot_mat = np.zeros((3,3))
@@ -132,4 +132,4 @@ if True:
     # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')
     plot_wireframe(mesh_list, wake_mesh_list, mu_list, mu_wake_list, nt, interactive=False, backend='cv', name='ITR', axes=axs)
 
-    # plot_transient_pressure_distribution(mesh_list[0], Cp_list[0], backend='cv', interactive=False, axes=axs)
+    # plot_transient_pressure_distribution(mesh_list[0], Cp_list[0], backend='cv', interactive=True, axes=axs)

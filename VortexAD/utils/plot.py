@@ -170,6 +170,8 @@ def plot_transient_pressure_distribution(mesh, Cp, name='unsteady_Cp', surface_c
     nt = mesh.shape[1]
     Cp_min = np.min(Cp[:,:-1,:])
     Cp_max = np.max(Cp[:,:-1,:])
+    Cp_max = 1.
+    Cp_min = -10.
     for t in range(nt-1):
         vp = Plotter(
             bg='white',
@@ -251,6 +253,20 @@ def plot_pressure_distribution(mesh, Cp, surface_color='white', cmap='jet', inte
     '''
     Contour plot function for pressure coefficient (steady or single time-step)
     '''
+    num_surfaces = len(mesh)
+    min_Cp_list, max_Cp_list = [], []
+    for i in range(num_surfaces):
+        min_Cp = np.min(Cp[i])
+        max_Cp = np.max(Cp[i])
+
+        min_Cp_list.append(min_Cp)
+        max_Cp_list.append(max_Cp)
+
+    Cp_min = min(min_Cp_list)
+    Cp_max = max(max_Cp_list)
+
+    # Cp_max = 600
+    # Cp_min = -60.
     vedo.settings.default_backend = 'vtk'
     axs = Axes(
         xrange=(0,3),
@@ -265,29 +281,33 @@ def plot_pressure_distribution(mesh, Cp, surface_color='white', cmap='jet', inte
         offscreen=False,
         interactive=1,
         size=(2500,2500))
-
+    for s in range(num_surfaces):
     # Any rendering loop goes here, e.g.
-    draw_scalarbar = True
-    # color = wake_color
-    mesh_points = mesh[:, :, :] # does not vary with time here
-    nx = mesh_points.shape[1]
-    ny = mesh_points.shape[2]
-    connectivity = []
-    for k in range(nx-1):
-        for j in range(ny-1):
-            connectivity.append([k*ny+j,(k+1)*ny+j,(k+1)*ny+j+1,k*ny+j+1])
-        # vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.).linecolor('black')
-        vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.)
+        draw_scalarbar = True
+        # color = wake_color
+        mesh_points = mesh[s][:, :, :] # does not vary with time here
+        nx = mesh_points.shape[1]
+        ny = mesh_points.shape[2]
+        connectivity = []
+        for k in range(nx-1):
+            for j in range(ny-1):
+                connectivity.append([k*ny+j,(k+1)*ny+j,(k+1)*ny+j+1,k*ny+j+1])
+            # vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.).linecolor('black')
+            vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.)
+            # vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity])
 
-    Cp_color = np.reshape(Cp[:,:,:], (-1,1))
-    Cp_min, Cp_max = np.min(Cp[:,:,:]), np.max(Cp[:,:,:])
-    # Cp_min, Cp_max = -0.4, 1.
-    # Cp_min, Cp_max = -5., 1.
-    vps.cmap(cmap, Cp_color, on='cells', vmin=Cp_min, vmax=Cp_max)
-    # vps.cmap(cmap, Cp_color, on='cells', vmin=-0.4, vmax=1)
-    vps.add_scalarbar()
-    vp += vps
-    vp += __doc__
+        Cp_color = np.reshape(Cp[s][:,:,:], (-1,1))
+        # Cp_min, Cp_max = np.min(Cp[:,:,:]), np.max(Cp[:,:,:])
+        # Cp_min, Cp_max = -0.4, 1.
+        Cp_min, Cp_max = -1., 1.
+        Cp_min, Cp_max = -0.5, 0.5
+        vps.cmap(cmap, Cp_color, on='cells', vmin=Cp_min, vmax=Cp_max)
+        # vps.cmap(cmap, Cp_color, on='cells', vmin=-0.4, vmax=1)
+        vps.add_scalarbar()
+        # nl = NormalLines(vps, scale=.5)
+        vp += vps
+        # vp += nl
+        vp += __doc__
     # wake_points = wake_mesh[:,i,:(i+1),:]
     # # mu_w = np.reshape(sim['system_model.wig.wig.wig.operation.prob.' + 'op_' + surface_name+'_mu_w'][i, 0:i, :], (-1,1))
     # # if absolute:

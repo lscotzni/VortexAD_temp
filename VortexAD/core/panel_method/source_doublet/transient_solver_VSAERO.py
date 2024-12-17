@@ -199,6 +199,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
             
             # ============ ADD STEP HERE THAT SEGMENTS THE FIRST WAKE ROW FROM OTHERS ============
             AIC_mu_total = AIC_mu_total.set(csdl.slice[:,t,:,:], value=AIC_mu[:,t,:,:]+AIC_mu_adjustment[:,t,:,:])
+            # AIC_mu_total = AIC_mu_total.set(csdl.slice[:,t,:,:], value=AIC_mu[:,t,:,:])
             for nn in csdl.frange(num_nodes):
                 # RHS
                 wake_influence = csdl.matvec(AIC_wake[nn,t,:,:], mu_wake_minus_1[nn,t,:])

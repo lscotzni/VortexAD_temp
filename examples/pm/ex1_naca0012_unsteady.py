@@ -15,7 +15,7 @@ c = .8698
 ns = 11
 nc = 21
 
-alpha_deg = 10.
+alpha_deg = 0.
 alpha = np.deg2rad(alpha_deg) # aoa
 
 mach = 0.15

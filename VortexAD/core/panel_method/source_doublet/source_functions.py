@@ -31,7 +31,7 @@ def compute_source_strengths(mesh_dict, num_nodes, nt, num_panels, mesh_mode='st
         coll_point_velocity = mesh_dict['coll_point_velocity']
         panel_normal = mesh_dict['panel_normal']
 
-        vel_projection = csdl.sum(coll_point_velocity*panel_normal, axes=(3,)) # summing along 4th dimension
+        vel_projection = -csdl.sum(coll_point_velocity*panel_normal, axes=(3,)) # summing along 4th dimension
         sigma = vel_projection
 
     return sigma # VECTORIZED in shape=(num_nodes, nt, num_surf_panels)

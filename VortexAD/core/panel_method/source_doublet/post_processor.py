@@ -101,8 +101,8 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         body_vel = body_vel.set(csdl.slice[:,:,:,:,2], value=Qn)
         body_vel_norm = csdl.norm(body_vel, axes=(4,))
 
-        rot_mat = mesh_dict[surface_name]['rot_mat']
-        body_vel_global = csdl.einsum(body_vel, rot_mat, action='ijklm,ijklmn->ijkln')
+        # rot_mat = mesh_dict[surface_name]['rot_mat']
+        # body_vel_global = csdl.einsum(body_vel, rot_mat, action='ijklm,ijklmn->ijkln')
 
         dmu_dt = csdl.Variable(shape=Q_inf_norm.shape, value=0)
         if nt > 2:
@@ -156,7 +156,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
         surf_dict['body_vel'] = body_vel_norm
 
         surf_dict['panel_pressure'] = dP
-        surf_dict['surface_vel'] = body_vel_global
+        # surf_dict['surface_vel'] = body_vel_global
         
         output_dict[surface_name] = surf_dict
 
@@ -172,7 +172,7 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
     z_dir_global = np.array([0., 0., 1.])
     output_dict = {}
 
-    qn = -sigma
+    qn = sigma
     delta_coll_point = mesh_dict['delta_coll_point']
     cell_adjacency = mesh_dict['cell_adjacency']
 
@@ -194,7 +194,7 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
 
     dmu_dt = csdl.Variable(shape=Q_inf_norm.shape, value=0.)
     if nt > 2:
-        dmu_dt = dmu_dt.set(csdl.slice[:,1:,:], value=(mu[:,:-1,:] - mu[:,1:,:])/dt)
+        dmu_dt = dmu_dt.set(csdl.slice[:,1:,:], value=(mu[:,1:,:] - mu[:,:-1,:])/dt)
     
     perturbed_vel_mag = (Ql**2 + Qm**2 + Qn**2)**0.5
     Cp_static = 1 - perturbed_vel_mag**2/Q_inf_norm**2
@@ -227,5 +227,7 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, nt, dt):
     output_dict['CDi'] = CDi
     output_dict['Cp'] = Cp
     output_dict['panel_forces'] = dF
+    output_dict['Qn'] = Qn
+    # output_dict['Ql'] = Ql
 
     return output_dict

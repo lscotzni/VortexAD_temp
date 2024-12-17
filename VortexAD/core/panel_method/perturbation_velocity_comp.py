@@ -219,9 +219,9 @@ def unstructured_least_squares_velocity(mu, delta_coll_point, cell_adjacency):
     C = C.set(csdl.slice[:,:,diag_list_dm, diag_list_dl], value=sum_dl_dm)
 
     dmu = csdl.Variable(shape=(num_nodes, nt, num_tot_panels, 3), value=0.)
-    dmu = dmu.set(csdl.slice[:,:,:,0], value=mu - mu[:,:,list(cell_adjacency[:,0])])
-    dmu = dmu.set(csdl.slice[:,:,:,1], value=mu - mu[:,:,list(cell_adjacency[:,1])])
-    dmu = dmu.set(csdl.slice[:,:,:,2], value=mu - mu[:,:,list(cell_adjacency[:,2])])
+    dmu = dmu.set(csdl.slice[:,:,:,0], value=mu[:,:,list(cell_adjacency[:,0])] - mu)
+    dmu = dmu.set(csdl.slice[:,:,:,1], value=mu[:,:,list(cell_adjacency[:,1])] - mu)
+    dmu = dmu.set(csdl.slice[:,:,:,2], value=mu[:,:,list(cell_adjacency[:,2])] - mu)
 
     dl_dot_dmu = csdl.sum(delta_coll_point[:,:,:,:,0]*dmu, axes=(3,))
     dm_dot_dmu = csdl.sum(delta_coll_point[:,:,:,:,1]*dmu, axes=(3,))

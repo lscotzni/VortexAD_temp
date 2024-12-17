@@ -96,7 +96,8 @@ def gen_ITR_mesh(nc=21, ns=11, B=4, chord_spacing='uniform', span_spacing='unifo
         rotated_pts = rotated_pts_shift 
 
         mesh[:,i,:] = rotated_pts
-
+    mesh = mesh[::-1,:,:]
+    # mesh = mesh[:,::-1,:]
     mesh_list = [mesh]
     dtheta_blade = 2*np.pi/B
     rot_mat = np.zeros((3,3))

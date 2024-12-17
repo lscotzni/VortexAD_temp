@@ -232,7 +232,7 @@ def pre_processor(mesh_dict, mode='structured', connectivity=None):
         mesh_dict['panel_normal'] = n_vec
 
         panel_center_mod = panel_center - n_vec*0.0001
-        # mesh_dict['panel_center'] = panel_center_mod
+        mesh_dict['panel_center'] = panel_center_mod
 
         cp_deltas = csdl.Variable(shape=panel_corners.shape, value=0.)
         cp_deltas = cp_deltas.set(csdl.slice[:,:,:,0,:], value=panel_center[:,:,list(cell_adjacency[:,0]),:] - panel_center)

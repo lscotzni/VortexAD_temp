@@ -164,11 +164,6 @@ def compute_doublet_influence_new(A, AM, B, BM, SL, SM, A1, PN, mode='potential'
 
             RNUM = SM[i]*PN[i]*(B[i]*PA - A[i]*PB) + 1.e-24
             DNOM = PA*PB + PN[i]**2*A[i]*B[i]*SM[i]**2 + 1.e-24
-
-            # aaa = csdl.average(RNUM[0,0,:])
-            # bbb = csdl.average(DNOM[0,0,:])
-            # print(aaa.value)
-            # print(bbb.value)
     
             # asdf = csdl.arctan(RNUM/(DNOM)) # NOTE: add some numerical softening here
 

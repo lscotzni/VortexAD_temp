@@ -374,7 +374,7 @@ if verif and alpha_deg == 10.:
 
 
 if True:
-    plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
+    plot_pressure_distribution([mesh[:,-2,:]], [Cp[:,-2,:]], interactive=True, top_view=False)
 
 if False:
     # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')

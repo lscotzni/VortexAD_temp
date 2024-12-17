@@ -58,7 +58,7 @@ def unsteady_panel_solver(*args, dt, mesh_mode='structured', mode='source-double
 
         exp_orig_mesh_dict = {}
         exp_orig_mesh_dict['points'] = points
-        exp_orig_mesh_dict['nodal_velocity'] = point_velocity
+        exp_orig_mesh_dict['nodal_velocity'] = point_velocity * -1.
         exp_orig_mesh_dict['cell_point_indices'] = cells
         exp_orig_mesh_dict['cell_adjacency'] = cell_adjacency
 

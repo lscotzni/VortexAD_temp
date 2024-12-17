@@ -88,7 +88,6 @@ def wake_geometry(surf_wake_mesh_dict, time_ind):
     surf_wake_mesh_dict['SL'] = SL
     surf_wake_mesh_dict['SM'] = SM
 
-    print(S.shape)
     # exit()
 
 

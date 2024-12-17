@@ -100,9 +100,9 @@ def initialize_unsteady_wake(mesh_dict, num_nodes, dt, mesh_mode='structured' ,p
         wake_mesh_dict['panel_x_dir'] = csdl.Variable(shape=(num_nodes, nt, nc_w-1, ns-1, 3), value=0.)
         wake_mesh_dict['panel_y_dir'] = csdl.Variable(shape=(num_nodes, nt, nc_w-1, ns-1, 3), value=0.)
         wake_mesh_dict['panel_normal'] = csdl.Variable(shape=(num_nodes, nt, nc_w-1, ns-1, 3), value=0.)
-        wake_mesh_dict['dpij'] = csdl.Variable(value=np.zeros((num_nodes, nt, nc_w-1, ns-1, 4, 2)))
-        wake_mesh_dict['dij'] = csdl.Variable(value=np.zeros((num_nodes, nt, nc_w-1, ns-1, 4)))
-        wake_mesh_dict['mij'] = csdl.Variable(shape=(num_nodes, nt, nc_w-1, ns-1, 4), value=0.)
+        wake_mesh_dict['S'] = csdl.Variable(value=np.zeros((num_nodes, nt, nc_w-1, ns-1, 4)))
+        wake_mesh_dict['SL'] = csdl.Variable(value=np.zeros((num_nodes, nt, nc_w-1, ns-1, 4)))
+        wake_mesh_dict['SM'] = csdl.Variable(shape=(num_nodes, nt, nc_w-1, ns-1, 4), value=0.)
 
         wake_mesh_dict = wake_geometry(wake_mesh_dict, time_ind=0)
 

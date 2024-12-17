@@ -13,13 +13,12 @@ def post_processor(mesh_dict, mu, sigma, num_nodes):
 
     output_dict = {}
     for i in range(len(surface_names)):
-        surf_dict = {}
         surface_name = surface_names[i]
+        surf_dict = {}
+
         num_panels = mesh_dict[surface_name]['num_panels']
         nc, ns = mesh_dict[surface_name]['nc'], mesh_dict[surface_name]['ns']
         stop += num_panels
-
-        panel_areas = mesh_dict[surface_name]['panel_area']
 
         mu_grid = mu[:,start:stop].reshape((num_nodes, nc-1, ns-1))
 
@@ -109,13 +108,13 @@ def post_processor(mesh_dict, mu, sigma, num_nodes):
 
         surf_dict['panel_pressure'] = dP
         surf_dict['surface_vel'] = body_vel_global
+
+        start += num_panels
         
         output_dict[surface_name] = surf_dict
 
         # print(CL.value)
         # print(CDi.value)
-
-        start += num_panels
 
     return output_dict
 

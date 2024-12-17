@@ -2,10 +2,11 @@ import numpy as np
 import csdl_alpha as csdl
 
 from VortexAD.core.panel_method.steady.fixed_wake_representation import fixed_wake_representation
+from VortexAD.core.panel_method.steady.compute_source_strength import compute_source_strength
+
 from VortexAD.core.panel_method.source_doublet.source_functions import compute_source_influence_new 
 from VortexAD.core.panel_method.source_doublet.doublet_functions import compute_doublet_influence_new
 
-from VortexAD.core.panel_method.steady.compute_source_strength import compute_source_strength
 
 def mu_sigma_solver(num_nodes, mesh_dict):
 
@@ -17,14 +18,16 @@ def mu_sigma_solver(num_nodes, mesh_dict):
     # wake_mesh_dict = fixed_wake_representation(mesh_dict, num_nodes, wake_propagation_dt=0.001)
     wake_mesh_dict = fixed_wake_representation(mesh_dict, num_nodes, wake_propagation_dt=10)
 
+    sigma = compute_source_strength(mesh_dict, num_nodes, num_panels=num_tot_panels)
+
     # static AIC matrices for linear system solve
     AIC_mu, AIC_sigma = AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels, surface_names)
     asdf = list(np.arange(0,AIC_mu.shape[-1]))
-    # print(AIC_mu[0,asdf,asdf].value)
-    # print(AIC_mu[0,0,:].value)
+    # AIC_mu = AIC_mu.set(csdl.slice[0,asdf,asdf], value=0.5)
+    print(AIC_mu[0,asdf,asdf].value)
+    print(AIC_mu[0,0,:].value)
     # exit()
 
-    sigma = compute_source_strength(mesh_dict, num_nodes, num_panels=num_tot_panels)
     sigma_BC_influence = csdl.einsum(AIC_sigma, sigma, action='ijk,ik->ij')
 
     mu = csdl.Variable(value=np.zeros(sigma.shape))
@@ -33,7 +36,7 @@ def mu_sigma_solver(num_nodes, mesh_dict):
         mu_nn = csdl.solve_linear(AIC_mu[nn,:,:], RHS)
         mu = mu.set(csdl.slice[nn,:], value=mu_nn)
 
-    return mu, sigma
+    return mu, sigma, wake_mesh_dict
 
 def AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels, surface_names):
     AIC_sigma = csdl.Variable(shape=(num_nodes, num_tot_panels, num_tot_panels), value=0.)
@@ -42,6 +45,7 @@ def AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels, surfac
     start_i, stop_i = 0, 0
     for i in range(num_surfaces):
         surf_i_name = surface_names[i]
+
         coll_point_i = mesh_dict[surf_i_name]['panel_center_mod'] # evaluation point
         nc_i, ns_i = mesh_dict[surf_i_name]['nc'], mesh_dict[surf_i_name]['ns']
         num_panels_i = mesh_dict[surf_i_name]['num_panels']
@@ -137,7 +141,7 @@ def AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels, surfac
                 mode='potential'
             )
             doublet_influence = doublet_influence_vec.reshape((num_nodes, num_panels_i, num_panels_j))
-            # AIC_mu = AIC_mu.set(csdl.slice[:,start_i:stop_i, start_j:stop_j], value=doublet_influence)
+            AIC_mu = AIC_mu.set(csdl.slice[:,start_i:stop_i, start_j:stop_j], value=doublet_influence)
 
             source_influence_vec = compute_source_influence_new(
                 A_list, 
@@ -153,8 +157,10 @@ def AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels, surfac
             )
             source_influence = source_influence_vec.reshape((num_nodes, num_panels_i, num_panels_j))
             AIC_sigma = AIC_sigma.set(csdl.slice[:,start_i:stop_i, start_j:stop_j], value=source_influence)
+            start_j += num_panels_j
 
             # ================ wake influence here ================
+
             nc_w_j, ns_w_j = wake_mesh_dict[surf_j_name]['nc'], wake_mesh_dict[surf_j_name]['ns']
             num_panels_w_j = wake_mesh_dict[surf_j_name]['num_panels']
             stop_w_j += num_panels_w_j
@@ -242,31 +248,38 @@ def AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels, surfac
             )
             doublet_influence_w = doublet_influence_w_vec.reshape((num_nodes, num_panels_i, num_panels_w_j))
 
-            doublet_influence_KC = csdl.Variable(value=np.zeros(shape=doublet_influence.shape))
-            doublet_influence_KC = doublet_influence_KC.set(
-                csdl.slice[:,:,:],
-                value=doublet_influence
-            )
-            doublet_influence_KC = doublet_influence_KC.set(
-                csdl.slice[:,:,:(ns_j-1)],
-                value=doublet_influence[:,:,:(ns_j-1)]-doublet_influence_w
-            )
-            doublet_influence_KC = doublet_influence_KC.set(
-                csdl.slice[:,:,-(ns_j-1):],
-                value=doublet_influence[:,:,-(ns_j-1):]+doublet_influence_w
+            # doublet_influence_KC = csdl.Variable(value=np.zeros(shape=doublet_influence.shape))
+            # doublet_influence_KC = doublet_influence_KC.set(
+            #     csdl.slice[:,:,:],
+            #     value=doublet_influence
+            # )
+            # doublet_influence_KC = doublet_influence_KC.set(
+            #     csdl.slice[:,:,:(ns_j-1)],
+            #     value=doublet_influence[:,:,:(ns_j-1)]-doublet_influence_w
+            # )
+            # doublet_influence_KC = doublet_influence_KC.set(
+            #     csdl.slice[:,:,-(ns_j-1):],
+            #     value=doublet_influence[:,:,-(ns_j-1):]+doublet_influence_w
+            # )
+
+            asdf = stop_j-num_panels_j
+            AIC_mu = AIC_mu.set(
+                csdl.slice[:,start_i:stop_i, asdf:(asdf+(ns_w_j-1))],
+                value=AIC_mu[:,start_i:stop_i, asdf:(asdf+(ns_w_j-1))] - doublet_influence_w
             )
 
-            AIC_mu = AIC_mu.set(csdl.slice[:,start_i:stop_i, start_j:stop_j], value=doublet_influence_KC)
+            AIC_mu = AIC_mu.set(
+                csdl.slice[:,start_i:stop_i, (stop_j-(ns_w_j-1)):stop_j],
+                value=AIC_mu[:,start_i:stop_i, (stop_j-(ns_w_j-1)):stop_j] + doublet_influence_w
+            )
 
-
-            start_j += num_panels_j
+            # start_j += num_panels_j
             start_w_j += num_panels_w_j
         start_i += num_panels_i
 
     return AIC_mu, AIC_sigma
 
     
-
 
 
 

@@ -141,7 +141,7 @@ def gen_gmsh_unstructured_mesh_new(span_array, thickness_array, chord_array, nam
 
     LE_ind = int(nc/2)
     spanwise_steps = (span_array[-1] - span_array[0]) / (ns-1)
-    chord_step = (chord_array[0] - chord_array[LE_ind]) / (nc/2) 
+    chord_step = (chord_array[0] - chord_array[LE_ind]) / (nc/2) / 4
 
     step = chord_step
     
