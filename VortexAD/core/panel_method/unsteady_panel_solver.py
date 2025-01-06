@@ -66,9 +66,10 @@ def unsteady_panel_solver(*args, dt, mesh_mode='structured', mode='source-double
         exp_orig_mesh_dict['upper_TE_cells'] = upper_TE_cells
         exp_orig_mesh_dict['lower_TE_cells'] = lower_TE_cells
 
-
-    # NOTE: CAN USE EITHER ARGS OR KWARGS FOR THIS
-
+    else:
+        raise ValueError(
+            'Invalid input for mesh mode. Options are structured (including patches) or unstructured'
+        )
 
     if mode == 'source-doublet':
         outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, nt, dt, mesh_mode, free_wake, boundary_layer, boundary_layer_coupling)

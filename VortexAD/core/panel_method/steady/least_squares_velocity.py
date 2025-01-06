@@ -51,3 +51,44 @@ def least_squares_velocity(mu_grid, delta_coll_point):
     qm = -dmu_d[:,1::2].reshape((num_nodes, nc_panels, ns_panels))
 
     return ql, qm
+
+def unstructured_least_squares_velocity(mu, delta_coll_point, cell_adjacency):
+
+    num_nodes = mu.shape[0]
+    num_tot_panels = mu.shape[1]
+
+    diag_list_dl = np.arange(start=0, stop=2*num_tot_panels, step=2)
+    diag_list_dm = list(diag_list_dl + 1)
+    diag_list_dl = list(diag_list_dl)
+
+    C = csdl.Variable(shape=(num_nodes, num_tot_panels*2, num_tot_panels*2), value=0.)
+    b = csdl.Variable(shape=(num_nodes, num_tot_panels*2), value=0.)
+
+    sum_dl_sq = csdl.sum(delta_coll_point[:,:,:,0]**2, axes=(2,))
+    sum_dm_sq = csdl.sum(delta_coll_point[:,:,:,1]**2, axes=(2,))
+    sum_dl_dm = csdl.sum(delta_coll_point[:,:,:,0]*delta_coll_point[:,:,:,1], axes=(2,))
+
+    C = C.set(csdl.slice[:,diag_list_dl, diag_list_dl], value=sum_dl_sq)
+    C = C.set(csdl.slice[:,diag_list_dm, diag_list_dm], value=sum_dm_sq)
+    C = C.set(csdl.slice[:,diag_list_dl, diag_list_dm], value=sum_dl_dm)
+    C = C.set(csdl.slice[:,diag_list_dm, diag_list_dl], value=sum_dl_dm)
+
+    dmu = csdl.Variable(shape=(num_nodes, num_tot_panels, 3), value=0.)
+    dmu = dmu.set(csdl.slice[:,:,0], value=mu[:,list(cell_adjacency[:,0])] - mu)
+    dmu = dmu.set(csdl.slice[:,:,1], value=mu[:,list(cell_adjacency[:,1])] - mu)
+    dmu = dmu.set(csdl.slice[:,:,2], value=mu[:,list(cell_adjacency[:,2])] - mu)
+
+    dl_dot_dmu = csdl.sum(delta_coll_point[:,:,:,0]*dmu, axes=(2,))
+    dm_dot_dmu = csdl.sum(delta_coll_point[:,:,:,1]*dmu, axes=(2,))
+
+    b = b.set(csdl.slice[:,0::2], value=dl_dot_dmu)
+    b = b.set(csdl.slice[:,1::2], value=dm_dot_dmu)
+    
+    dmu_d = csdl.Variable(shape=(num_nodes, num_tot_panels*2), value=0.)
+    for i in csdl.frange(num_nodes):
+        dmu_d = dmu_d.set(csdl.slice[i,:], value=csdl.solve_linear(C[i,:,:], b[i,:]))
+
+    ql = -dmu_d[:,0::2]
+    qm = -dmu_d[:,1::2]
+
+    return ql, qm

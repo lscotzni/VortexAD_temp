@@ -2,8 +2,8 @@ import numpy as np
 import csdl_alpha as csdl
 
 def pre_processor_new(mesh_dict, mode='structured'):
-    surface_names = list(mesh_dict.keys())
     if mode == 'structured':
+        surface_names = list(mesh_dict.keys())
         for i, key in enumerate(surface_names):
             mesh = mesh_dict[key]['mesh']
             mesh_shape = mesh.shape
