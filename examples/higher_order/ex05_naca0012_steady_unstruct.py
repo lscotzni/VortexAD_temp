@@ -2,6 +2,7 @@ import csdl_alpha as csdl
 import numpy as np 
 from VortexAD import steady_panel_solver
 
+
 # plotting functions
 import matplotlib.pyplot as plt
 from VortexAD.utils.plot_unstructured import plot_pressure_distribution
@@ -65,7 +66,8 @@ output_dict, mesh_dict, mu, sigma = steady_panel_solver(
     connectivity_data, 
     TE_data, 
     point_velocities, 
-    mesh_mode='unstructured'
+    mesh_mode='unstructured',
+    higher_order=True
 )
 
 CL = output_dict['CL']

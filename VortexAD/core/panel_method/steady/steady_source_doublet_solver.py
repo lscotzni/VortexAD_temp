@@ -16,13 +16,17 @@ def source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, patch_flag):
         mesh_dict = pre_processor(exp_orig_mesh_dict, mode=mesh_mode)
 
         print('solving for doublet strengths')
-        mu, sigma, wake_dict = mu_sigma_solver(num_nodes, mesh_dict, mode=mesh_mode)
+        mu, sigma, wake_dict, AIC_mu, AIC_sigma = mu_sigma_solver(num_nodes, mesh_dict, mode=mesh_mode)
 
         print('running post-processor')
         if mesh_mode == 'structured':
             output_dict = post_processor(mesh_dict, mu, sigma, num_nodes)
         elif mesh_mode == 'unstructured':
             output_dict = unstructured_post_processor(mesh_dict, mu, sigma, num_nodes)
+
+        output_dict['wake_dict'] = wake_dict
+        output_dict['AIC_mu'] = AIC_mu
+        output_dict['AIC_sigma'] = AIC_sigma
 
     elif patch_flag: # only structured sub grids
         print('running pre-processing')

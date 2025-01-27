@@ -134,7 +134,7 @@ def compute_source_influence(dij, mij, dpij, dx, dy, dz, rk, ek, hk, sigma=1., m
         
         return u, v, w
     
-def compute_source_influence_new(A, AM, B, BM, SL, SM, A1, PN, S, mode='potential', mu=1.):
+def compute_source_influence_new(A, AM, B, BM, SL, SM, A1, PN, S, l=None, m=None, n=None, mode='potential', mu=1.):
     '''
     Function to compute induced potential of a source panel based on the 
     VSAERO documentation found here: https://ntrs.nasa.gov/citations/19900004884
@@ -170,6 +170,35 @@ def compute_source_influence_new(A, AM, B, BM, SL, SM, A1, PN, S, mode='potentia
         source_potential = mu/(4*np.pi) * sum(panel_segment_potential)
 
         return source_potential
+    
+    elif mode == 'velocity':
+        panel_segment_velocity = []
+        num_sides = len(A)
+        
+        for i in range(num_sides):
+
+            PA = PN[i]**2*SL[i] + A1[i]*AM[i]
+            PB = PN[i]**2*SL[i] + A1[i]*BM[i]
+    
+            RNUM = SM[i]*PN[i]*(B[i]*PA - A[i]*PB) + 1.e-24
+            DNOM = PA*PB + PN[i]**2*A[i]*B[i]*SM[i]**2 + 1.e-24
+    
+            # atan_term = csdl.arctan(RNUM/DNOM) # NOTE: add some numerical softening here
+            atan_term = 2*csdl.arctan(((RNUM**2 + DNOM**2)**0.5 - DNOM) / (RNUM+1.e-24)) # half angle formula
+
+            GL = (1/(S[i])) * csdl.log((A[i]+B[i]+S[i])/(A[i]+B[i]-S[i]))
+
+            print(GL.shape)
+            print(l.shape)
+            print(SM[i].shape)
+            
+            side_velocity = GL * (SM[i]*l - SL[i]*m) + atan_term*n # Cjk is the atan term
+
+            panel_segment_velocity.append(side_velocity)
+
+        source_velocity = mu/(4*np.pi) * sum(panel_segment_velocity)
+
+        return source_velocity
     
 def compute_source_velocity():
     return

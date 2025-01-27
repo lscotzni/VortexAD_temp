@@ -266,7 +266,7 @@ def transient_solver(mesh_dict, wake_mesh_dict, num_nodes, nt, num_tot_panels, d
                 wake_velocity = wake_velocity.set(csdl.slice[:,t+1,2:,:,:], value=wake_velocity[:,t,1:-1,:,:])
 
                 wake_mesh_dict[surface_name]['mesh'] = wake_mesh
-                wake_mesh_dict[surface_name]['wake_nodal_velocity'] = wake_velocity
+                wake_mesh_dict[surface_name]['wake_nodal_velocity'] = wake_velocity # edit to include the free wake velocities
 
                 wake_mesh_dict[surface_name] = wake_geometry(surf_wake_mesh_dict=wake_mesh_dict[surface_name], time_ind=t+1)
 

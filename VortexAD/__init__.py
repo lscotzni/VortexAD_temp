@@ -8,5 +8,10 @@ AIRFOIL_PATH = ROOT / 'core' / 'geometry' / 'sample_airfoils'
 try:
     from VortexAD.core.panel_method.unsteady_panel_solver import unsteady_panel_solver
 except:
-    pass
+    print('='*10)
+    print('Unsteady solver could not be imported.')
+    print('This is likely due to the Ozone dependency.')
+    print('Please install Ozone and retry.')
+    print('='*10)
+
 from VortexAD.core.panel_method.steady_panel_solver import steady_panel_solver

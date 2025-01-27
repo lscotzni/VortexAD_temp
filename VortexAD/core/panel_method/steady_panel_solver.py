@@ -2,9 +2,10 @@ import numpy as np
 import csdl_alpha as csdl
 
 from VortexAD.core.panel_method.steady.steady_source_doublet_solver import source_doublet_solver
+from VortexAD.core.panel_method.steady.higher_order.linear_doublet_solver import linear_doublet_solver
 
 # def steady_panel_solver(mesh_list, mesh_velocity_list, patches=False, coll_vel_list=False):
-def steady_panel_solver(*args, mesh_mode='structured', patches=False):
+def steady_panel_solver(*args, mesh_mode='structured', patches=False, higher_order=False):
     '''
     mesh_list: list of lists
         - each entry represents a surface
@@ -42,7 +43,7 @@ def steady_panel_solver(*args, mesh_mode='structured', patches=False):
                 surf_dict = {}
                 surf_dict['mesh'] = mesh_list[i]
                 surf_dict['nodal_velocity'] = mesh_velocity_list[i] * -1.
-                if coll_vel_list:
+                if coll_vel:
                     surf_dict['coll_point_velocity'] = coll_vel_list[i] * -1. 
                 else:
                     surf_dict['coll_point_velocity'] = coll_vel
@@ -106,11 +107,13 @@ def steady_panel_solver(*args, mesh_mode='structured', patches=False):
         raise ValueError(
             'Invalid input for mesh mode. Options are structured (including patches) or unstructured'
         )
+    if higher_order and not patch_flag:
+        outputs = linear_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode)
+    else:
+        outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, patch_flag)
+        output_dict = outputs[0]
+        mesh_dict = outputs[1]
+        mu = outputs[2]
+        sigma = outputs[3]
 
-    outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, patch_flag)
-    output_dict = outputs[0]
-    mesh_dict = outputs[1]
-    mu = outputs[2]
-    sigma = outputs[3]
-
-    return output_dict, mesh_dict, mu, sigma
+        return output_dict, mesh_dict, mu, sigma

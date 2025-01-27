@@ -23,18 +23,26 @@ def mu_sigma_solver(num_nodes, mesh_dict, mode='structured'):
     wake_mesh_dict = fixed_wake_representation(mesh_dict, num_nodes, wake_propagation_dt=10, mesh_mode=mode)
 
     sigma = compute_source_strength(mesh_dict, num_nodes, num_panels=num_tot_panels, mesh_mode=mode)
-
+    # graph = csdl.get_current_recorder().active_graph
+    # graph.visualize('pre-subgraph')
     # static AIC matrices for linear system solve
     if mode == 'structured':
         AIC_mu, AIC_sigma = AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels, surface_names)
     elif mode == 'unstructured':
         AIC_mu, AIC_sigma = unstructured_AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels)
+        # for i in csdl.frange(1):
+        #     AIC_mu, AIC_sigma = unstructured_AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels)
+        #     graph = csdl.get_current_recorder().active_graph
+        # graph.visualize('subgraph')
+        # csdl.get_current_recorder().visualize_graph('entire_graph', visualize_style='hierarchical')
+        # exit()
+
     else:
         raise ValueError('Mode must be structured or unstructured')
     asdf = list(np.arange(0,AIC_mu.shape[-1]))
     # AIC_mu = AIC_mu.set(csdl.slice[0,asdf,asdf], value=0.5)
-    print(AIC_mu[0,asdf,asdf].value)
-    print(AIC_mu[0,0,:].value)
+    # print(AIC_mu[0,asdf,asdf].value)
+    # print(AIC_mu[0,0,:].value)
     # exit()
 
     sigma_BC_influence = csdl.einsum(AIC_sigma, sigma, action='ijk,ik->ij')
@@ -45,7 +53,7 @@ def mu_sigma_solver(num_nodes, mesh_dict, mode='structured'):
         mu_nn = csdl.solve_linear(AIC_mu[nn,:,:], RHS)
         mu = mu.set(csdl.slice[nn,:], value=mu_nn)
 
-    return mu, sigma, wake_mesh_dict
+    return mu, sigma, wake_mesh_dict, AIC_mu, AIC_sigma
 
 def AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels, surface_names):
     AIC_sigma = csdl.Variable(shape=(num_nodes, num_tot_panels, num_tot_panels), value=0.)
@@ -348,6 +356,8 @@ def unstructured_AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_p
     P_JK = coll_point_exp_vec - coll_point_j_exp_vec # RcJ - RcK
     sum_ind = len(a.shape) - 1
 
+    # for i in csdl.frange(1):
+
     A = csdl.norm(a, axes=(sum_ind,)) # norm of distance from CP of i to corners of j
     AL = csdl.sum(a*panel_x_dir_exp_vec, axes=(sum_ind,))
     AM = csdl.sum(a*panel_y_dir_exp_vec, axes=(sum_ind,)) # m-direction projection 
@@ -389,6 +399,10 @@ def unstructured_AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_p
         mode='potential'
     )
     doublet_influence = doublet_influence_vec.reshape((num_nodes, num_tot_panels, num_tot_panels))
+#     graph = csdl.get_current_recorder().active_graph
+    # graph.visualize('subgraph_lo')
+    # print(len(graph.node_table))
+    # exit()
     AIC_mu_orig = doublet_influence
 
     source_influence_vec = compute_source_influence_new(
@@ -497,9 +511,14 @@ def unstructured_AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_p
     )
     wake_doublet_influence = wake_doublet_influence_vec.reshape((num_nodes, num_tot_panels, num_wake_panels))
     AIC_mu_adjustment = csdl.Variable(value=np.zeros(AIC_mu_orig.shape))
-    for te_ind in range(len(list(lower_TE_cell_ind))):
-        lower_ind = lower_TE_cell_ind[te_ind]
-        upper_ind = upper_TE_cell_ind[te_ind]
+    # for te_ind in range(len(list(lower_TE_cell_ind))):
+    te_ind_list = list(np.arange(len(list(lower_TE_cell_ind)), dtype=int))
+    print(te_ind_list)
+    print(lower_TE_cell_ind)
+    print(upper_TE_cell_ind)
+    for te_ind, lower_ind, upper_ind in csdl.frange(vals=(te_ind_list, lower_TE_cell_ind, upper_TE_cell_ind)):
+        # lower_ind = lower_TE_cell_ind[te_ind]
+        # upper_ind = upper_TE_cell_ind[te_ind]
         AIC_mu_adjustment = AIC_mu_adjustment.set(
             csdl.slice[:,:,lower_ind],
             value=-wake_doublet_influence[:,:,te_ind]

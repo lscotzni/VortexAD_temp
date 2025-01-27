@@ -26,8 +26,8 @@ def plot_pressure_distribution(mesh, Cp, connectivity, surface_color='white', cm
     # color = wake_color
     mesh_points = mesh # does not vary with time here
 
-    # vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.).linecolor('black')
-    vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.)
+    vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.).linecolor('black')
+    # vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.)
     Cp_color = np.reshape(Cp, (-1,1))
     Cp_min, Cp_max = np.min(Cp), np.max(Cp)
     # Cp_min, Cp_max = -0.4, 1.
@@ -37,6 +37,9 @@ def plot_pressure_distribution(mesh, Cp, connectivity, surface_color='white', cm
     vps.add_scalarbar()
     vp += vps
     vp += __doc__
+    # nl = NormalLines(vps, scale=0.1)
+    # vp += nl
+    
     # wake_points = wake_mesh[:,i,:(i+1),:]
     # # mu_w = np.reshape(sim['system_model.wig.wig.wig.operation.prob.' + 'op_' + surface_name+'_mu_w'][i, 0:i, :], (-1,1))
     # # if absolute:

@@ -6,7 +6,7 @@ from VortexAD.core.geometry.gen_vlm_mesh import gen_vlm_mesh
 from VortexAD.core.vlm.vlm_solver import vlm_solver
 
 # flow parameters
-frame = 'caddee'
+frame = 'default'
 vnv_scaler =  1.
 num_nodes = 1
 alpha = np.array([5.,]) * np.pi/180.
@@ -54,6 +54,7 @@ mesh_velocity_list = [mesh_velocity]
 
 output_vg = vlm_solver(mesh_list, mesh_velocity_list)
 wing_CL = output_vg.surface_CL[0]
+wing_CDi = output_vg.surface_CDi[0]
 
 # deriv = csdl.derivative_utils.verify_derivatives(ofs = wing_CL, wrts=mesh)
 
@@ -64,18 +65,14 @@ recorder.stop()
 #     )   
 #     py_sim.check_totals(ofs=csdl.average(vlm_outputs.AIC_force_eval_pts), wrts=elevator_deflection)
 
-from csdl_alpha.experimental import PySimulator
-
-py_sim = PySimulator(
-    recorder=recorder
+jax_sim = csdl.experimental.JaxSimulator(
+    recorder=recorder,
+    additional_inputs=[mesh],
+    additional_outputs = [wing_CL, wing_CDi]
 )
-py_sim.check_totals(ofs=wing_CL, wrts=mesh)
-
-# recorder.print_graph_structure()
-# recorder.visualize_graph(filename='ex1_oas_graph')
-
-wing_CL = output_vg.surface_CL[0].value
-wing_CDi = output_vg.surface_CDi[0].value
+jax_sim.run()
+wing_CL = jax_sim[wing_CL]
+wing_CDi = jax_sim[wing_CDi]
 
 wing_CL_OAS = np.array([0.4426841725811703]) * vnv_scaler
 wing_CDi_OAS = np.array([0.005878842561184834]) * vnv_scaler
@@ -96,15 +93,15 @@ print('Total drag (N): ', output_vg.total_drag.value)
 print('======  PRINTING OUTPUTS PER SURFACE ======')
 for i in range(len(mesh_list)): # LOOPING THROUGH NUMBER OF SURFACES
     print('======  SURFACE 1 ======')
-    print('Surface total force (N): ', output_vg.surface_force[i].value)
-    print('Surface total moment (Nm): ', output_vg.surface_moment[i].value)
-    print('Surface total lift (N): ', output_vg.surface_lift[i].value)
-    print('Surface total drag (N): ', output_vg.surface_drag[i].value)
+    # print('Surface total force (N): ', output_vg.surface_force[i].value)
+    # print('Surface total moment (Nm): ', output_vg.surface_moment[i].value)
+    # print('Surface total lift (N): ', output_vg.surface_lift[i].value)
+    # print('Surface total drag (N): ', output_vg.surface_drag[i].value)
     print('Surface CL: ', output_vg.surface_CL[i].value)
     print('Surface CDi : ', output_vg.surface_CDi[i].value)
 
-    print('Surface panel forces (N): ', output_vg.surface_panel_forces[i].value)
-    print('Surface sectional center of pressure (m): ', output_vg.surface_sectional_cop[i].value)
-    print('Surface total center of pressure (m): ', output_vg.surface_cop[i].value)
+    # print('Surface panel forces (N): ', output_vg.surface_panel_forces[i].value)
+    # print('Surface sectional center of pressure (m): ', output_vg.surface_sectional_cop[i].value)
+    # print('Surface total center of pressure (m): ', output_vg.surface_cop[i].value)
 
 1

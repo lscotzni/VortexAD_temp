@@ -15,7 +15,7 @@ c = .8698
 ns = 11
 nc = 21
 
-alpha_deg = 0.
+alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
 
 mach = 0.15
@@ -25,8 +25,8 @@ V_inf = np.array([-10., 0., 0.])
 nt = 30
 num_nodes = 1
 
-# mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False) # even chordwise spacing
-mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False) # uneven chordwise spacing
+mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False) # even chordwise spacing
+# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False) # uneven chordwise spacing
 # mesh_orig[:,:,1] += 5.
 # exit()
 
@@ -65,13 +65,14 @@ Cp = output_dict['surface_0']['Cp']
 CL  = output_dict['surface_0']['CL']
 CDi = output_dict['surface_0']['CDi']
 wake_mesh = wake_mesh_dict['surface_0']['mesh']
+wake_velocity = wake_mesh_dict['surface_0']['wake_nodal_velocity']
 
 
 recorder.stop()
 jax_sim = csdl.experimental.JaxSimulator(
     recorder=recorder,
     additional_inputs=[mesh, mesh_velocities], # list of outputs (put in csdl variable)
-    additional_outputs=[mu, sigma, mu_wake, wake_mesh, coll_points, Cp, CL, CDi], # list of outputs (put in csdl variable)
+    additional_outputs=[mu, sigma, mu_wake, wake_mesh, coll_points, Cp, CL, CDi, wake_velocity], # list of outputs (put in csdl variable)
 )
 jax_sim.run()
 
@@ -83,6 +84,7 @@ CDi = jax_sim[CDi]
 mu = jax_sim[mu]
 mu_wake = jax_sim[mu_wake]
 wake_mesh = jax_sim[wake_mesh]
+wake_velocity = jax_sim[wake_velocity]
 
 mu_value = mu[0,-2,:].reshape((nc-1)*2,ns-1)
 
@@ -380,7 +382,7 @@ if verif and alpha_deg == 10.:
 
 
 if True:
-    plot_pressure_distribution(mesh, Cp, interactive=True, top_view=False)
+    plot_pressure_distribution([mesh[:,-2,:]], [Cp[:,-2,:]], interactive=True, top_view=False)
 
 if True:
     # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')

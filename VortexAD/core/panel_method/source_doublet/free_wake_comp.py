@@ -1,8 +1,7 @@
 import numpy as np 
 import csdl_alpha as csdl
 
-from VortexAD.core.panel_method.source_doublet.source_functions import compute_source_influence
-from VortexAD.core.panel_method.source_doublet.doublet_functions import compute_doublet_influence
+from VortexAD.core.panel_method.source_doublet.source_functions import compute_source_influence_new
 from VortexAD.core.panel_method.vortex_ring.vortex_line_functions import compute_vortex_line_ind_vel
 
 def free_wake_comp(num_nodes, t, mesh_dict, mu, sigma, wake_mesh_dict, mu_wake):
@@ -43,12 +42,14 @@ def free_wake_comp(num_nodes, t, mesh_dict, mu, sigma, wake_mesh_dict, mu_wake):
             stop_s_j += num_panels_s_j
 
             panel_corners_s_j = mesh_dict[surf_name_j]['panel_corners'][:,t,:,:,:,:]
-            # panel_x_dir_s_j = mesh_dict[surf_name_j]['panel_x_dir'][:,t,:,:,:]
-            # panel_y_dir_s_j = mesh_dict[surf_name_j]['panel_y_dir'][:,t,:,:,:]
-            # panel_normal_s_j = mesh_dict[surf_name_j]['panel_normal'][:,t,:,:,:]
-            # dpij_s_j = mesh_dict[surf_name_j]['dpij'][:,t,:,:,:,:]
-            # dij_s_j = mesh_dict[surf_name_j]['dij'][:,t,:,:,:]
-            # mij_s_j = mesh_dict[surf_name_j]['mij'][:,t,:,:,:]
+            coll_point_j = mesh_dict[surf_name_j]['panel_center'][:,t,:,:,:]
+            panel_x_dir_s_j = mesh_dict[surf_name_j]['panel_x_dir'][:,t,:,:,:]
+            panel_y_dir_s_j = mesh_dict[surf_name_j]['panel_y_dir'][:,t,:,:,:]
+            panel_normal_s_j = mesh_dict[surf_name_j]['panel_normal'][:,t,:,:,:]
+
+            S_j = mesh_dict[surf_name_j]['S'][:,t,:,:,:]
+            SL_j = mesh_dict[surf_name_j]['SL'][:,t,:,:,:]
+            SM_j = mesh_dict[surf_name_j]['SM'][:,t,:,:,:]
 
             num_surf_interactions = num_points_i*num_panels_s_j
 
@@ -58,50 +59,97 @@ def free_wake_comp(num_nodes, t, mesh_dict, mu, sigma, wake_mesh_dict, mu_wake):
             panel_corners_s_j_exp = csdl.expand(panel_corners_s_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4, 3), 'ijklm->iajklm')
             panel_corners_s_j_exp_vec = panel_corners_s_j_exp.reshape((num_nodes, num_surf_interactions, 4, 3))
 
-            # panel_x_dir_s_j_exp = csdl.expand(panel_x_dir_s_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4, 3), 'ijkl->iajkbl')
-            # panel_x_dir_s_j_exp_vec = panel_x_dir_s_j_exp.reshape((num_nodes, num_surf_interactions, 4, 3))
+            coll_point_j_exp = csdl.expand(coll_point_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4, 3), 'ijkl->iajkbl')
+            coll_point_j_exp_vec = coll_point_j_exp.reshape((num_nodes, num_surf_interactions, 4, 3))
 
-            # panel_y_dir_s_j_exp = csdl.expand(panel_y_dir_s_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4, 3), 'ijkl->iajkbl')
-            # panel_y_dir_s_j_exp_vec = panel_y_dir_s_j_exp.reshape((num_nodes, num_surf_interactions, 4, 3))
+            panel_x_dir_s_j_exp = csdl.expand(panel_x_dir_s_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4, 3), 'ijkl->iajkbl')
+            panel_x_dir_s_j_exp_vec = panel_x_dir_s_j_exp.reshape((num_nodes, num_surf_interactions, 4, 3))
 
-            # panel_normal_s_j_exp = csdl.expand(panel_normal_s_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4, 3), 'ijkl->iajkbl')
-            # panel_normal_s_j_exp_vec = panel_normal_s_j_exp.reshape((num_nodes, num_surf_interactions, 4, 3))
+            panel_y_dir_s_j_exp = csdl.expand(panel_y_dir_s_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4, 3), 'ijkl->iajkbl')
+            panel_y_dir_s_j_exp_vec = panel_y_dir_s_j_exp.reshape((num_nodes, num_surf_interactions, 4, 3))
 
-            # dpij_s_j_exp = csdl.expand(dpij_s_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4, 2), 'ijklm->iajklm')
-            # dpij_s_j_exp_vec = dpij_s_j_exp.reshape((num_nodes, num_surf_interactions, 4, 2))
+            panel_normal_s_j_exp = csdl.expand(panel_normal_s_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4, 3), 'ijkl->iajkbl')
+            panel_normal_s_j_exp_vec = panel_normal_s_j_exp.reshape((num_nodes, num_surf_interactions, 4, 3))
 
-            # dij_s_j_exp = csdl.expand(dij_s_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4), 'ijkl->iajkl')
-            # dij_s_j_exp_vec = dij_s_j_exp.reshape((num_nodes, num_surf_interactions, 4))
+            S_j_exp = csdl.expand(S_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4), 'ijkl->iajkl')
+            S_j_exp_vec = S_j_exp.reshape((num_nodes, num_surf_interactions, 4))
 
-            # mij_s_j_exp = csdl.expand(mij_s_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4), 'ijkl->iajkl')
-            # mij_s_j_exp_vec = mij_s_j_exp.reshape((num_nodes, num_surf_interactions, 4))
+            SL_j_exp = csdl.expand(SL_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4), 'ijkl->iajkl')
+            SL_j_exp_vec = SL_j_exp.reshape((num_nodes, num_surf_interactions, 4))
 
-            # dp = eval_pt_w_i_exp_vec - panel_corners_s_j_exp_vec
-            # sum_ind = len(dp.shape) - 1
-            # dx = csdl.sum(dp*panel_x_dir_s_j_exp_vec, axes=(sum_ind,))
-            # dy = csdl.sum(dp*panel_y_dir_s_j_exp_vec, axes=(sum_ind,))
-            # dz = csdl.sum(dp*panel_normal_s_j_exp_vec, axes=(sum_ind,))
+            SM_j_exp = csdl.expand(SM_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 4), 'ijkl->iajkl')
+            SM_j_exp_vec = SM_j_exp.reshape((num_nodes, num_surf_interactions, 4))
 
-            # rk = (dx**2 + dy**2 + dz**2 + 1.e-12)**0.5
-            # ek = dx**2 + dz**2
-            # hk = dx*dy
+            a = eval_pt_w_i_exp_vec - panel_corners_s_j_exp_vec # Rc - Ri
+            P_JK = eval_pt_w_i_exp_vec - coll_point_j_exp_vec # RcJ - RcK
+            sum_ind = len(a.shape) - 1
 
-            # mij_list = [mij_s_j_exp_vec[:,:,ind] for ind in range(4)]
-            # dij_list = [dij_s_j_exp_vec[:,:,ind] for ind in range(4)]
-            # dpij_list = [[dpij_s_j_exp_vec[:,:,ind,0], dpij_s_j_exp_vec[:,:,ind,1]] for ind in range(4)]
-            # ek_list = [ek[:,:,ind] for ind in range(4)]
-            # hk_list = [hk[:,:,ind] for ind in range(4)]
-            # rk_list = [rk[:,:,ind] for ind in range(4)]
-            # dx_list = [dx[:,:,ind] for ind in range(4)]
-            # dy_list = [dy[:,:,ind] for ind in range(4)]
-            # dz_list = [dz[:,:,ind] for ind in range(4)]
+            A = csdl.norm(a, axes=(sum_ind,)) # norm of distance from CP of i to corners of j
+            AL = csdl.sum(a*panel_x_dir_s_j_exp_vec, axes=(sum_ind,))
+            AM = csdl.sum(a*panel_y_dir_s_j_exp_vec, axes=(sum_ind,)) # m-direction projection 
+            PN = csdl.sum(P_JK*panel_normal_s_j_exp_vec, axes=(sum_ind,)) # normal projection of CP
 
-            # u_source, v_source, w_source = compute_source_influence(dij_list, mij_list, dpij_list, dx_list, dy_list, dz_list, rk_list, ek_list, hk_list, mode='velocity')
-            # u_doublet, v_doublet, w_doublet = compute_doublet_influence(dpij_list, mij_list, ek_list, hk_list, rk_list, dx_list, dy_list, dz_list, mode='velocity')
+            B = csdl.Variable(shape=A.shape, value=0.)
+            B = B.set(csdl.slice[:,:,:-1], value=A[:,:,1:])
+            B = B.set(csdl.slice[:,:,-1], value=A[:,:,0])
 
-            # AIC_sigma = AIC_sigma.set(csdl.slice[:,start_i:stop_i,start_s_j:stop_s_j,0], value=u_source)
-            # AIC_sigma = AIC_sigma.set(csdl.slice[:,start_i:stop_i,start_s_j:stop_s_j,1], value=v_source)
-            # AIC_sigma = AIC_sigma.set(csdl.slice[:,start_i:stop_i,start_s_j:stop_s_j,2], value=w_source)
+            BL = csdl.Variable(shape=AL.shape, value=0.)
+            BL = BL.set(csdl.slice[:,:,:-1], value=BL[:,:,1:])
+            BL = BL.set(csdl.slice[:,:,-1], value=BL[:,:,0])
+
+            BM = csdl.Variable(shape=AM.shape, value=0.)
+            BM = BM.set(csdl.slice[:,:,:-1], value=AM[:,:,1:])
+            BM = BM.set(csdl.slice[:,:,-1], value=AM[:,:,0])
+
+            A1 = AM*SL_j_exp_vec - AL*SM_j_exp_vec
+
+            # print(A.shape)
+            A = A.expand(panel_normal_s_j_exp_vec.shape, 'ijk->ijka')
+            AM = AM.expand(panel_normal_s_j_exp_vec.shape, 'ijk->ijka')
+            B = B.expand(panel_normal_s_j_exp_vec.shape, 'ijk->ijka')
+            BM = BM.expand(panel_normal_s_j_exp_vec.shape, 'ijk->ijka')
+            SL_j_exp_vec = SL_j_exp_vec.expand(panel_normal_s_j_exp_vec.shape, 'ijk->ijka')
+            SM_j_exp_vec = SM_j_exp_vec.expand(panel_normal_s_j_exp_vec.shape, 'ijk->ijka')
+            A1 = A1.expand(panel_normal_s_j_exp_vec.shape, 'ijk->ijka')
+            PN = PN.expand(panel_normal_s_j_exp_vec.shape, 'ijk->ijka')
+            S_j_exp_vec = S_j_exp_vec.expand(panel_normal_s_j_exp_vec.shape, 'ijk->ijka')
+
+            A_list = [A[:,:,ind] for ind in range(4)]
+            AM_list = [AM[:,:,ind] for ind in range(4)]
+            B_list = [B[:,:,ind] for ind in range(4)]
+            BM_list = [BM[:,:,ind] for ind in range(4)]
+            SL_list = [SL_j_exp_vec[:,:,ind] for ind in range(4)]
+            SM_list = [SM_j_exp_vec[:,:,ind] for ind in range(4)]
+            A1_list = [A1[:,:,ind] for ind in range(4)]
+            PN_list = [PN[:,:,ind] for ind in range(4)]
+            S_list = [S_j_exp_vec[:,:,ind] for ind in range(4)]
+
+            ind_vel_source_local = compute_source_influence_new(
+                A_list, 
+                AM_list, 
+                B_list, 
+                BM_list, 
+                SL_list, 
+                SM_list, 
+                A1_list, 
+                PN_list, 
+                S_list, 
+                panel_x_dir_s_j_exp_vec[:,:,0,:], # these don't change along dimension 2
+                panel_y_dir_s_j_exp_vec[:,:,0,:],
+                panel_normal_s_j_exp_vec[:,:,0,:],
+                mode='velocity'
+            )
+
+            rot_mat_s_j = mesh_dict[surf_name_j]['rot_mat'][:,t,:,:,:,:]
+            rot_mat_s_j_exp = csdl.expand(rot_mat_s_j, (num_nodes, num_points_i, nc_s_j-1, ns_s_j-1, 3, 3), 'ijklm->iajkml')
+            rot_mat_s_j_exp_vec = rot_mat_s_j_exp.reshape(((num_nodes, num_surf_interactions, 3, 3)))
+
+            # ind_vel_source_global = csdl.einsum(ind_vel_source_local, rot_mat_s_j_exp_vec, action='ijk,ijlk->ijl')
+            ind_vel_source_global = ind_vel_source_local
+            ind_vel_source_global_mat = ind_vel_source_global.reshape((num_nodes, num_points_i, num_panels_s_j, 3))
+
+            # ind_vel_source_local_mat = ind_vel_source_local.reshape((num_nodes, num_points_i, num_panels_s_j, 3))
+            AIC_sigma = AIC_sigma.set(csdl.slice[:,start_i:stop_i,start_s_j:stop_s_j,:], value=ind_vel_source_global_mat)
 
             ind_vel_s_12 = compute_vortex_line_ind_vel(panel_corners_s_j_exp_vec[:,:,0,:],panel_corners_s_j_exp_vec[:,:,1,:],p_eval=eval_pt_w_i_exp_vec[:,:,0,:], mode='wake', vc=1.e-3)
             ind_vel_s_23 = compute_vortex_line_ind_vel(panel_corners_s_j_exp_vec[:,:,1,:],panel_corners_s_j_exp_vec[:,:,2,:],p_eval=eval_pt_w_i_exp_vec[:,:,0,:], mode='wake', vc=1.e-3)
@@ -137,11 +185,6 @@ def free_wake_comp(num_nodes, t, mesh_dict, mu, sigma, wake_mesh_dict, mu_wake):
             ind_vel_w_34 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,2,:],panel_corners_w_j_exp_vec[:,:,3,:],p_eval=eval_pt_w_i_exp_vec[:,:,:], mode='wake', vc=1.e-3)
             ind_vel_w_41 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,3,:],panel_corners_w_j_exp_vec[:,:,0,:],p_eval=eval_pt_w_i_exp_vec[:,:,:], mode='wake', vc=1.e-3)
 
-            # ind_vel_w_12 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,1,:],panel_corners_w_j_exp_vec[:,:,0,:],p_eval=eval_pt_w_i_exp_vec[:,:,:])
-            # ind_vel_w_23 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,2,:],panel_corners_w_j_exp_vec[:,:,1,:],p_eval=eval_pt_w_i_exp_vec[:,:,:])
-            # ind_vel_w_34 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,3,:],panel_corners_w_j_exp_vec[:,:,2,:],p_eval=eval_pt_w_i_exp_vec[:,:,:])
-            # ind_vel_w_41 = compute_vortex_line_ind_vel(panel_corners_w_j_exp_vec[:,:,0,:],panel_corners_w_j_exp_vec[:,:,3,:],p_eval=eval_pt_w_i_exp_vec[:,:,:])
-
             ind_vel_w = ind_vel_w_12+ind_vel_w_23+ind_vel_w_34+ind_vel_w_41 # (nn, num_interactions, 3)
 
             ind_vel_w_mat = ind_vel_w.reshape((num_nodes, num_points_i, num_panels_w_j, 3))
@@ -153,10 +196,14 @@ def free_wake_comp(num_nodes, t, mesh_dict, mu, sigma, wake_mesh_dict, mu_wake):
     
     for nn in csdl.frange(num_nodes):
         for direction in csdl.frange(3):
-            # sigma_surf_induced_vel = csdl.matvec(AIC_sigma[nn,:,:,direction], sigma[])
+            sigma_induced_vel = csdl.matvec(AIC_sigma[nn,:,:,direction], sigma[nn,t,:])
+
             mu_surf_induced_vel = csdl.matvec(AIC_mu_surf[nn,:,:,direction], mu[nn,t,:])
             mu_wake_induced_vel = csdl.matvec(AIC_mu_wake[nn,:,:,direction], mu_wake[nn,t,:])
-            induced_vel = induced_vel.set(csdl.slice[nn,:,direction], value=mu_surf_induced_vel+mu_wake_induced_vel)
+
+            total_induced_vel = sigma_induced_vel + mu_surf_induced_vel + mu_wake_induced_vel
+            # induced_vel = induced_vel.set(csdl.slice[nn,:,direction], value=sigma_induced_vel)
+            induced_vel = induced_vel.set(csdl.slice[nn,:,direction], value=total_induced_vel)
             # induced_vel = induced_vel.set(csdl.slice[nn,:,direction], value=mu_wake_induced_vel)
             # induced_vel = induced_vel.set(csdl.slice[nn,:,direction], value=mu_surf_induced_vel)
 
