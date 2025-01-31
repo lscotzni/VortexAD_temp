@@ -10,19 +10,19 @@ from VortexAD.core.panel_method.steady.pre_processor_patches import pre_processo
 from VortexAD.core.panel_method.steady.mu_sigma_solver_patches import mu_sigma_solver_patches
 from VortexAD.core.panel_method.steady.post_processor_patches import post_processor_patches
 
-def source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, patch_flag):
+def source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, boundary_condition, patch_flag):
     if not patch_flag: # both structured and unstructured grids
         print('running pre-processing')
         mesh_dict = pre_processor(exp_orig_mesh_dict, mode=mesh_mode)
 
         print('solving for doublet strengths')
-        mu, sigma, wake_dict, AIC_mu, AIC_sigma = mu_sigma_solver(num_nodes, mesh_dict, mode=mesh_mode)
+        mu, sigma, wake_dict, AIC_mu, AIC_sigma = mu_sigma_solver(num_nodes, mesh_dict, mode=mesh_mode, bc=boundary_condition)
 
         print('running post-processor')
         if mesh_mode == 'structured':
-            output_dict = post_processor(mesh_dict, mu, sigma, num_nodes)
+            output_dict = post_processor(mesh_dict, mu, sigma, num_nodes, rho)
         elif mesh_mode == 'unstructured':
-            output_dict = unstructured_post_processor(mesh_dict, mu, sigma, num_nodes)
+            output_dict = unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho)
 
         output_dict['wake_dict'] = wake_dict
         output_dict['AIC_mu'] = AIC_mu
@@ -36,7 +36,7 @@ def source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, patch_flag):
         mu, sigma, wake_dict = mu_sigma_solver_patches(num_nodes, mesh_dict)
 
         print('running post-processor')
-        output_dict = post_processor_patches(mesh_dict, mu, sigma, num_nodes)
+        output_dict = post_processor_patches(mesh_dict, mu, sigma, num_nodes, rho)
 
 
     return output_dict, mesh_dict, mu, sigma

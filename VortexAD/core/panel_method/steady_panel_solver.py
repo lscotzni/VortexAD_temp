@@ -5,7 +5,7 @@ from VortexAD.core.panel_method.steady.steady_source_doublet_solver import sourc
 from VortexAD.core.panel_method.steady.higher_order.linear_doublet_solver import linear_doublet_solver
 
 # def steady_panel_solver(mesh_list, mesh_velocity_list, patches=False, coll_vel_list=False):
-def steady_panel_solver(*args, mesh_mode='structured', patches=False, higher_order=False):
+def steady_panel_solver(*args, rho=1.225, mesh_mode='structured', patches=False, higher_order=False, boundary_condition='Dirichlet'):
     '''
     mesh_list: list of lists
         - each entry represents a surface
@@ -108,9 +108,9 @@ def steady_panel_solver(*args, mesh_mode='structured', patches=False, higher_ord
             'Invalid input for mesh mode. Options are structured (including patches) or unstructured'
         )
     if higher_order and not patch_flag:
-        outputs = linear_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode)
+        outputs = linear_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho)
     else:
-        outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, patch_flag)
+        outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, boundary_condition, patch_flag)
         output_dict = outputs[0]
         mesh_dict = outputs[1]
         mu = outputs[2]

@@ -116,7 +116,6 @@ def off_body_analysis(mesh_dict, wake_mesh_dict, eval_points, mu, sigma, velocit
 
         A1 = AM*SL_i_exp_vec - AL*SM_i_exp_vec
 
-        # print(A.shape)
         A = A.expand(panel_normal_i_exp_vec.shape, 'ij->ija')
         AM = AM.expand(panel_normal_i_exp_vec.shape, 'ij->ija')
         B = B.expand(panel_normal_i_exp_vec.shape, 'ij->ija')
@@ -153,11 +152,11 @@ def off_body_analysis(mesh_dict, wake_mesh_dict, eval_points, mu, sigma, velocit
             mode='velocity'
         )
 
-        rot_mat_s_j = mesh_dict[surf_i_name]['rot_mat'][0,:,:,:,:]
+        rot_mat_s_j = mesh_dict[surf_i_name]['rot_mat'][0,:,:,:]
         rot_mat_s_j_exp = csdl.expand(rot_mat_s_j, (num_eval_pts, nc_i-1, ns_i-1, 3, 3), 'ijkl->aijkl')
         rot_mat_s_j_exp_vec = rot_mat_s_j_exp.reshape(((num_surf_interactions, 3, 3)))
 
-        # ind_vel_source_global = csdl.einsum(ind_vel_source_local, rot_mat_s_j_exp_vec, action='ijk,ijlk->ijl')
+        # ind_vel_source_global = csdl.einsum(ind_vel_source_local, rot_mat_s_j_exp_vec, action='ij,ilj->il')
         ind_vel_source_global = ind_vel_source_local
         ind_vel_source_global_mat = ind_vel_source_global.reshape((num_eval_pts, num_panels_i, 3))
 
@@ -166,10 +165,10 @@ def off_body_analysis(mesh_dict, wake_mesh_dict, eval_points, mu, sigma, velocit
         panel_corners_vr = panel_corners_i_exp_vec.reshape((1,) + panel_corners_i_exp_vec.shape)
         eval_pt_vr = eval_pt_exp_vec.reshape((1,) + eval_pt_exp_vec.shape)
 
-        ind_vel_s_12 = compute_vortex_line_ind_vel(panel_corners_vr[:,:,0,:],panel_corners_vr[:,:,1,:],p_eval=eval_pt_vr[:,:,0,:], mode='wake', vc=1.e-3)
-        ind_vel_s_23 = compute_vortex_line_ind_vel(panel_corners_vr[:,:,1,:],panel_corners_vr[:,:,2,:],p_eval=eval_pt_vr[:,:,0,:], mode='wake', vc=1.e-3)
-        ind_vel_s_34 = compute_vortex_line_ind_vel(panel_corners_vr[:,:,2,:],panel_corners_vr[:,:,3,:],p_eval=eval_pt_vr[:,:,0,:], mode='wake', vc=1.e-3)
-        ind_vel_s_41 = compute_vortex_line_ind_vel(panel_corners_vr[:,:,3,:],panel_corners_vr[:,:,0,:],p_eval=eval_pt_vr[:,:,0,:], mode='wake', vc=1.e-3)
+        ind_vel_s_12 = compute_vortex_line_ind_vel(panel_corners_vr[:,:,0,:],panel_corners_vr[:,:,1,:],p_eval=eval_pt_vr[:,:,0,:], mode='wake', vc=1.e-4)
+        ind_vel_s_23 = compute_vortex_line_ind_vel(panel_corners_vr[:,:,1,:],panel_corners_vr[:,:,2,:],p_eval=eval_pt_vr[:,:,0,:], mode='wake', vc=1.e-4)
+        ind_vel_s_34 = compute_vortex_line_ind_vel(panel_corners_vr[:,:,2,:],panel_corners_vr[:,:,3,:],p_eval=eval_pt_vr[:,:,0,:], mode='wake', vc=1.e-4)
+        ind_vel_s_41 = compute_vortex_line_ind_vel(panel_corners_vr[:,:,3,:],panel_corners_vr[:,:,0,:],p_eval=eval_pt_vr[:,:,0,:], mode='wake', vc=1.e-4)
 
         ind_vel_s = ind_vel_s_12+ind_vel_s_23+ind_vel_s_34+ind_vel_s_41 # (nn, num_interactions, 3)
         ind_vel_s = ind_vel_s[0,:] # removing num_nodes
@@ -202,7 +201,10 @@ def off_body_analysis(mesh_dict, wake_mesh_dict, eval_points, mu, sigma, velocit
         ind_vel_s = ind_vel_s_12+ind_vel_s_23+ind_vel_s_34+ind_vel_s_41 # (nn, num_interactions, 3)
         ind_vel_s = ind_vel_s[0,:] # removing num_nodes
         ind_vel_s_mat = ind_vel_s.reshape((num_eval_pts, num_panels_i_w, 3))
-        AIC_mu = AIC_mu.set(csdl.slice[:,start_i_w:stop_i_w,:], value=ind_vel_s_mat)
+        AIC_mu_wake = AIC_mu_wake.set(csdl.slice[:,start_i_w:stop_i_w,:], value=ind_vel_s_mat)
+
+        mu_grid = mu[start_i:stop_i].reshape((nc_i-1, ns_i-1))
+        mu_surf_wake = mu_grid[-1,:] - mu_grid[0,:]
 
         mu_wake = mu_wake.set(csdl.slice[start_i_w:stop_i_w], value=mu_surf_wake.reshape((num_panels_i_w,)))
 
@@ -212,10 +214,10 @@ def off_body_analysis(mesh_dict, wake_mesh_dict, eval_points, mu, sigma, velocit
     induced_vel = csdl.Variable(shape=(num_eval_pts, 3), value=0.)
 
     for direction in csdl.frange(3):
-        sigma_induced_vel = csdl.matvec(AIC_sigma[:,:,direction], sigma)
+        sigma_induced_vel = csdl.matvec(AIC_sigma[:,:,direction], sigma) # asymmetric @ 0 aoa :/
 
-        mu_surf_induced_vel = csdl.matvec(AIC_mu[:,:,direction], mu)
-        mu_wake_induced_vel = csdl.matvec(AIC_mu_wake[:,:,direction], mu_wake)
+        mu_surf_induced_vel = csdl.matvec(AIC_mu[:,:,direction], mu) # symmetric as should be at 0 aoa
+        mu_wake_induced_vel = csdl.matvec(AIC_mu_wake[:,:,direction], mu_wake) # this is causing some asymmetry at the TE
 
         total_induced_vel = sigma_induced_vel + mu_surf_induced_vel + mu_wake_induced_vel
         induced_vel = induced_vel.set(csdl.slice[:,direction], value=total_induced_vel)
@@ -230,7 +232,7 @@ def off_body_analysis(mesh_dict, wake_mesh_dict, eval_points, mu, sigma, velocit
 
     Cp = Cp.reshape((1,) + Cp.shape)
 
-    return Cp, Q_pert_norm, Q_inf_norm
+    return Cp, Q_pert_norm, Q_inf_norm, AIC_mu, AIC_sigma
 
 # setting up inputs
 b = 10.
@@ -247,8 +249,8 @@ V_inf = np.array([-Vx, 0., 0.])
 ns_fine, nc_fine = 21, 31
 ns_coarse, nc_coarse = 11, 21
 
-mesh_orig_fine = gen_panel_mesh(nc_fine, ns_fine, c, b, span_spacing='cosine',  frame='default', plot_mesh=False) # even chordwise spacing
-mesh_orig_coarse = gen_panel_mesh(nc_coarse, ns_coarse, c, b, span_spacing='cosine',  frame='default', plot_mesh=False) # even chordwise spacing
+# mesh_orig_fine = gen_panel_mesh(nc_fine, ns_fine, c, b, span_spacing='cosine',  frame='default', plot_mesh=False) # even chordwise spacing
+# mesh_orig_coarse = gen_panel_mesh(nc_coarse, ns_coarse, c, b, span_spacing='cosine',  frame='default', plot_mesh=False) # even chordwise spacing
 
 mesh_orig_fine = gen_panel_mesh_new(nc_fine, ns_fine, c, b,  frame='default', plot_mesh=False) # uneven chordwise spacing
 mesh_orig_coarse = gen_panel_mesh_new(nc_coarse, ns_coarse, c, b,  frame='default', plot_mesh=False) # uneven chordwise spacing
@@ -276,6 +278,19 @@ for i in range(num_nodes):
 coll_pt_coarse = (mesh_coarse[:,:-1,:-1] + mesh_coarse[:,1:,:-1] + mesh_coarse[:,1:,1:] + mesh_coarse[:,:-1,1:])/4
 coll_vel_coarse = (mesh_vel_coarse[:,:-1,:-1] + mesh_vel_coarse[:,1:,:-1] + mesh_vel_coarse[:,1:,1:] + mesh_vel_coarse[:,:-1,1:])/4
 
+p1_c = mesh_coarse[:,:-1,:-1]
+p2_c = mesh_coarse[:,1:,:-1]
+p3_c = mesh_coarse[:,1:,1:]
+p4_c = mesh_coarse[:,:-1,1:]
+
+v1 = p3_c - p1_c
+v2 = p4_c - p2_c
+normal_vec_orig = np.cross(v1, v2, axisa=3, axisb=3)
+normal_vec_norm = np.einsum('ijk,a->ijka', np.linalg.norm(normal_vec_orig, axis=3), np.array(([1, 1, 1])))
+normal_vec = normal_vec_orig/normal_vec_norm
+k = 1.e-5
+coll_pt_coarse = coll_pt_coarse - k*normal_vec
+
 recorder = csdl.Recorder(inline=False)
 recorder.start()
 
@@ -302,13 +317,24 @@ CL_fine  = output_dict['surface_0']['CL']
 CDi_fine = output_dict['surface_0']['CDi']
 
 # doing off-body analysis on coarse grid via superposition
-Cp_coarse, Q, Q_inf = off_body_analysis(mesh_dict, wake_mesh_dict, coll_vel_coarse, mu[0,:], sigma[0,:], coll_vel_coarse[0,:])
+Cp_coarse, Q, Q_inf, AIC_mu, AIC_sigma = off_body_analysis(mesh_dict, wake_mesh_dict, coll_pt_coarse, mu[0,:], sigma[0,:], coll_vel_coarse[0,:])
+
+outputs = [
+    Cp_fine, 
+    Cp_coarse, 
+    CL_fine, 
+    CDi_fine,
+    Q,
+    Q_inf,
+    AIC_mu,
+    AIC_sigma
+]
 
 recorder.stop()
 jax_sim = csdl.experimental.JaxSimulator(
     recorder=recorder,
     additional_inputs=[mesh_fine, mesh_velocity_fine], # list of outputs (put in csdl variable)
-    additional_outputs=[Cp_fine, Cp_coarse, CL_fine, CDi_fine], # list of outputs (put in csdl variable)
+    additional_outputs=outputs, # list of outputs (put in csdl variable)
 )
 jax_sim.run()
 
@@ -317,6 +343,10 @@ Cp_fine = jax_sim[Cp_fine]
 Cp_coarse = jax_sim[Cp_coarse]
 CL_fine = jax_sim[CL_fine]
 CDi_fine = jax_sim[CDi_fine]
+Q = jax_sim[Q]
+Q_inf = jax_sim[Q_inf]
+AIC_mu = jax_sim[AIC_mu]
+AIC_sigma = jax_sim[AIC_sigma]
 
 
 print(f'CL: {CL_fine}')

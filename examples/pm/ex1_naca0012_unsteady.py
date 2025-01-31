@@ -12,8 +12,8 @@ import pyvista as pv
 b = 10.
 # c = 1.564
 c = .8698
-ns = 11
-nc = 21
+ns = 21
+nc = 31
 
 alpha_deg = 10.
 alpha = np.deg2rad(alpha_deg) # aoa
@@ -47,7 +47,7 @@ for i in range(num_nodes):
     for j in range(nt):
         mesh_velocities[i,j,:] = V_inf_rot
 
-recorder = csdl.Recorder(inline=True)
+recorder = csdl.Recorder(inline=False)
 recorder.start()
 
 mesh = csdl.Variable(value=mesh)

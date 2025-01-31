@@ -8,7 +8,7 @@ from VortexAD.core.panel_method.source_doublet.source_functions import compute_s
 from VortexAD.core.panel_method.source_doublet.doublet_functions import compute_doublet_influence_new
 
 
-def mu_sigma_solver(num_nodes, mesh_dict, mode='structured'):
+def mu_sigma_solver(num_nodes, mesh_dict, mode='structured', bc='Dirichlet'):
 
     if mode == 'structured':
         surface_names = list(mesh_dict.keys())
@@ -27,7 +27,10 @@ def mu_sigma_solver(num_nodes, mesh_dict, mode='structured'):
     # graph.visualize('pre-subgraph')
     # static AIC matrices for linear system solve
     if mode == 'structured':
-        AIC_mu, AIC_sigma = AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels, surface_names)
+        if bc == 'Dirichlet':
+            AIC_mu, AIC_sigma = AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels, surface_names)
+        elif bc == 'Neumann':
+            AIC_mu, AIC_sigma = Neumann_AIC_computation()
     elif mode == 'unstructured':
         AIC_mu, AIC_sigma = unstructured_AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels)
         # for i in csdl.frange(1):
@@ -296,6 +299,9 @@ def AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels, surfac
 
     return AIC_mu, AIC_sigma
 
+def Neumann_AIC_computation():
+    #I M LUCA, I M SMART, I M THE BEST
+    return AIC_mu, AIC_sigma
     
 def unstructured_AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels):
     

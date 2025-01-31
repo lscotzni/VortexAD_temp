@@ -5,7 +5,7 @@ import time
 
 from VortexAD.core.panel_method.steady.least_squares_velocity import least_squares_velocity, unstructured_least_squares_velocity
 
-def post_processor(mesh_dict, mu, sigma, num_nodes):
+def post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225):
     surface_names = list(mesh_dict.keys())
     start, stop = 0, 0
     x_dir_global = np.array([1., 0., 0.])
@@ -67,8 +67,6 @@ def post_processor(mesh_dict, mu, sigma, num_nodes):
         
         panel_area = mesh_dict[surface_name]['panel_area']
 
-        rho = 1.225
-        # rho = 1000.
         dP = -0.5*rho*Q_inf_norm**2*Cp
         dF_no_normal = dP*panel_area
         dF = csdl.expand(dF_no_normal, panel_normal.shape, 'jkl->jkla') * panel_normal
@@ -103,6 +101,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes):
         surf_dict['Fx_panel'] = Fx_panel
         surf_dict['Fz_panel'] = Fz_panel
         surf_dict['panel_forces'] = dF
+        surf_dict['L'] = L
         
         surf_dict['body_vel'] = body_vel_norm
 
@@ -119,7 +118,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes):
     return output_dict
 
 
-def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes):
+def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225):
     x_dir_global = np.array([1., 0., 0.])
     z_dir_global = np.array([0., 0., 1.])
     output_dict = {}
@@ -150,7 +149,6 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes):
     Cp = Cp_static
 
     panel_area = mesh_dict['panel_area']
-    rho = 1.225
     dF_no_normal = -0.5*rho*Q_inf_norm**2*panel_area*Cp
     dF = csdl.expand(dF_no_normal, panel_normal.shape, 'jk->jka')*panel_normal
     Fz_panel = csdl.tensordot(dF, z_dir_global, axes=([2],[0]))
@@ -177,5 +175,6 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes):
     output_dict['panel_forces'] = dF
     output_dict['Qn'] = Qn
     # output_dict['Ql'] = Ql
+    output_dict['L'] = L
 
     return output_dict
