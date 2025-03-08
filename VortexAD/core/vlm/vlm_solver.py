@@ -73,6 +73,8 @@ def vlm_solver(mesh_list, mesh_velocity_list, alpha_ML=None):
 
     @dataclass
     class Outputs(csdl.VariableGroup):
+        gamma: csdl.Variable # vectorized vortex ring strengths 
+
         total_lift: csdl.Variable # total lift force
         total_drag: csdl.Variable # total drag force
         total_force: csdl.Variable # total force (x,y,z)
@@ -93,8 +95,11 @@ def vlm_solver(mesh_list, mesh_velocity_list, alpha_ML=None):
         surface_sectional_cop: list # span-wise sectional center of pressure for each lifting surface
         surface_cop: csdl.Variable # center of pressure for each lifting surface
 
+        mesh_dict: dict
+
     
     output_vg = Outputs(
+        gamma=gamma,
         total_lift = total_output_dict['total_lift'],
         total_drag = total_output_dict['total_drag'],
         total_force = total_output_dict['total_force'],
@@ -112,6 +117,8 @@ def vlm_solver(mesh_list, mesh_velocity_list, alpha_ML=None):
         surface_panel_force_points = surface_panel_force_points,
         surface_sectional_cop = surface_output_dict['surface_sectional_cop'],
         surface_cop = surface_output_dict['surface_cop'],
+
+        mesh_dict=mesh_dict
 
     )
 

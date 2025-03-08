@@ -5,7 +5,7 @@ from VortexAD.core.panel_method.steady.steady_source_doublet_solver import sourc
 from VortexAD.core.panel_method.steady.higher_order.linear_doublet_solver import linear_doublet_solver
 
 # def steady_panel_solver(mesh_list, mesh_velocity_list, patches=False, coll_vel_list=False):
-def steady_panel_solver(*args, rho=1.225, mesh_mode='structured', patches=False, higher_order=False, boundary_condition='Dirichlet'):
+def steady_panel_solver(*args, rho=1.225, mesh_mode='structured', patches=False, higher_order=False, boundary_condition='Dirichlet', ROM=False):
     '''
     mesh_list: list of lists
         - each entry represents a surface
@@ -86,8 +86,8 @@ def steady_panel_solver(*args, rho=1.225, mesh_mode='structured', patches=False,
 
     elif mesh_mode == 'unstructured':
         points = args[0]
-        cells, cell_adjacency = args[1][0], args[1][1]
-        TE_node_indices, TE_cells = args[2]
+        cells, cell_adjacency, points2cells = args[1][0], args[1][1], args[1][2]
+        TE_node_indices, TE_edges, TE_cells = args[2]
         upper_TE_cells, lower_TE_cells = TE_cells[0], TE_cells[1]
         point_velocity = args[3]
 
@@ -98,8 +98,10 @@ def steady_panel_solver(*args, rho=1.225, mesh_mode='structured', patches=False,
         exp_orig_mesh_dict['nodal_velocity'] = point_velocity * -1.
         exp_orig_mesh_dict['cell_point_indices'] = cells
         exp_orig_mesh_dict['cell_adjacency'] = cell_adjacency
+        exp_orig_mesh_dict['points2cells'] = points2cells
 
         exp_orig_mesh_dict['TE_node_indices'] = TE_node_indices
+        exp_orig_mesh_dict['TE_edges'] = TE_edges
         exp_orig_mesh_dict['upper_TE_cells'] = upper_TE_cells
         exp_orig_mesh_dict['lower_TE_cells'] = lower_TE_cells
 
@@ -109,8 +111,24 @@ def steady_panel_solver(*args, rho=1.225, mesh_mode='structured', patches=False,
         )
     if higher_order and not patch_flag:
         outputs = linear_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho)
+        output_dict = outputs[0]
+        mesh_dict = outputs[1]
+        mu = outputs[2]
+        sigma = outputs[3]
+
+        return output_dict, mesh_dict, mu, sigma
+    
     else:
-        outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, boundary_condition, patch_flag)
+        # sigma = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, boundary_condition, patch_flag)
+        # return sigma
+
+        # AIC_mu = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, boundary_condition, patch_flag)
+        # return AIC_mu
+
+        # mu = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, boundary_condition, patch_flag)
+        # return mu
+
+        outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, boundary_condition, patch_flag, ROM)
         output_dict = outputs[0]
         mesh_dict = outputs[1]
         mu = outputs[2]

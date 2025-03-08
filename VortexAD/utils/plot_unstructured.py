@@ -5,7 +5,7 @@ from vedo import *
 import matplotlib.pyplot as plt
 plt.rcParams.update(plt.rcParamsDefault)
 
-def plot_pressure_distribution(mesh, Cp, connectivity, surface_color='white', cmap='jet', interactive=False, top_view=False, front_top_view=False):
+def plot_pressure_distribution(mesh, Cp, connectivity, panel_center=None, bounds=None, on='cells', surface_color='white', cmap='jet', interactive=False, top_view=False, front_top_view=False):
     vedo.settings.default_backend = 'vtk'
     axs = Axes(
         xrange=(0,3),
@@ -26,19 +26,27 @@ def plot_pressure_distribution(mesh, Cp, connectivity, surface_color='white', cm
     # color = wake_color
     mesh_points = mesh # does not vary with time here
 
-    vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.).linecolor('black')
-    # vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.)
+    # vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.).linecolor('black')
+    vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.)
     Cp_color = np.reshape(Cp, (-1,1))
-    Cp_min, Cp_max = np.min(Cp), np.max(Cp)
-    # Cp_min, Cp_max = -0.4, 1.
-    Cp_min, Cp_max = -4., 1.
+    if bounds:
+        Cp_min, Cp_max = bounds[0], bounds[1]
+    else:
+        Cp_min, Cp_max = np.min(Cp), np.max(Cp)
+    # # Cp_min, Cp_max = -0.4, 1.
+    # Cp_min, Cp_max = -1.5, 1.
     # vps.cmap(cmap, Cp_color, on='cells', vmin=Cp_min, vmax=Cp_max)
-    vps.cmap(cmap, Cp_color, on='cells', vmin=Cp_min, vmax=Cp_max)
+    vps.cmap(cmap, Cp_color, on=on, vmin=Cp_min, vmax=Cp_max)
     vps.add_scalarbar()
     vp += vps
-    vp += __doc__
-    # nl = NormalLines(vps, scale=0.1)
+    # vp += __doc__
+    # nl = NormalLines(vps, on=on, scale=0.1)
     # vp += nl
+    # if panel_center is not None:
+    #     arrows = Arrows(panel_center, Cp+panel_center, c='red')
+    # else:
+    #     arrows = Arrows(mesh, Cp+mesh, c='red')
+    # vp += arrows
     
     # wake_points = wake_mesh[:,i,:(i+1),:]
     # # mu_w = np.reshape(sim['system_model.wig.wig.wig.operation.prob.' + 'op_' + surface_name+'_mu_w'][i, 0:i, :], (-1,1))

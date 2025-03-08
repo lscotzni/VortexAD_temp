@@ -19,10 +19,15 @@ def H_113(a_bar_list, l1_list, l2_list, c1_list, c2_list, h):
 
 # F integrals
 def F_111(l1, l2, g):
-    F111 = csdl.log(
-        ((l1**2 + g**2)**0.5-l1)*\
-        ((l2**2 + g**2)**0.5+l2)/g**2
-    )
+    ne = len(l1)
+    F111 = 0.
+    for i in range(ne):
+        F111_e = csdl.log(
+            ((l1**2 + g**2)**0.5-l1)*\
+            ((l2**2 + g**2)**0.5+l2)/g**2
+        )
+
+        F111 = F111 + F111_e
     return F111
 
 def F_113(g, nu_eta, nu_xi, R1, R2, xi, eta, point):

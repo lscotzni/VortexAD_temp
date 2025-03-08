@@ -7,24 +7,23 @@ from VortexAD import steady_panel_solver
 import matplotlib.pyplot as plt
 from VortexAD.utils.plot import plot_pressure_distribution
 
-# b = 10.
-# c = 1.
-b = 2.
-c = 0.2
-ns = 15
-nc = 21
+b = 10.
+c = 1.
+ns = 21
+nc = 41
 num_nodes = 1
 
-alpha_deg = 10.
+alpha_deg = 0.
 alpha = np.deg2rad(alpha_deg) # aoa
 
 mach = 0.15
 sos = 340.3
 Vx = sos*mach
+# Vx = 10.
 V_inf = np.array([-Vx, 0., 0.])
 
-mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='cosine',  frame='default', plot_mesh=False) # even chordwise spacing
-mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=False) # uneven chordwise spacing
+mesh_orig = gen_panel_mesh(nc, ns, c, b, span_spacing='default',  frame='default', plot_mesh=True) # even chordwise spacing
+# mesh_orig = gen_panel_mesh_new(nc, ns, c, b,  frame='default', plot_mesh=True) # uneven chordwise spacing
 
 mesh = np.zeros((num_nodes,) + mesh_orig.shape)
 for i in range(num_nodes):
@@ -58,7 +57,8 @@ inputs to the solver:
 '''
 output_dict, mesh_dict, mu, sigma = steady_panel_solver(
     mesh_list, 
-    mesh_velocity_list
+    mesh_velocity_list,
+    boundary_condition='Neumann'
 )
 
 coll_points = mesh_dict['surface_0']['panel_center']
@@ -327,7 +327,7 @@ if verif and alpha_deg == 10.:
 
 if True:
     plot_pressure_distribution([mesh], [Cp], interactive=True, top_view=False)
-    plot_pressure_distribution([mesh], [mu.reshape((num_nodes, 2*(nc-1), ns-1))], interactive=True, top_view=False)
+    plot_pressure_distribution([mesh], [mu.reshape((1,2*(nc-1),ns-1))], interactive=True, top_view=False)
 
 # if False:
 #     # plot_wireframe(mesh, wake_mesh, mu.value, mu_wake.value, nt, interactive=False, backend='cv', name=f'wing_fw_{alpha_deg}')

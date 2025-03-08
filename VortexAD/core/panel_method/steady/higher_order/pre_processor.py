@@ -121,6 +121,8 @@ def pre_processor(mesh_dict, mode='structured'):
         cell_point_indices = mesh_dict['cell_point_indices']
         cell_adjacency = mesh_dict['cell_adjacency']
         mesh_shape = mesh.shape
+        num_nodes, nv = mesh_shape[0], mesh_shape[1]
+        n_cells = cell_point_indices.shape[0]
 
         p1 = mesh[:,list(cell_point_indices[:,0]),:]
         p2 = mesh[:,list(cell_point_indices[:,1]),:]
@@ -158,14 +160,20 @@ def pre_processor(mesh_dict, mode='structured'):
         mesh_dict['panel_y_dir'] = m_vec
         mesh_dict['panel_normal'] = normal_vec
 
-        # edge tangent vectors
+        rot_mat = csdl.Variable(value=np.zeros(normal_vec.shape + (3,))) # taken from dissertation of Pranav Prashant Ladkat, Pg. 26 eq. 4.5 
+        rot_mat = rot_mat.set(csdl.slice[:,:,:,0], value=l_vec)
+        rot_mat = rot_mat.set(csdl.slice[:,:,:,1], value=m_vec)
+        rot_mat = rot_mat.set(csdl.slice[:,:,:,2], value=normal_vec)
+        mesh_dict['rot_mat'] = rot_mat # rotation matrix transforms panel coordinates to global coordinates
+
+        # edge tangent vectors (normalized)
         edge_vec = csdl.Variable(value=np.zeros(normal_vec.shape + (3,)))
-        edge_vec = edge_vec.set(csdl.slice[:,:,0,:], value=(p2-p1)) # MIGHT NEED TO EXPAND DENOMINATOR
-        edge_vec = edge_vec.set(csdl.slice[:,:,1,:], value=(p3-p2))
-        edge_vec = edge_vec.set(csdl.slice[:,:,2,:], value=(p1-p3))
+        edge_vec = edge_vec.set(csdl.slice[:,:,0,:], value=(p2-p1)/csdl.expand(a, normal_vec.shape,'ij->ija')) # MIGHT NEED TO EXPAND DENOMINATOR
+        edge_vec = edge_vec.set(csdl.slice[:,:,1,:], value=(p3-p2)/csdl.expand(b, normal_vec.shape,'ij->ija'))
+        edge_vec = edge_vec.set(csdl.slice[:,:,2,:], value=(p1-p3)/csdl.expand(c, normal_vec.shape,'ij->ija'))
         mesh_dict['edge_vec'] = edge_vec
 
-        # edge normal vectors
+        # edge normal vectors (normalized)
         normal_vec_expanded = csdl.expand(normal_vec, edge_vec.shape, 'ijk->ijak')
         edge_normal_vec = csdl.cross(normal_vec_expanded, edge_vec, axis=3)
         mesh_dict['edge_normal'] = edge_normal_vec
@@ -214,9 +222,43 @@ def pre_processor(mesh_dict, mode='structured'):
         cell_deltas = cell_deltas.set(csdl.slice[:,:,2,1], value=csdl.sum(cp_deltas[:,:,2,:]*m_vec, axes=(2,)))
         mesh_dict['delta_coll_point'] = cell_deltas
         # NOTE: CHECK IF AXIS ON THESE LINES ABOVE SHOULD BE 2 OR 3
+
         nodal_vel = mesh_dict['nodal_velocity']
         v1 = nodal_vel[:,list(cell_point_indices[:,0]),:]
         v2 = nodal_vel[:,list(cell_point_indices[:,1]),:]
         v3 = nodal_vel[:,list(cell_point_indices[:,2]),:]
         mesh_dict['coll_point_velocity'] = (v1+v2+v3)/3.
+
+        # grid of distances from vertices to panel centers 
+        expanded_shape = (num_nodes, n_cells, nv, 3)
+        vertices_exp = csdl.expand(mesh, expanded_shape, 'ijk->iajk')
+        panel_center_exp = csdl.expand(panel_center, expanded_shape, 'ijk->ijak')
+        vertex_pc_delta = vertices_exp - panel_center_exp
+        rot_mat_exp = csdl.expand(
+            rot_mat,
+            (num_nodes, n_cells, nv, 3, 3),
+            'ijkl->ijakl'
+        )
+        local_vertex_position = csdl.einsum(
+            rot_mat_exp,
+            vertex_pc_delta,
+            action='ijklm,ijkl->ijkm'
+        )
+
+        mesh_dict['local_vertex_position'] = local_vertex_position
+        # shape of (nn, num_panels, num_vertices, 3)
+
+        # distance from cell corners of cell i to cell center of cell i
+        panel_center_exp = csdl.expand(panel_center, panel_center.shape + (3,), 'ijk->ijak')
+        vertex_delta = panel_corners - panel_center_exp
+        rot_mat_exp = csdl.expand(rot_mat, rot_mat.shape + (3,), 'ijkl->ijakl')
+        local_vertex_delta = csdl.einsum(
+            rot_mat_exp,
+            vertex_delta,
+            action='ijklm,ijkl->ijkm'
+        )
+        mesh_dict['panel_vertex_deltas'] = local_vertex_delta
+        # shape of (nn, num_panels, 3, 3) 
+        # first 3 is the NUMBER OF VERTICES DEFINING THE PANEL 
+
     return mesh_dict

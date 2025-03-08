@@ -2,8 +2,8 @@ import numpy as np
 
 def find_cell_adjacency(points, cells):
     '''
-    points has a shape of (num_points, 3) where the 3 is the x,y,z coordinates
-    cells has a shape of (num_cells, 3) where the 3 is the node indices of the cell
+    points is a numpy array of shape (num_points, 3) where the 3 is the x,y,z coordinates
+    cells is a numpy array of shape (num_cells, 3) where the 3 is the node indices of the cell
     '''
     num_pts = len(points)
     num_cells = len(cells)
@@ -23,6 +23,9 @@ def find_cell_adjacency(points, cells):
                 edges2cells[edge_rev].append(c)
             else:
                 edges2cells[edge] = [c]
+        1
+
+    # return edges2cells
 
     # Finding neighboring cells (cell index is the dict key)
     cell_adjacency = {i: [] for i in range(num_cells)}
@@ -41,22 +44,4 @@ def find_cell_adjacency(points, cells):
         for ind in cell:
             points2cells[ind].append(c)
 
-    # # reordering points and cells to remove duplicate indices (TEMPORARY)
-    # cells_new = np.zeros_like(cells)
-    # new_points = []
-
-    # rep_point_counter = 0
-    # for i in range(num_pts):
-    #     a = np.where(cells == i)
-    #     num_rep = len(a[0])
-
-    #     for j in range(num_rep):
-    #         new_points.append(points[i])
-
-    #         row, col = a[0][j], a[1][j]
-    #         cells_new[row, col] = rep_point_counter
-    #         rep_point_counter += 1
-    # cells = cells_new
-    # points = np.array(new_points)
-
-    return points, cells, cell_adjacency, edges2cells
+    return points, cells, cell_adjacency, edges2cells, points2cells

@@ -48,7 +48,7 @@ def pre_processor(mesh_dict, mode='structured'):
             normal_vec = D1D2_cross / csdl.expand(D1D2_cross_norm, D1D2_cross.shape, 'jkl->jkla')
             mesh_dict[surf_name]['panel_normal'] = normal_vec
 
-            panel_center_mod = Rc - normal_vec*1.e-5
+            panel_center_mod = Rc - normal_vec*1.e-6
             # panel_center_mod = Rc 
             mesh_dict[surf_name]['panel_center_mod'] = panel_center_mod
 
@@ -99,6 +99,9 @@ def pre_processor(mesh_dict, mode='structured'):
             delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:-1,3,0], value=csdl.sum((Rc[:,:,1:,:]-Rc[:,:,:-1,:])*l_vec[:,:,:-1,:], axes=(3,)))
             delta_coll_point = delta_coll_point.set(csdl.slice[:,:,:-1,3,1], value=csdl.sum((Rc[:,:,1:,:]-Rc[:,:,:-1,:])*m_vec[:,:,:-1,:], axes=(3,)))
 
+            # # setting deltas for panels wrapping around TE to zero
+            # delta_coll_point = delta_coll_point.set(csdl.slice[:,0,:,:,:], value=0.)
+
             mesh_dict[surf_name]['delta_coll_point'] = delta_coll_point
 
             nodal_vel = mesh_dict[surf_name]['nodal_velocity']
@@ -116,6 +119,7 @@ def pre_processor(mesh_dict, mode='structured'):
 
             planform_area = csdl.sum(chord_spanwise*avg_panel_width_spanwise, axes=(1,))
             mesh_dict[surf_name]['planform_area'] = planform_area
+            
     elif mode == 'unstructured':
         mesh = mesh_dict['points'] # num_nodes, num_panels, 3
         cell_point_indices = mesh_dict['cell_point_indices']
@@ -196,6 +200,26 @@ def pre_processor(mesh_dict, mode='structured'):
         cell_deltas = cell_deltas.set(csdl.slice[:,:,1,1], value=csdl.sum(cp_deltas[:,:,1,:]*m_vec, axes=(2,)))
         cell_deltas = cell_deltas.set(csdl.slice[:,:,2,0], value=csdl.sum(cp_deltas[:,:,2,:]*l_vec, axes=(2,)))
         cell_deltas = cell_deltas.set(csdl.slice[:,:,2,1], value=csdl.sum(cp_deltas[:,:,2,:]*m_vec, axes=(2,)))
+
+        upper_TE_cells = mesh_dict['upper_TE_cells']
+        lower_TE_cells = mesh_dict['lower_TE_cells']
+        num_TE_cells = len(upper_TE_cells)
+        upper_loc_list, lower_loc_list = [], []
+
+        for i in range(num_TE_cells):
+            upper_cell_ind, lower_cell_ind = upper_TE_cells[i], lower_TE_cells[i]
+            upper_cell_neighbors = cell_adjacency[upper_cell_ind]
+            lower_cell_neighbors = cell_adjacency[lower_cell_ind]
+
+            upper_loc = np.where(lower_cell_neighbors == upper_cell_ind)[0][0]
+            lower_loc = np.where(upper_cell_neighbors == lower_cell_ind)[0][0]
+
+            upper_loc_list.append(upper_loc)
+            lower_loc_list.append(lower_loc)
+
+        cell_deltas = cell_deltas.set(csdl.slice[:,list(upper_TE_cells),lower_loc_list,:], value=0.)
+        cell_deltas = cell_deltas.set(csdl.slice[:,list(lower_TE_cells),upper_loc_list,:], value=0.)
+
         mesh_dict['delta_coll_point'] = cell_deltas
         # NOTE: CHECK IF AXIS ON THESE LINES ABOVE SHOULD BE 2 OR 3
         nodal_vel = mesh_dict['nodal_velocity']

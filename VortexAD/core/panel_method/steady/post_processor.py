@@ -4,6 +4,7 @@ import csdl_alpha as csdl
 import time
 
 from VortexAD.core.panel_method.steady.least_squares_velocity import least_squares_velocity, unstructured_least_squares_velocity
+from VortexAD.core.panel_method.steady.least_squares_velocity import least_squares_velocity_old
 
 def post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225):
     surface_names = list(mesh_dict.keys())
@@ -28,6 +29,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225):
         # region least squares method for perturbation velocities (derivatives)
         delta_coll_point = mesh_dict[surface_name]['delta_coll_point']
         ql, qm = least_squares_velocity(mu_grid, delta_coll_point)
+        # ql, qm = least_squares_velocity_old(mu_grid, delta_coll_point)
         # endregion
 
         panel_x_dir = mesh_dict[surface_name]['panel_x_dir']
@@ -147,6 +149,7 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225):
     Cp_static = 1 - perturbed_vel_mag**2/Q_inf_norm**2
     # Cp_dynamic = -dmu_dt*2./Q_inf_norm**2
     Cp = Cp_static
+    # Cp = csdl.maximum(Cp, -10*np.ones(shape=Cp.shape))
 
     panel_area = mesh_dict['panel_area']
     dF_no_normal = -0.5*rho*Q_inf_norm**2*panel_area*Cp
@@ -166,6 +169,7 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225):
     Q_inf = csdl.average(Q_inf_norm, axes=(1,))
 
     ref_area = 10.
+    ref_area = 507.610
     CL = L/(0.5*rho*ref_area*Q_inf**2)
     CDi = Di/(0.5*rho*ref_area*Q_inf**2)
 

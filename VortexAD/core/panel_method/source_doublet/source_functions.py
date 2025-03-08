@@ -168,7 +168,6 @@ def compute_source_influence_new(A, AM, B, BM, SL, SM, A1, PN, S, l=None, m=None
             panel_segment_potential.append(side_potential)
 
         source_potential = mu/(4*np.pi) * sum(panel_segment_potential)
-
         return source_potential
     
     elif mode == 'velocity':
@@ -191,6 +190,7 @@ def compute_source_influence_new(A, AM, B, BM, SL, SM, A1, PN, S, l=None, m=None
             print(GL.shape)
             print(l.shape)
             print(SM[i].shape)
+            # exit()
             
             side_velocity = GL * (SM[i]*l - SL[i]*m) + atan_term*n # Cjk is the atan term
 
