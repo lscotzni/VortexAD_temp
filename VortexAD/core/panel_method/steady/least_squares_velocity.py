@@ -110,7 +110,7 @@ def least_squares_velocity(mu_grid, delta_coll_point):
 
     return ql, qm
 
-def unstructured_least_squares_velocity(mu, delta_coll_point, cell_adjacency):
+def unstructured_least_squares_velocity_old(mu, delta_coll_point, cell_adjacency):
 
     num_nodes = mu.shape[0]
     num_tot_panels = mu.shape[1]
@@ -148,5 +148,61 @@ def unstructured_least_squares_velocity(mu, delta_coll_point, cell_adjacency):
 
     ql = -dmu_d[:,0::2]
     qm = -dmu_d[:,1::2]
+
+    return ql, qm
+
+def unstructured_least_squares_velocity(mu, delta_coll_point, cell_adjacency):
+
+    num_nodes = mu.shape[0]
+    num_tot_panels = mu.shape[1]
+
+    diag_list_dl = np.arange(start=0, stop=2*num_tot_panels, step=2)
+    diag_list_dm = list(diag_list_dl + 1)
+    diag_list_dl = list(diag_list_dl)
+
+    C = csdl.Variable(shape=(num_nodes, num_tot_panels, 2, 2), value=0.)
+    b = csdl.Variable(shape=(num_nodes, num_tot_panels, 2), value=0.)
+
+    sum_dl_sq = csdl.sum(delta_coll_point[:,:,:,0]**2, axes=(2,))
+    sum_dm_sq = csdl.sum(delta_coll_point[:,:,:,1]**2, axes=(2,))
+    sum_dl_dm = csdl.sum(delta_coll_point[:,:,:,0]*delta_coll_point[:,:,:,1], axes=(2,))
+
+    C = C.set(csdl.slice[:,:,0,0], value=sum_dl_sq.reshape((num_nodes, num_tot_panels)))
+    C = C.set(csdl.slice[:,:,1,1], value=sum_dm_sq.reshape((num_nodes, num_tot_panels)))
+    C = C.set(csdl.slice[:,:,0,1], value=sum_dl_dm.reshape((num_nodes, num_tot_panels))) # FOR STRUCTURED GRIDS, THESE ARE ZERO
+    C = C.set(csdl.slice[:,:,1,0], value=sum_dl_dm.reshape((num_nodes, num_tot_panels))) # FOR STRUCTURED GRIDS, THESE ARE ZERO
+
+    mu_delta_1_ind_np_int = list(cell_adjacency[:,0])
+    mu_delta_2_ind_np_int = list(cell_adjacency[:,1])
+    mu_delta_3_ind_np_int = list(cell_adjacency[:,2])
+    panel_indices_np_int = list(np.arange(num_tot_panels))
+
+    mu_delta_1_ind = [int(x) for x in mu_delta_1_ind_np_int]
+    mu_delta_2_ind = [int(x) for x in mu_delta_2_ind_np_int]
+    mu_delta_3_ind = [int(x) for x in mu_delta_3_ind_np_int]
+    panel_indices = [int(x) for x in panel_indices_np_int]
+
+    dmu = csdl.Variable(shape=(num_nodes, num_tot_panels, 3), value=0.)
+    # dmu = dmu.set(csdl.slice[:,:,0], value=mu[:,list(cell_adjacency[:,0])] - mu)
+    # dmu = dmu.set(csdl.slice[:,:,1], value=mu[:,list(cell_adjacency[:,1])] - mu)
+    # dmu = dmu.set(csdl.slice[:,:,2], value=mu[:,list(cell_adjacency[:,2])] - mu)
+    for cell_ind, ind1, ind2, ind3 in csdl.frange(vals=(panel_indices, mu_delta_1_ind, mu_delta_2_ind, mu_delta_3_ind)):
+        dmu = dmu.set(csdl.slice[:,cell_ind,0], value=mu[:,ind1] - mu[:,cell_ind])
+        dmu = dmu.set(csdl.slice[:,cell_ind,1], value=mu[:,ind2] - mu[:,cell_ind])
+        dmu = dmu.set(csdl.slice[:,cell_ind,2], value=mu[:,ind3] - mu[:,cell_ind])
+
+    dl_dot_dmu = csdl.sum(delta_coll_point[:,:,:,0]*dmu, axes=(2,))
+    dm_dot_dmu = csdl.sum(delta_coll_point[:,:,:,1]*dmu, axes=(2,))
+
+    b = b.set(csdl.slice[:,:,0], value=dl_dot_dmu)
+    b = b.set(csdl.slice[:,:,1], value=dm_dot_dmu)
+    
+    dmu_d = csdl.Variable(shape=(num_nodes, num_tot_panels, 2), value=0.)
+    for i in csdl.frange(num_nodes):
+        for j in csdl.frange(num_tot_panels):
+            dmu_d = dmu_d.set(csdl.slice[i,j,:], value=csdl.solve_linear(C[i,j,:,:], b[i,j,:]))
+
+    ql = -dmu_d[:,:,0]
+    qm = -dmu_d[:,:,1]
 
     return ql, qm

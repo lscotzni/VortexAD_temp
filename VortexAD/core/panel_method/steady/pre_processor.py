@@ -125,10 +125,31 @@ def pre_processor(mesh_dict, mode='structured'):
         cell_point_indices = mesh_dict['cell_point_indices']
         cell_adjacency = mesh_dict['cell_adjacency']
         mesh_shape = mesh.shape
+        num_nodes = mesh_shape[0]
 
-        p1 = mesh[:,list(cell_point_indices[:,0]),:]
-        p2 = mesh[:,list(cell_point_indices[:,1]),:]
-        p3 = mesh[:,list(cell_point_indices[:,2]),:]
+        # p1 = mesh[:,list(cell_point_indices[:,0]),:]
+        # p2 = mesh[:,list(cell_point_indices[:,1]),:]
+        # p3 = mesh[:,list(cell_point_indices[:,2]),:]
+
+        panel_indices_np_int = list(np.arange(cell_point_indices.shape[0]))
+        p1_indices_np_int = list(cell_point_indices[:,0])
+        p2_indices_np_int = list(cell_point_indices[:,1])
+        p3_indices_np_int = list(cell_point_indices[:,2])
+
+        panel_indices = [int(x) for x in panel_indices_np_int]
+        p1_indices = [int(x) for x in p1_indices_np_int]
+        p2_indices = [int(x) for x in p2_indices_np_int]
+        p3_indices = [int(x) for x in p3_indices_np_int]
+
+        p1 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
+        p2 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
+        p3 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
+
+        for cell_ind, ind1, ind2, ind3 in csdl.frange(vals=(panel_indices, p1_indices, p2_indices, p3_indices)):
+            p1 = p1.set(csdl.slice[:,cell_ind,:], value=mesh[:,ind1,:])
+            p2 = p2.set(csdl.slice[:,cell_ind,:], value=mesh[:,ind2,:])
+            p3 = p3.set(csdl.slice[:,cell_ind,:], value=mesh[:,ind3,:])
+        
         panel_center = (p1+p2+p3)/3.
         mesh_dict['panel_center'] = panel_center
 
@@ -188,10 +209,19 @@ def pre_processor(mesh_dict, mode='structured'):
         mesh_dict['SL'] = SL
         mesh_dict['SM'] = SM
 
+        cp_delta_1_ind_np_int = list(cell_adjacency[:,0])
+        cp_delta_2_ind_np_int = list(cell_adjacency[:,1])
+        cp_delta_3_ind_np_int = list(cell_adjacency[:,2])
+
+        cp_delta_1_ind = [int(x) for x in cp_delta_1_ind_np_int]
+        cp_delta_2_ind = [int(x) for x in cp_delta_2_ind_np_int]
+        cp_delta_3_ind = [int(x) for x in cp_delta_3_ind_np_int]
+
         cp_deltas = csdl.Variable(shape=panel_corners.shape, value=0.)
-        cp_deltas = cp_deltas.set(csdl.slice[:,:,0,:], value=panel_center[:,list(cell_adjacency[:,0]),:] - panel_center)
-        cp_deltas = cp_deltas.set(csdl.slice[:,:,1,:], value=panel_center[:,list(cell_adjacency[:,1]),:] - panel_center)
-        cp_deltas = cp_deltas.set(csdl.slice[:,:,2,:], value=panel_center[:,list(cell_adjacency[:,2]),:] - panel_center)
+        for cell_ind, ind1, ind2, ind3 in csdl.frange(vals=(panel_indices, cp_delta_1_ind, cp_delta_2_ind, cp_delta_3_ind)):
+            cp_deltas = cp_deltas.set(csdl.slice[:,cell_ind,0,:], value=panel_center[:,ind1,:] - panel_center[:,cell_ind,:])
+            cp_deltas = cp_deltas.set(csdl.slice[:,cell_ind,1,:], value=panel_center[:,ind2,:] - panel_center[:,cell_ind,:])
+            cp_deltas = cp_deltas.set(csdl.slice[:,cell_ind,2,:], value=panel_center[:,ind3,:] - panel_center[:,cell_ind,:])
 
         cell_deltas = csdl.Variable(shape=panel_corners.shape[:-1] + (2,), value=0.) # each cell has 3 deltas, with 2 dimensions (l,m)
         cell_deltas = cell_deltas.set(csdl.slice[:,:,0,0], value=csdl.sum(cp_deltas[:,:,0,:]*l_vec, axes=(2,)))
@@ -223,8 +253,17 @@ def pre_processor(mesh_dict, mode='structured'):
         mesh_dict['delta_coll_point'] = cell_deltas
         # NOTE: CHECK IF AXIS ON THESE LINES ABOVE SHOULD BE 2 OR 3
         nodal_vel = mesh_dict['nodal_velocity']
-        v1 = nodal_vel[:,list(cell_point_indices[:,0]),:]
-        v2 = nodal_vel[:,list(cell_point_indices[:,1]),:]
-        v3 = nodal_vel[:,list(cell_point_indices[:,2]),:]
+        # v1 = nodal_vel[:,list(cell_point_indices[:,0]),:]
+        # v2 = nodal_vel[:,list(cell_point_indices[:,1]),:]
+        # v3 = nodal_vel[:,list(cell_point_indices[:,2]),:]
+
+        v1 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
+        v2 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
+        v3 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
+
+        for cell_ind, ind1, ind2, ind3 in csdl.frange(vals=(panel_indices, p1_indices, p2_indices, p3_indices)):
+            v1 = v1.set(csdl.slice[:,cell_ind,:], value=nodal_vel[:,ind1,:])
+            v2 = v2.set(csdl.slice[:,cell_ind,:], value=nodal_vel[:,ind2,:])
+            v3 = v3.set(csdl.slice[:,cell_ind,:], value=nodal_vel[:,ind3,:])
         mesh_dict['coll_point_velocity'] = (v1+v2+v3)/3.
     return mesh_dict

@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from VortexAD.utils.plot_unstructured import plot_pressure_distribution
 from VortexAD import SAMPLE_GEOMETRY_PATH
 from VortexAD.utils.cell_adjacency import find_cell_adjacency
+from VortexAD.utils.TE_detection import TE_detection
 from VortexAD.utils.get_TE_data import get_TE_data
 import meshio
 
@@ -31,9 +32,16 @@ cells_dict = mesh.cells_dict
 
 triangles = cells_dict['triangle']
 # exit()
-points_orig, triangles, cell_adjacency, edges2cells = find_cell_adjacency(points=points_orig, cells=triangles)
+points_orig, triangles, cell_adjacency, edges2cells, points2cells = find_cell_adjacency(points=points_orig, cells=triangles)
 
-upper_TE_cells, lower_TE_cells, TE_node_indices = get_TE_data(points_orig, triangles, cell_adjacency, edges2cells)
+# upper_TE_cells, lower_TE_cells, TE_node_indices = get_TE_data(points_orig, triangles, cell_adjacency, edges2cells)
+
+upper_TE_cells, lower_TE_cells, TE_edges, TE_node_indices = TE_detection(
+    points=points_orig,
+    cells=triangles,
+    # cell_adjacency=cell_adjacency,
+    edges2cells=edges2cells
+)
 
 # exit()
 points = np.zeros((num_nodes, ) + points_orig.shape)
@@ -56,9 +64,9 @@ recorder.start()
 
 points = csdl.Variable(value=points)
 point_velocities = csdl.Variable(value=point_velocities)
-TE_data = [TE_node_indices, (upper_TE_cells, lower_TE_cells)]
+TE_data = [TE_node_indices, TE_edges, (lower_TE_cells, upper_TE_cells)]
 
-connectivity_data = [triangles, cell_adjacency]
+connectivity_data = [triangles, cell_adjacency, points2cells]
 
 output_dict, mesh_dict, mu, sigma = steady_panel_solver(
     points, 

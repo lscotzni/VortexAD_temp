@@ -87,8 +87,8 @@ for i in range(num_nodes):
 # exit()
 recorder = csdl.Recorder(inline=False, debug=True)
 recorder.start()
-
-points = csdl.Variable(value=points)
+dummy_input = csdl.Variable(value=1.)
+points = csdl.Variable(value=points) * dummy_input
 point_velocities = csdl.Variable(value=point_velocities)
 # TE_data = [TE_node_indices, TE_edges, (upper_TE_cells, lower_TE_cells)]
 TE_data = [TE_node_indices, TE_edges, (lower_TE_cells, upper_TE_cells)]
@@ -108,7 +108,7 @@ CDi = output_dict['CDi']
 coll_points = mesh_dict['panel_center']
 Cp = output_dict['Cp']
 # AIC_mu_orig = output_dict['AIC_mu_orig']
-
+AIC_mu = output_dict['AIC_mu']
 use_jax = True
 if use_jax:
     recorder.print_largest_variables()
@@ -116,11 +116,14 @@ if use_jax:
     jax_sim = csdl.experimental.JaxSimulator(
         recorder=recorder,
         additional_inputs=[points],
+        # additional_inputs=[dummy_input],
         additional_outputs = [mu, Cp, CL, CDi]
+        # additional_outputs = [CL, CDi]
         # additional_outputs = [Cp]
     )
     # exit()
     jax_sim.run()
+    # jax_sim.check_totals(step_size=1.e-3)
     # exit()
     CL = jax_sim[CL]
     CDi = jax_sim[CDi]

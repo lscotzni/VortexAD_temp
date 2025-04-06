@@ -36,7 +36,8 @@ def find_cell_adjacency(points, cells):
         cell_adjacency[cell_pairs[0]].append(cell_pairs[1])
         cell_adjacency[cell_pairs[1]].append(cell_pairs[0])
 
-    cell_adjacency = np.array(list(cell_adjacency.values()))
+    cell_adjacency = np.array(list(cell_adjacency.values()), dtype=int)
+    # cell_adjacency = list(cell_adjacency.values())
 
     # Finding elements corresponding to each node/vertex
     points2cells = {i: [] for i in range(num_pts)}

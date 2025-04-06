@@ -241,18 +241,57 @@ def unstructured_AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_p
     panel_corners_j = panel_corners_j # panel corners
 
     expanded_shape = (num_nodes, num_vertices, num_panels, 3, 3)
+    vectorized_shape = (num_nodes, num_interactions, 3, 3)
+    # eval_pt_exp = csdl.expand(eval_pt, expanded_shape, 'ijk->ijabk')
+    local_vertex_pos = mesh_dict['local_vertex_position'] # nn, np, nv, 3
+    local_vertex_pos_exp = local_vertex_pos.reshape(vectorized_shape[:-1])
+    '''
+    variables to use from above:
+    - eval_pt_exp_vec
+    - panel_corners_j_exp_vec
+    '''
 
-    a_bar = (vertices - panel_corners_j) * edge_normal
+    edge_normal_exp = csdl.expand(edge_normal, expanded_shape, 'ijkl->iajkl')
+    edge_normal_exp_vec = edge_normal_exp.reshape(vectorized_shape)
 
-    h = (vertices - panel_center_j) * panel_normal
-    l1 = (vertices - panel_corners_j) * edge_vec[0] # need to adjust sizes for the 3 panel corners
-    l2 = (vertices - panel_corners_j) * edge_vec[1] # need to adjust sizes for the 3 panel corners
+    edge_vec_exp = csdl.expand(edge_vec, expanded_shape, 'ijkl->iajkl')
+    edge_vec_exp_vec = edge_vec_exp.reshape(vectorized_shape)
+
+    # a_bar = (vertices - panel_corners_j) * edge_normal
+
+    # h = (vertices - panel_center_j) * panel_normal
+    # l1 = (vertices - panel_corners_j) * edge_vec[0] # need to adjust sizes for the 3 panel corners
+    # l2 = (vertices - panel_corners_j) * edge_vec[1] # need to adjust sizes for the 3 panel corners
+
+    # g = (a_bar + h)**0.5
+    # s1 = (l1**2 + g**2)**0.5
+    # s2 = (l2**2 + g**2)**0.5
+    # c1 = g**2 + abs(h)*s1
+    # c2 = g**2 + abs(h)*s2
+
+    eval_pt_panel_corner_delta = eval_pt_exp_vec - panel_corners_j_exp_vec
+
+    a_bar = csdl.sum(
+        (eval_pt_exp_vec - panel_corners_j_exp_vec) * edge_normal_exp_vec,
+        axes=(3,),
+    )
+    h = edge_normal_exp_vec[:,:,2] # already in rotated frame
+
+    l1 = csdl.sum(
+        eval_pt_panel_corner_delta * edge_vec_exp_vec,
+        axes=(3,)
+    ) 
+    l2 = csdl.sum(
+        eval_pt_panel_corner_delta * edge_vec_exp_vec,
+        axes=(3,)
+    ) 
+    # NOTE: l1, l2 NEED TO BE FIXED
 
     g = (a_bar + h)**0.5
     s1 = (l1**2 + g**2)**0.5
     s2 = (l2**2 + g**2)**0.5
-    c1 = g**2 + abs(h)*s1
-    c2 = g**2 + abs(h)*s2
+    c1 = g**2 + (h**2+1.e-12)**0.5*s1 # CHECK THE NUMERICAL SOFTENING HERE
+    c2 = g**2 + (h**2+1.e-12)**0.5*s2 # CHECK THE NUMERICAL SOFTENING HERE
     
     return AIC_mu, AIC_sigma
 

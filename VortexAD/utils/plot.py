@@ -249,7 +249,7 @@ def plot_transient_pressure_distribution(mesh, Cp, name='unsteady_Cp', surface_c
     video.close()
 
 
-def plot_pressure_distribution(mesh, Cp, surface_color='white', cmap='jet', interactive=False, top_view=False, front_top_view=False):
+def plot_pressure_distribution(mesh, Cp, bounds=False, surface_color='white', cmap='jet', interactive=False, top_view=False, front_top_view=False):
     '''
     Contour plot function for pressure coefficient (steady or single time-step)
     '''
@@ -264,6 +264,10 @@ def plot_pressure_distribution(mesh, Cp, surface_color='white', cmap='jet', inte
 
     Cp_min = min(min_Cp_list)
     Cp_max = max(max_Cp_list)
+
+    if bounds:
+        Cp_min = bounds[0]
+        Cp_max = bounds[1]
 
     # Cp_max = 600
     # Cp_min = -60.

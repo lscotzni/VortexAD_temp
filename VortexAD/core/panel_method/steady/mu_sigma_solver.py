@@ -23,7 +23,6 @@ def mu_sigma_solver(num_nodes, mesh_dict, mode='structured', bc='Dirichlet', ROM
     # wake_mesh_dict = fixed_wake_representation(mesh_dict, num_nodes, wake_propagation_dt=0.001)
     wake_mesh_dict = fixed_wake_representation(mesh_dict, num_nodes, wake_propagation_dt=100, mesh_mode=mode)
 
-    sigma = compute_source_strength(mesh_dict, num_nodes, num_panels=num_tot_panels, mesh_mode=mode)
     # graph = csdl.get_current_recorder().active_graph
     # graph.visualize('pre-subgraph')
     # static AIC matrices for linear system solve
@@ -46,11 +45,12 @@ def mu_sigma_solver(num_nodes, mesh_dict, mode='structured', bc='Dirichlet', ROM
     else:
         raise ValueError('Mode must be structured or unstructured')
     asdf = list(np.arange(0,AIC_mu.shape[-1]))
+    # return AIC_mu
     # AIC_mu = AIC_mu.set(csdl.slice[0,asdf,asdf], value=0.5)
     # print(AIC_mu[0,asdf,asdf].value)
     # print(AIC_mu[0,0,:].value)
     # exit()
-
+    sigma = compute_source_strength(mesh_dict, num_nodes, num_panels=num_tot_panels, mesh_mode=mode)
     sigma_BC_influence = csdl.einsum(AIC_sigma, sigma, action='ijk,ik->ij')
 
     if bc == 'Dirichlet':
@@ -60,7 +60,6 @@ def mu_sigma_solver(num_nodes, mesh_dict, mode='structured', bc='Dirichlet', ROM
         RHS = -sigma_BC_influence + surf_normal_vel
         # RHS =  surf_normal_vel
 
-    # return AIC_mu
     mu = csdl.Variable(value=np.zeros(sigma.shape))
     if ROM:
         UT, U = ROM[0], ROM[1]
@@ -103,7 +102,7 @@ def mu_sigma_solver(num_nodes, mesh_dict, mode='structured', bc='Dirichlet', ROM
     #     mu = mu.set(csdl.slice[nn,:], value=mu_nn)
 
     # return mu, sigma, wake_mesh_dict, AIC_mu, AIC_sigma, AIC_mu_orig
-    return mu, sigma, wake_mesh_dict, AIC_mu, AIC_sigma
+    return mu, sigma, wake_mesh_dict, AIC_mu, AIC_sigma, RHS
 
 def AIC_computation(mesh_dict, wake_mesh_dict, num_nodes, num_tot_panels, surface_names):
     AIC_sigma = csdl.Variable(shape=(num_nodes, num_tot_panels, num_tot_panels), value=0.)

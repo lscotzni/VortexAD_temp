@@ -6,7 +6,7 @@ import time
 from VortexAD.core.panel_method.steady.least_squares_velocity import least_squares_velocity, unstructured_least_squares_velocity
 from VortexAD.core.panel_method.steady.least_squares_velocity import least_squares_velocity_old
 
-def post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225):
+def post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225, Cp_cutoff=-100.):
     surface_names = list(mesh_dict.keys())
     start, stop = 0, 0
     x_dir_global = np.array([1., 0., 0.])
@@ -120,7 +120,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225):
     return output_dict
 
 
-def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225):
+def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225, Cp_cutoff=-100.):
     x_dir_global = np.array([1., 0., 0.])
     z_dir_global = np.array([0., 0., 1.])
     output_dict = {}
@@ -149,7 +149,8 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225):
     Cp_static = 1 - perturbed_vel_mag**2/Q_inf_norm**2
     # Cp_dynamic = -dmu_dt*2./Q_inf_norm**2
     Cp = Cp_static
-    # Cp = csdl.maximum(Cp, -10*np.ones(shape=Cp.shape))
+    Cp_cutoff_exp = csdl.expand(Cp_cutoff, Cp.shape)
+    Cp = csdl.maximum(Cp, Cp_cutoff_exp, rho=100)
 
     panel_area = mesh_dict['panel_area']
     dF_no_normal = -0.5*rho*Q_inf_norm**2*panel_area*Cp
@@ -180,5 +181,7 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225):
     output_dict['Qn'] = Qn
     # output_dict['Ql'] = Ql
     output_dict['L'] = L
+    output_dict['Di'] = Di
+    output_dict['V_mag'] = perturbed_vel_mag
 
     return output_dict
