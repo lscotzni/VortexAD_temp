@@ -161,7 +161,7 @@ def compute_source_influence_new(A, AM, B, BM, SL, SM, A1, PN, S, l=None, m=None
             atan_term = csdl.arctan(RNUM/DNOM) # NOTE: add some numerical softening here
             atan_term = 2*csdl.arctan(((RNUM**2 + DNOM**2)**0.5 - DNOM) / (RNUM+1.e-24)) # half angle formula
 
-            GL = (1/(S[i])) * csdl.log((A[i]+B[i]+S[i])/(A[i]+B[i]-S[i]))
+            GL = (1/(S[i]+1.e-12)) * csdl.log((A[i]+B[i]+S[i])/(A[i]+B[i]-S[i]))
 
             side_potential = A1[i]*GL - PN[i]*atan_term
 
@@ -185,7 +185,7 @@ def compute_source_influence_new(A, AM, B, BM, SL, SM, A1, PN, S, l=None, m=None
             # atan_term = csdl.arctan(RNUM/DNOM) # NOTE: add some numerical softening here
             atan_term = 2*csdl.arctan(((RNUM**2 + DNOM**2)**0.5 - DNOM) / (RNUM+1.e-24)) # half angle formula
 
-            GL = (1/(S[i])) * csdl.log((A[i]+B[i]+S[i])/(A[i]+B[i]-S[i]))
+            GL = (1/(S[i]+1.e-12)) * csdl.log((A[i]+B[i]+S[i])/(A[i]+B[i]-S[i]))
 
             print(GL.shape)
             print(l.shape)

@@ -1,8 +1,6 @@
 import numpy as np
 import csdl_alpha as csdl
-
-import csdl_alpha as csdl
-import numpy as np 
+import pickle
 from VortexAD.core.geometry.gen_panel_mesh import gen_panel_mesh, gen_panel_mesh_new
 from VortexAD import steady_panel_solver
 
@@ -14,11 +12,10 @@ from VortexAD.core.panel_method.source_doublet.source_functions import compute_s
 from VortexAD.core.panel_method.vortex_ring.vortex_line_functions import compute_vortex_line_ind_vel
 
 # off body analysis function
-def off_body_analysis(mesh_dict, wake_mesh_dict, eval_points, mu, sigma, velocity_grid):
-    eval_pts_shape = eval_points.shape
-    nc_e, ns_e = eval_pts_shape[1], eval_pts_shape[2]
-    num_eval_pts = nc_e*ns_e
-    eval_pts = eval_points[0,:]
+def off_body_analysis(mesh_dict, wake_mesh_dict, eval_points, mu, sigma, velocity):
+    eval_pts_shape = eval_points.shape # num_points, 3
+    num_eval_pts = eval_pts_shape[0]
+    eval_pts = eval_points[:,:]
 
     surface_names = list(mesh_dict.keys())
 
@@ -55,6 +52,7 @@ def off_body_analysis(mesh_dict, wake_mesh_dict, eval_points, mu, sigma, velocit
         mu_surf_wake = mu_surf_grid[-1,:] - mu_surf_grid[0,:]
 
         panel_corners_i = mesh_dict[surf_i_name]['panel_corners'][0,:]
+        print(panel_corners_i.shape)
         coll_point_i = mesh_dict[surf_i_name]['panel_center'][0,:]
         panel_x_dir_i = mesh_dict[surf_i_name]['panel_x_dir'][0,:]
         panel_y_dir_i = mesh_dict[surf_i_name]['panel_y_dir'][0,:]
@@ -66,7 +64,7 @@ def off_body_analysis(mesh_dict, wake_mesh_dict, eval_points, mu, sigma, velocit
         
         num_surf_interactions = num_eval_pts*num_panels_i
 
-        eval_pt_exp = csdl.expand(eval_pts, (nc_e, ns_e, num_panels_i, 4, 3), 'ijk->ijabk')
+        eval_pt_exp = csdl.expand(eval_pts, (num_eval_pts, num_panels_i, 4, 3), 'ij->iabj')
         eval_pt_exp_vec = eval_pt_exp.reshape((num_surf_interactions, 4, 3))
 
         panel_corners_i_exp = csdl.expand(panel_corners_i, (num_eval_pts, nc_i-1, ns_i-1, 4, 3), 'ijkl->aijkl')
@@ -152,9 +150,9 @@ def off_body_analysis(mesh_dict, wake_mesh_dict, eval_points, mu, sigma, velocit
             mode='velocity'
         )
 
-        rot_mat_s_j = mesh_dict[surf_i_name]['rot_mat'][0,:,:,:]
-        rot_mat_s_j_exp = csdl.expand(rot_mat_s_j, (num_eval_pts, nc_i-1, ns_i-1, 3, 3), 'ijkl->aijkl')
-        rot_mat_s_j_exp_vec = rot_mat_s_j_exp.reshape(((num_surf_interactions, 3, 3)))
+        # rot_mat_s_j = mesh_dict[surf_i_name]['rot_mat'][0,:,:,:]
+        # rot_mat_s_j_exp = csdl.expand(rot_mat_s_j, (num_eval_pts, nc_i-1, ns_i-1, 3, 3), 'ijkl->aijkl')
+        # rot_mat_s_j_exp_vec = rot_mat_s_j_exp.reshape(((num_surf_interactions, 3, 3)))
 
         # ind_vel_source_global = csdl.einsum(ind_vel_source_local, rot_mat_s_j_exp_vec, action='ij,ilj->il')
         ind_vel_source_global = ind_vel_source_local
@@ -184,7 +182,7 @@ def off_body_analysis(mesh_dict, wake_mesh_dict, eval_points, mu, sigma, velocit
         
         num_wake_interactions = num_eval_pts*num_panels_i_w
 
-        eval_pt_w_exp = csdl.expand(eval_pts, (nc_e, ns_e, num_panels_i_w, 4, 3), 'ijk->ijabk')
+        eval_pt_w_exp = csdl.expand(eval_pts, (num_eval_pts, num_panels_i_w, 4, 3), 'ij->iabj')
         eval_pt_w_exp_vec = eval_pt_w_exp.reshape((num_wake_interactions, 4, 3))
 
         panel_corners_i_w_exp = csdl.expand(panel_corners_i, (num_eval_pts, nc_i_w-1, ns_i_w-1, 4, 3), 'ijkl->aijkl')
@@ -220,19 +218,20 @@ def off_body_analysis(mesh_dict, wake_mesh_dict, eval_points, mu, sigma, velocit
         mu_wake_induced_vel = csdl.matvec(AIC_mu_wake[:,:,direction], mu_wake) # this is causing some asymmetry at the TE
 
         total_induced_vel = sigma_induced_vel + mu_surf_induced_vel + mu_wake_induced_vel
+        # total_induced_vel = mu_surf_induced_vel + mu_wake_induced_vel
         induced_vel = induced_vel.set(csdl.slice[:,direction], value=total_induced_vel)
 
-    induced_vel_grid = induced_vel.reshape((nc_e, ns_e, 3))
-    total_vel = induced_vel_grid + velocity_grid
+    velocity_vec = velocity.expand(induced_vel.shape, 'i->ji')
+    total_vel = induced_vel + velocity_vec
 
-    Q_inf_norm = csdl.norm(velocity_grid, axes=(2,))
-    Q_pert_norm = csdl.norm(total_vel, axes=(2,))
+    Q_inf_norm = csdl.norm(velocity_vec, axes=(1,))
+    Q_pert_norm = csdl.norm(total_vel, axes=(1,))
 
     Cp = 1 - Q_pert_norm**2/Q_inf_norm**2
 
     Cp = Cp.reshape((1,) + Cp.shape)
 
-    return Cp, Q_pert_norm, Q_inf_norm, AIC_mu, AIC_sigma
+    return Cp, total_vel
 
 # setting up inputs
 b = 10.
@@ -245,116 +244,144 @@ sos = 340.3
 Vx = sos*mach
 V_inf = np.array([-Vx, 0., 0.])
 
-# coarse and fine grids
-ns_fine, nc_fine = 21, 31
-ns_coarse, nc_coarse = 11, 21
-
-# mesh_orig_fine = gen_panel_mesh(nc_fine, ns_fine, c, b, span_spacing='cosine',  frame='default', plot_mesh=False) # even chordwise spacing
-# mesh_orig_coarse = gen_panel_mesh(nc_coarse, ns_coarse, c, b, span_spacing='cosine',  frame='default', plot_mesh=False) # even chordwise spacing
-
-mesh_orig_fine = gen_panel_mesh_new(nc_fine, ns_fine, c, b,  frame='default', plot_mesh=False) # uneven chordwise spacing
-mesh_orig_coarse = gen_panel_mesh_new(nc_coarse, ns_coarse, c, b,  frame='default', plot_mesh=False) # uneven chordwise spacing
-
-mesh_fine = np.zeros((num_nodes,) + mesh_orig_fine.shape)
-mesh_coarse = np.zeros((num_nodes,) + mesh_orig_coarse.shape)
-for i in range(num_nodes):
-    mesh_fine[i,:] = mesh_orig_fine
-    mesh_coarse[i,:] = mesh_orig_coarse
-
-V_rot_mat = np.zeros((3,3))
-V_rot_mat[1,1] = 1.
-V_rot_mat[0,0] = V_rot_mat[2,2] = np.cos(alpha)
-V_rot_mat[2,0] = np.sin(alpha)
-V_rot_mat[0,2] = -np.sin(alpha)
-V_inf_rot = np.matmul(V_rot_mat, V_inf)
-
-mesh_velocity_fine = np.zeros_like(mesh_fine)
-mesh_vel_coarse = np.zeros_like(mesh_coarse)
-for i in range(num_nodes):
-    mesh_velocity_fine[i,:] = V_inf_rot
-    mesh_vel_coarse[i,:] = V_inf_rot
-
-# want coarse data at panel centers
-coll_pt_coarse = (mesh_coarse[:,:-1,:-1] + mesh_coarse[:,1:,:-1] + mesh_coarse[:,1:,1:] + mesh_coarse[:,:-1,1:])/4
-coll_vel_coarse = (mesh_vel_coarse[:,:-1,:-1] + mesh_vel_coarse[:,1:,:-1] + mesh_vel_coarse[:,1:,1:] + mesh_vel_coarse[:,:-1,1:])/4
-
-p1_c = mesh_coarse[:,:-1,:-1]
-p2_c = mesh_coarse[:,1:,:-1]
-p3_c = mesh_coarse[:,1:,1:]
-p4_c = mesh_coarse[:,:-1,1:]
-
-v1 = p3_c - p1_c
-v2 = p4_c - p2_c
-normal_vec_orig = np.cross(v1, v2, axisa=3, axisb=3)
-normal_vec_norm = np.einsum('ijk,a->ijka', np.linalg.norm(normal_vec_orig, axis=3), np.array(([1, 1, 1])))
-normal_vec = normal_vec_orig/normal_vec_norm
-k = 1.e-5
-coll_pt_coarse = coll_pt_coarse - k*normal_vec
+with open('superposition_data.pickle', 'rb') as file:
+    data = pickle.load(file)
 
 recorder = csdl.Recorder(inline=False)
 recorder.start()
 
-# fine grid variables
-mesh_fine = csdl.Variable(value=mesh_fine)
-mesh_velocity_fine = csdl.Variable(value=mesh_velocity_fine)
-# coarse grid variables
-coll_pt_coarse = csdl.Variable(value=coll_pt_coarse)
-coll_vel_coarse = csdl.Variable(value=coll_vel_coarse)
+mesh_dict = data['mesh_dict']
+nc, ns = mesh_dict['surface_0']['nc'], mesh_dict['surface_0']['ns']
+wake_mesh_dict = data['wake_mesh_dict']
+mu = data['mu']
+sigma = data['sigma']
+Cp = data['Cp']
+mesh = data['mesh']
+mesh_velocity = csdl.Variable(value=data['mesh_velocity'])
+free_stream_vel = mesh_velocity[0,0,0,:] * -1. # reference frame sign change
 
-mesh_list = [mesh_fine]
-mesh_velocity_list = [mesh_velocity_fine]
+num_eval_pts = 1
+eval_pts = csdl.Variable(value=1., shape=(num_eval_pts, 3))
+eval_pts = csdl.Variable(value=np.array([0.49774775, 0.        , -0.05305305]).reshape((1,3)))
 
-# running original solver with fine grid
-output_dict, mesh_dict, mu, sigma = steady_panel_solver(
-    mesh_list, 
-    mesh_velocity_list
-)
+eval_pt_Cp, eval_pt_velocity = off_body_analysis(mesh_dict, wake_mesh_dict, eval_pts, mu[0,:], sigma[0,:], free_stream_vel)
 
-wake_mesh_dict = output_dict['wake_dict']
-
-Cp_fine = output_dict['surface_0']['Cp']
-CL_fine  = output_dict['surface_0']['CL']
-CDi_fine = output_dict['surface_0']['CDi']
-
-# doing off-body analysis on coarse grid via superposition
-Cp_coarse, Q, Q_inf, AIC_mu, AIC_sigma = off_body_analysis(mesh_dict, wake_mesh_dict, coll_pt_coarse, mu[0,:], sigma[0,:], coll_vel_coarse[0,:])
+inputs = [
+    eval_pts,
+]
 
 outputs = [
-    Cp_fine, 
-    Cp_coarse, 
-    CL_fine, 
-    CDi_fine,
-    Q,
-    Q_inf,
-    AIC_mu,
-    AIC_sigma
+    eval_pt_Cp,
+    eval_pt_velocity,
+    free_stream_vel
 ]
 
 recorder.stop()
 jax_sim = csdl.experimental.JaxSimulator(
     recorder=recorder,
-    additional_inputs=[mesh_fine, mesh_velocity_fine], # list of outputs (put in csdl variable)
+    additional_inputs=eval_pts, # list of outputs (put in csdl variable)
     additional_outputs=outputs, # list of outputs (put in csdl variable)
 )
+
+# jax_sim.run()
+# 
+# free_stream_vel = jax_sim[free_stream_vel]
+
+if False:
+    sample_eval_pt = np.array([0.49774775, 0.        , -0.05305305]).reshape((1,3))
+    jax_sim[eval_pts] = sample_eval_pt
+    jax_sim.run()
+    sample_velocity = jax_sim[eval_pt_velocity]
+    exit()
+
+if False:
+    plot_pressure_distribution([mesh], [Cp], interactive=True, top_view=False)
+
 jax_sim.run()
 
-mesh_fine = jax_sim[mesh_fine]
-Cp_fine = jax_sim[Cp_fine]
-Cp_coarse = jax_sim[Cp_coarse]
-CL_fine = jax_sim[CL_fine]
-CDi_fine = jax_sim[CDi_fine]
-Q = jax_sim[Q]
-Q_inf = jax_sim[Q_inf]
-AIC_mu = jax_sim[AIC_mu]
-AIC_sigma = jax_sim[AIC_sigma]
-
-
-print(f'CL: {CL_fine}')
-print(f'CDi: {CDi_fine}')
-
+free_stream_vel = jax_sim[free_stream_vel]
 
 if True:
-    plot_pressure_distribution([mesh_fine], [Cp_fine], interactive=True, top_view=False)
+    # generating grid
+    # upper airfoil to look at flow oscillation
+    x_lim = [-0.25, 1.25]
+    z_lim = [0.025, 0.15]
 
-if True:
-    plot_pressure_distribution([mesh_coarse], [Cp_coarse], interactive=True, top_view=False)
+    # near field
+    # x_lim = [-0.25, 1.25]
+    # z_lim = [-0.2, 0.2]
+
+    # normal area around airfoil
+    # x_lim = [-0.25, 1.25]
+    # z_lim = [-0.5, 0.5]
+
+    # captures far field
+    # x_lim = [-1, 3]
+    # z_lim = [-1, 1]
+
+    nx, nz = 1000, 1000
+    num_pts = nx*nz
+    x_vec = np.linspace(x_lim[0], x_lim[1], num=nx)
+    z_vec = np.linspace(z_lim[0], z_lim[1], num=nz)
+    eval_points_mesh = np.zeros((nx, nz, 3))
+    for i in range(nx):
+        eval_points_mesh[i,:,0] = x_vec[i]
+        eval_points_mesh[i,:,2] = z_vec
+
+    eval_points_mesh_vec = eval_points_mesh.reshape((1, nx*nz, 3))
+    total_vel_vec = np.zeros_like(eval_points_mesh_vec)
+
+    # looping through grid points and running the simulator
+    # for 100x100, takes less than a second
+    # for 1000x1000, takes close to a minute and a half
+    for i in range(num_pts):
+        evaluation_pt = eval_points_mesh_vec[:,i,:]
+        jax_sim[eval_pts] = evaluation_pt
+
+        jax_sim.run()
+
+        total_vel = jax_sim[eval_pt_velocity]
+        total_vel_vec[:,i,:] = total_vel
+
+    total_vel_grid = total_vel_vec.reshape((1,nx,nz,3))
+    total_vel_norm = np.linalg.norm(total_vel_grid, axis=3) # total velocity norm
+    V_inf_norm = np.linalg.norm(free_stream_vel) # free stream norm
+
+    normalized_total_vel_grid = total_vel_grid/V_inf_norm
+    normalized_total_vel_norm = total_vel_norm/V_inf_norm
+
+    max_vel_norm = np.max(total_vel_norm)
+    normalized_max_vel_norm = np.max(normalized_total_vel_norm)
+
+    mesh_pts = mesh[0,:,int((ns-1)/2)]
+    # bound_vortex_pts = mesh_dict['surface_0']['bound_vortex_mesh'][0,:,int((ns-1)/2)]
+
+    X, Z = np.meshgrid(x_vec, z_vec)
+
+    import matplotlib
+    norm = matplotlib.colors.Normalize(vmin=0, vmax=max_vel_norm)
+    fig, ax = plt.subplots()
+    strm = ax.streamplot(X, Z, total_vel_grid[0,:,:,0].T, total_vel_grid[0,:,:,2].T, color=total_vel_norm[0,:,:].T, norm=norm, cmap='jet')
+    ax.plot(mesh_pts[:,0], mesh_pts[:,2], 'k-o', linewidth=2)
+    # ax.plot(bound_vortex_pts[:,0], bound_vortex_pts[:,2], 'm-o', linewidth=3)
+    ax.set_xlim([x_vec[0], x_vec[-1]])
+    ax.set_ylim([z_vec[0], z_vec[-1]])
+    ax.set_xlabel('Normalized chord (x/c)')
+    ax.set_ylabel('z')
+    cbar = fig.colorbar(strm.lines)
+    cbar.ax.set_xlabel(r'$|u|$', fontsize=18)
+
+    norm = matplotlib.colors.Normalize(vmin=0, vmax=normalized_max_vel_norm)
+    fig, ax = plt.subplots()
+    strm = ax.streamplot(X, Z, normalized_total_vel_grid[0,:,:,0].T, normalized_total_vel_grid[0,:,:,2].T, color=normalized_total_vel_norm[0,:,:].T, norm=norm, cmap='jet')
+    ax.plot(mesh_pts[:,0], mesh_pts[:,2], 'k-o', linewidth=2)
+    # ax.plot(bound_vortex_pts[:,0], bound_vortex_pts[:,2], 'm-o', linewidth=3)
+    ax.set_xlim([x_vec[0], x_vec[-1]])
+    ax.set_ylim([z_vec[0], z_vec[-1]])
+    ax.set_xlabel('Normalized chord (x/c)')
+    ax.set_ylabel('z')
+
+    cbar = fig.colorbar(strm.lines)
+    cbar.ax.set_xlabel(r'$\frac{|u|}{|U_\infty|}$', fontsize=18)
+
+    plt.show()

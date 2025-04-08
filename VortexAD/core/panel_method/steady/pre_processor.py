@@ -80,7 +80,7 @@ def pre_processor(mesh_dict, mode='structured'):
             l_exp = csdl.expand(l_vec, panel_corners.shape, 'jklm->jklam')
             m_exp = csdl.expand(m_vec, panel_corners.shape, 'jklm->jklam')
             
-            S = csdl.norm(s+1.e-12, axes=(4,)) # NOTE: ADD NUMERICAL SOFTENING HERE BECAUSE OVERLAPPING NODES WILL CAUSE THIS TO BE 0
+            S = csdl.norm(s, axes=(4,)) # NOTE: ADD NUMERICAL SOFTENING HERE BECAUSE OVERLAPPING NODES WILL CAUSE THIS TO BE 0 --> added to the equations instead
             # S = csdl.norm(s, axes=(5,)) # NOTE: ADD NUMERICAL SOFTENING HERE BECAUSE OVERLAPPING NODES WILL CAUSE THIS TO BE 0
             SL = csdl.sum(s*l_exp, axes=(4,))
             SM = csdl.sum(s*m_exp, axes=(4,))
@@ -200,7 +200,7 @@ def pre_processor(mesh_dict, mode='structured'):
         l_exp = csdl.expand(l_vec, panel_corners.shape, 'klm->klam')
         m_exp = csdl.expand(m_vec, panel_corners.shape, 'klm->klam')
         
-        S = csdl.norm(s+1.e-12, axes=(3,)) # NOTE: ADD NUMERICAL SOFTENING HERE BECAUSE OVERLAPPING NODES WILL CAUSE THIS TO BE 0
+        S = csdl.norm(s, axes=(3,)) # NOTE: ADD NUMERICAL SOFTENING HERE BECAUSE OVERLAPPING NODES WILL CAUSE THIS TO BE 0 --> added to the equations instead
         # S = csdl.norm(s, axes=(5,)) # NOTE: ADD NUMERICAL SOFTENING HERE BECAUSE OVERLAPPING NODES WILL CAUSE THIS TO BE 0
         SL = csdl.sum(s*l_exp, axes=(3,))
         SM = csdl.sum(s*m_exp, axes=(3,))
