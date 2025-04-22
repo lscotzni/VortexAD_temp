@@ -1,7 +1,7 @@
 import numpy as np
 import csdl_alpha as csdl
 from VortexAD.utils.csdl_switch import switch_func
-import ozone_alpha as ozone
+import ozone as ozone
 
 def boundary_layer_coupling_model(Ue, BL_mesh, dx, nu):
 
@@ -118,7 +118,7 @@ def boundary_layer_coupling_model(Ue, BL_mesh, dx, nu):
 
     return delta_star, theta, H, Cf
 
-def turbulent_BL_ode_function(ozone_vars:ozone.FuncVars,nu):
+def turbulent_BL_ode_function(ozone_vars:ozone.ODEVars,nu):
     theta = ozone_vars.states['theta']
     Ue_H1_theta = ozone_vars.states['Ue_H1_theta']
 

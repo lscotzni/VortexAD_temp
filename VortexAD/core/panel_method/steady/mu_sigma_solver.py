@@ -1031,29 +1031,47 @@ def unstructured_AIC_computation_UW(mesh_dict, wake_mesh_dict, num_nodes, num_to
         mode='potential'
     )
     wake_doublet_influence = wake_doublet_influence_vec.reshape((num_nodes, num_tot_panels, num_wake_panels))
-    AIC_mu_adjustment = csdl.Variable(value=np.zeros(AIC_mu_orig.shape))
-
-    # for te_ind in range(len(list(lower_TE_cell_ind))):
+    
     te_ind_list = np.arange(len(list(lower_TE_cell_ind)), dtype=int).tolist()
-    print(te_ind_list)
-    print(lower_TE_cell_ind)
-    print(upper_TE_cell_ind)
-    print(type(te_ind_list[0]))
-    print(type(lower_TE_cell_ind[0]))
-    print(type(upper_TE_cell_ind[0]))
-    for te_ind, lower_ind, upper_ind in csdl.frange(vals=(te_ind_list, lower_TE_cell_ind, upper_TE_cell_ind)):
-        # lower_ind = lower_TE_cell_ind[te_ind]
-        # upper_ind = upper_TE_cell_ind[te_ind]
-        AIC_mu_adjustment = AIC_mu_adjustment.set(
-            csdl.slice[:,:,lower_ind],
-            value=-wake_doublet_influence[:,:,te_ind]
-        )
-        AIC_mu_adjustment = AIC_mu_adjustment.set(
-            csdl.slice[:,:,upper_ind],
-            value=wake_doublet_influence[:,:,te_ind]
-        )
+    # ==== USING CSDL FRANGE ====
+    # AIC_mu_adjustment = csdl.Variable(value=np.zeros(AIC_mu_orig.shape))
+    # for te_ind, lower_ind, upper_ind in csdl.frange(vals=(te_ind_list, lower_TE_cell_ind, upper_TE_cell_ind)):
+    #     # lower_ind = lower_TE_cell_ind[te_ind]
+    #     # upper_ind = upper_TE_cell_ind[te_ind]
+    #     AIC_mu_adjustment = AIC_mu_adjustment.set(
+    #         csdl.slice[:,:,lower_ind],
+    #         value=-wake_doublet_influence[:,:,te_ind]
+    #     )
+    #     AIC_mu_adjustment = AIC_mu_adjustment.set(
+    #         csdl.slice[:,:,upper_ind],
+    #         value=wake_doublet_influence[:,:,te_ind]
+    #     )
 
-    AIC_mu = AIC_mu_orig + AIC_mu_adjustment
+    # AIC_mu = AIC_mu_orig + AIC_mu_adjustment
+
+    # ==== USING STACK VIA LOOP BUILDER ====
+    loop_vals = [te_ind_list]
+    with csdl.experimental.enter_loop(vals=loop_vals) as loop_builder:
+        i = loop_builder.get_loop_indices()
+        AIC_KC_lower = -wake_doublet_influence[:,:,i]
+        AIC_KC_upper = wake_doublet_influence[:,:,i]
+    AIC_KC_lower = loop_builder.add_stack(AIC_KC_lower)
+    AIC_KC_upper = loop_builder.add_stack(AIC_KC_upper)
+    loop_builder.finalize()
+    num_TE_panels = len(te_ind_list)
+    AIC_KC_lower = AIC_KC_lower.reshape((num_TE_panels, num_tot_panels)).T().reshape((num_nodes, num_tot_panels, num_TE_panels))
+    AIC_KC_upper = AIC_KC_upper.reshape((num_TE_panels, num_tot_panels)).T().reshape((num_nodes, num_tot_panels, num_TE_panels))
+    
+    AIC_mu = AIC_mu_orig
+    AIC_mu = AIC_mu.set(
+        csdl.slice[:,:,lower_TE_cell_ind],
+        AIC_mu_orig[:,:,lower_TE_cell_ind] + AIC_KC_lower
+    )
+
+    AIC_mu = AIC_mu.set(
+        csdl.slice[:,:,upper_TE_cell_ind],
+        AIC_mu_orig[:,:,upper_TE_cell_ind] + AIC_KC_upper
+    )
 
     return AIC_mu, AIC_sigma, AIC_mu_orig
 

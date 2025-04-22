@@ -127,10 +127,14 @@ def pre_processor(mesh_dict, mode='structured'):
         mesh_shape = mesh.shape
         num_nodes = mesh_shape[0]
 
+        num_panels = cell_point_indices.shape[0]
+
+        # ==== WITH DUPLICATE INDICES ====
         # p1 = mesh[:,list(cell_point_indices[:,0]),:]
         # p2 = mesh[:,list(cell_point_indices[:,1]),:]
         # p3 = mesh[:,list(cell_point_indices[:,2]),:]
 
+        # ==== USING CSDL FRANGE ====
         panel_indices_np_int = list(np.arange(cell_point_indices.shape[0]))
         p1_indices_np_int = list(cell_point_indices[:,0])
         p2_indices_np_int = list(cell_point_indices[:,1])
@@ -141,14 +145,31 @@ def pre_processor(mesh_dict, mode='structured'):
         p2_indices = [int(x) for x in p2_indices_np_int]
         p3_indices = [int(x) for x in p3_indices_np_int]
 
-        p1 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
-        p2 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
-        p3 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
+        # p1 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
+        # p2 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
+        # p3 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
 
-        for cell_ind, ind1, ind2, ind3 in csdl.frange(vals=(panel_indices, p1_indices, p2_indices, p3_indices)):
-            p1 = p1.set(csdl.slice[:,cell_ind,:], value=mesh[:,ind1,:])
-            p2 = p2.set(csdl.slice[:,cell_ind,:], value=mesh[:,ind2,:])
-            p3 = p3.set(csdl.slice[:,cell_ind,:], value=mesh[:,ind3,:])
+        # for cell_ind, ind1, ind2, ind3 in csdl.frange(vals=(panel_indices, p1_indices, p2_indices, p3_indices)):
+        #     p1 = p1.set(csdl.slice[:,cell_ind,:], value=mesh[:,ind1,:])
+        #     p2 = p2.set(csdl.slice[:,cell_ind,:], value=mesh[:,ind2,:])
+        #     p3 = p3.set(csdl.slice[:,cell_ind,:], value=mesh[:,ind3,:])
+
+        # ==== USING STACK VIA LOOP BUILDER ====
+        loop_vals = [p1_indices, p2_indices, p3_indices]
+
+        with csdl.experimental.enter_loop(vals=loop_vals) as loop_builder:
+            j,k,l = loop_builder.get_loop_indices()
+            p1 = mesh[:,j,:]
+            p2 = mesh[:,k,:]
+            p3 = mesh[:,l,:]
+
+        p1 = loop_builder.add_stack(p1)
+        p2 = loop_builder.add_stack(p2)
+        p3 = loop_builder.add_stack(p3)
+        loop_builder.finalize()
+        p1 = p1.reshape((num_nodes, num_panels, 3))
+        p2 = p2.reshape((num_nodes, num_panels, 3))
+        p3 = p3.reshape((num_nodes, num_panels, 3))
         
         panel_center = (p1+p2+p3)/3.
         mesh_dict['panel_center'] = panel_center
@@ -209,6 +230,7 @@ def pre_processor(mesh_dict, mode='structured'):
         mesh_dict['SL'] = SL
         mesh_dict['SM'] = SM
 
+        # ==== USING CSDL FRANGE ====
         cp_delta_1_ind_np_int = list(cell_adjacency[:,0])
         cp_delta_2_ind_np_int = list(cell_adjacency[:,1])
         cp_delta_3_ind_np_int = list(cell_adjacency[:,2])
@@ -217,11 +239,32 @@ def pre_processor(mesh_dict, mode='structured'):
         cp_delta_2_ind = [int(x) for x in cp_delta_2_ind_np_int]
         cp_delta_3_ind = [int(x) for x in cp_delta_3_ind_np_int]
 
+        # cp_deltas = csdl.Variable(shape=panel_corners.shape, value=0.)
+        # for cell_ind, ind1, ind2, ind3 in csdl.frange(vals=(panel_indices, cp_delta_1_ind, cp_delta_2_ind, cp_delta_3_ind)):
+        #     cp_deltas = cp_deltas.set(csdl.slice[:,cell_ind,0,:], value=panel_center[:,ind1,:] - panel_center[:,cell_ind,:])
+        #     cp_deltas = cp_deltas.set(csdl.slice[:,cell_ind,1,:], value=panel_center[:,ind2,:] - panel_center[:,cell_ind,:])
+        #     cp_deltas = cp_deltas.set(csdl.slice[:,cell_ind,2,:], value=panel_center[:,ind3,:] - panel_center[:,cell_ind,:])
+        
+        # ==== USING STACK VIA LOOP BUILDER ====
+        loop_vals = [panel_indices, cp_delta_1_ind, cp_delta_2_ind, cp_delta_3_ind]
+        with csdl.experimental.enter_loop(vals=loop_vals) as loop_builder:
+            i,a,b,c = loop_builder.get_loop_indices()
+            cp_delta_1 = panel_center[:,a,:] - panel_center[:,i,:]
+            cp_delta_2 = panel_center[:,b,:] - panel_center[:,i,:]
+            cp_delta_3 = panel_center[:,c,:] - panel_center[:,i,:]
+        cp_delta_1 = loop_builder.add_stack(cp_delta_1)
+        cp_delta_2 = loop_builder.add_stack(cp_delta_2)
+        cp_delta_3 = loop_builder.add_stack(cp_delta_3)
+        loop_builder.finalize()
+        cp_delta_1 = cp_delta_1.reshape((num_nodes, num_panels, 3))
+        cp_delta_2 = cp_delta_2.reshape((num_nodes, num_panels, 3))
+        cp_delta_3 = cp_delta_3.reshape((num_nodes, num_panels, 3))
+
         cp_deltas = csdl.Variable(shape=panel_corners.shape, value=0.)
-        for cell_ind, ind1, ind2, ind3 in csdl.frange(vals=(panel_indices, cp_delta_1_ind, cp_delta_2_ind, cp_delta_3_ind)):
-            cp_deltas = cp_deltas.set(csdl.slice[:,cell_ind,0,:], value=panel_center[:,ind1,:] - panel_center[:,cell_ind,:])
-            cp_deltas = cp_deltas.set(csdl.slice[:,cell_ind,1,:], value=panel_center[:,ind2,:] - panel_center[:,cell_ind,:])
-            cp_deltas = cp_deltas.set(csdl.slice[:,cell_ind,2,:], value=panel_center[:,ind3,:] - panel_center[:,cell_ind,:])
+        cp_deltas = cp_deltas.set(csdl.slice[:,:,0,:], value=cp_delta_1)
+        cp_deltas = cp_deltas.set(csdl.slice[:,:,1,:], value=cp_delta_2)
+        cp_deltas = cp_deltas.set(csdl.slice[:,:,2,:], value=cp_delta_3)
+
 
         cell_deltas = csdl.Variable(shape=panel_corners.shape[:-1] + (2,), value=0.) # each cell has 3 deltas, with 2 dimensions (l,m)
         cell_deltas = cell_deltas.set(csdl.slice[:,:,0,0], value=csdl.sum(cp_deltas[:,:,0,:]*l_vec, axes=(2,)))
@@ -253,17 +296,36 @@ def pre_processor(mesh_dict, mode='structured'):
         mesh_dict['delta_coll_point'] = cell_deltas
         # NOTE: CHECK IF AXIS ON THESE LINES ABOVE SHOULD BE 2 OR 3
         nodal_vel = mesh_dict['nodal_velocity']
+
+        # ==== WITH DUPLICATE NODES ====
         # v1 = nodal_vel[:,list(cell_point_indices[:,0]),:]
         # v2 = nodal_vel[:,list(cell_point_indices[:,1]),:]
         # v3 = nodal_vel[:,list(cell_point_indices[:,2]),:]
 
-        v1 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
-        v2 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
-        v3 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
+        # ==== USING CSDL FRANGE ====
+        # v1 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
+        # v2 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
+        # v3 = csdl.Variable(shape=(num_nodes, cell_point_indices.shape[0], 3), value=0.)
 
-        for cell_ind, ind1, ind2, ind3 in csdl.frange(vals=(panel_indices, p1_indices, p2_indices, p3_indices)):
-            v1 = v1.set(csdl.slice[:,cell_ind,:], value=nodal_vel[:,ind1,:])
-            v2 = v2.set(csdl.slice[:,cell_ind,:], value=nodal_vel[:,ind2,:])
-            v3 = v3.set(csdl.slice[:,cell_ind,:], value=nodal_vel[:,ind3,:])
+        # for cell_ind, ind1, ind2, ind3 in csdl.frange(vals=(panel_indices, p1_indices, p2_indices, p3_indices)):
+        #     v1 = v1.set(csdl.slice[:,cell_ind,:], value=nodal_vel[:,ind1,:])
+        #     v2 = v2.set(csdl.slice[:,cell_ind,:], value=nodal_vel[:,ind2,:])
+        #     v3 = v3.set(csdl.slice[:,cell_ind,:], value=nodal_vel[:,ind3,:])
+
+        # ==== USING STACK VIA LOOP BUILDER ====
+        loop_vals = [p1_indices, p2_indices, p3_indices]
+        with csdl.experimental.enter_loop(vals=loop_vals) as loop_builder:
+            i,j,k = loop_builder.get_loop_indices()
+            v1 = nodal_vel[:,i,:]
+            v2 = nodal_vel[:,j,:]
+            v3 = nodal_vel[:,k,:]
+        v1 = loop_builder.add_stack(v1)
+        v2 = loop_builder.add_stack(v2)
+        v3 = loop_builder.add_stack(v3)
+        loop_builder.finalize()
+        v1 = v1.reshape((num_nodes, num_panels, 3))
+        v2 = v2.reshape((num_nodes, num_panels, 3))
+        v3 = v3.reshape((num_nodes, num_panels, 3))
+        
         mesh_dict['coll_point_velocity'] = (v1+v2+v3)/3.
     return mesh_dict

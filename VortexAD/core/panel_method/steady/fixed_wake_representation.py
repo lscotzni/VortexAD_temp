@@ -137,7 +137,8 @@ def fixed_wake_representation(mesh_dict, num_nodes, wake_propagation_dt=100., me
 
         wake_mesh_dict['mesh'] = wake_mesh
         wake_mesh_dict['nc'], wake_mesh_dict['ns'] = nc_w, ns
-        wake_mesh_dict['num_panels'] = (nc_w-1)*(ns-1)
+        # wake_mesh_dict['num_panels'] = (nc_w-1)*(ns-1)
+        wake_mesh_dict['num_panels'] = (nc_w-1)*num_TE_edges
         wake_mesh_dict['num_points'] = nc_w*ns
 
         p1 = wake_mesh[:,list(wake_connectivity[:,0]),:]
@@ -148,7 +149,8 @@ def fixed_wake_representation(mesh_dict, num_nodes, wake_propagation_dt=100., me
         Rc = (p1+p2+p3+p4)/4.
         wake_mesh_dict['panel_center'] = Rc
 
-        panel_corners = csdl.Variable(value=np.zeros((num_nodes, (nc_w-1)*(ns-1), 4, 3)))
+        # panel_corners = csdl.Variable(value=np.zeros((num_nodes, (nc_w-1)*(ns-1), 4, 3)))
+        panel_corners = csdl.Variable(value=np.zeros((num_nodes, (nc_w-1)*num_TE_edges, 4, 3)))
         panel_corners = panel_corners.set(csdl.slice[:,:,0,:], value=p1)
         panel_corners = panel_corners.set(csdl.slice[:,:,1,:], value=p2)
         panel_corners = panel_corners.set(csdl.slice[:,:,2,:], value=p3)

@@ -1,7 +1,7 @@
 import numpy as np
 import warnings
 
-def check_duplicate_nodes(points):
+def check_duplicate_nodes(points, radius=1.e-10):
     '''
     points is a numpy array of shape (num_points, 3) where the 3 is the x,y,z coordinates
     '''
@@ -13,7 +13,7 @@ def check_duplicate_nodes(points):
         for j in range(i+1,num_pts):
             p1 = points[j,:]
             diff = np.linalg.norm(p1-p0)
-            if diff < 1.e-10:
+            if diff < radius:
                 dup_indices.append([i,j])
 
     if dup_indices: # not an empty list

@@ -183,13 +183,36 @@ def unstructured_least_squares_velocity(mu, delta_coll_point, cell_adjacency):
     panel_indices = [int(x) for x in panel_indices_np_int]
 
     dmu = csdl.Variable(shape=(num_nodes, num_tot_panels, 3), value=0.)
+    # ==== WITH DUPLICATE INDICES ====
     # dmu = dmu.set(csdl.slice[:,:,0], value=mu[:,list(cell_adjacency[:,0])] - mu)
     # dmu = dmu.set(csdl.slice[:,:,1], value=mu[:,list(cell_adjacency[:,1])] - mu)
     # dmu = dmu.set(csdl.slice[:,:,2], value=mu[:,list(cell_adjacency[:,2])] - mu)
-    for cell_ind, ind1, ind2, ind3 in csdl.frange(vals=(panel_indices, mu_delta_1_ind, mu_delta_2_ind, mu_delta_3_ind)):
-        dmu = dmu.set(csdl.slice[:,cell_ind,0], value=mu[:,ind1] - mu[:,cell_ind])
-        dmu = dmu.set(csdl.slice[:,cell_ind,1], value=mu[:,ind2] - mu[:,cell_ind])
-        dmu = dmu.set(csdl.slice[:,cell_ind,2], value=mu[:,ind3] - mu[:,cell_ind])
+
+    # ==== USING CSDL FRANGE ====
+    # for cell_ind, ind1, ind2, ind3 in csdl.frange(vals=(panel_indices, mu_delta_1_ind, mu_delta_2_ind, mu_delta_3_ind)):
+    #     dmu = dmu.set(csdl.slice[:,cell_ind,0], value=mu[:,ind1] - mu[:,cell_ind])
+    #     dmu = dmu.set(csdl.slice[:,cell_ind,1], value=mu[:,ind2] - mu[:,cell_ind])
+    #     dmu = dmu.set(csdl.slice[:,cell_ind,2], value=mu[:,ind3] - mu[:,cell_ind])
+
+    # ==== USING STACK VIA LOOP BUILDER ====
+    loop_vals = [panel_indices, mu_delta_1_ind, mu_delta_2_ind, mu_delta_3_ind]
+    with csdl.experimental.enter_loop(vals=loop_vals) as loop_builder:
+        i,j,k,l = loop_builder.get_loop_indices()
+        dmu_1 = mu[:,j] - mu[:,i]
+        dmu_2 = mu[:,k] - mu[:,i]
+        dmu_3 = mu[:,l] - mu[:,i]
+
+    dmu_1 = loop_builder.add_stack(dmu_1)
+    dmu_2 = loop_builder.add_stack(dmu_2)
+    dmu_3 = loop_builder.add_stack(dmu_3)
+    loop_builder.finalize()
+    dmu_1 = dmu_1.reshape((num_nodes, num_tot_panels))
+    dmu_2 = dmu_2.reshape((num_nodes, num_tot_panels))
+    dmu_3 = dmu_3.reshape((num_nodes, num_tot_panels))
+    dmu = dmu.set(csdl.slice[:,:,0], value=dmu_1)
+    dmu = dmu.set(csdl.slice[:,:,1], value=dmu_2)
+    dmu = dmu.set(csdl.slice[:,:,2], value=dmu_3)
+
 
     dl_dot_dmu = csdl.sum(delta_coll_point[:,:,:,0]*dmu, axes=(2,))
     dm_dot_dmu = csdl.sum(delta_coll_point[:,:,:,1]*dmu, axes=(2,))
@@ -197,10 +220,20 @@ def unstructured_least_squares_velocity(mu, delta_coll_point, cell_adjacency):
     b = b.set(csdl.slice[:,:,0], value=dl_dot_dmu)
     b = b.set(csdl.slice[:,:,1], value=dm_dot_dmu)
     
-    dmu_d = csdl.Variable(shape=(num_nodes, num_tot_panels, 2), value=0.)
-    for i in csdl.frange(num_nodes):
-        for j in csdl.frange(num_tot_panels):
-            dmu_d = dmu_d.set(csdl.slice[i,j,:], value=csdl.solve_linear(C[i,j,:,:], b[i,j,:]))
+    # ==== USING CSDL FRANGE ====
+    # dmu_d = csdl.Variable(shape=(num_nodes, num_tot_panels, 2), value=0.)
+    # for i in csdl.frange(num_nodes):
+    #     for j in csdl.frange(num_tot_panels):
+    #         dmu_d = dmu_d.set(csdl.slice[i,j,:], value=csdl.solve_linear(C[i,j,:,:], b[i,j,:]))
+
+    # ==== USING STACK VIA LOOP BUILDER
+    panel_ind_array = np.arange(num_tot_panels).tolist()
+    with csdl.experimental.enter_loop(vals=[panel_ind_array]) as loop_builder:
+        i = loop_builder.get_loop_indices()
+        dmu_d = csdl.solve_linear(C[0,i,:,:], b[0,i,:])
+    dmu_d = loop_builder.add_stack(dmu_d)
+    loop_builder.finalize()
+    dmu_d = dmu_d.reshape((num_nodes, num_tot_panels, 2))
 
     ql = -dmu_d[:,:,0]
     qm = -dmu_d[:,:,1]

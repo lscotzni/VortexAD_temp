@@ -3,7 +3,7 @@ import numpy as np
 
 from VortexAD.utils.csdl_switch import switch_func
 
-import ozone_alpha as ozone
+import ozone as ozone
 
 def boundary_layer_solver(mesh_dict, output_dict, boundary_layer, num_nodes, nt, dt):
     surface_names = list(mesh_dict.keys())
@@ -234,7 +234,7 @@ def boundary_layer_solver(mesh_dict, output_dict, boundary_layer, num_nodes, nt,
 
     return delta_star, theta, H, Cf
 
-def turbulent_BL_ode_function(ozone_vars:ozone.FuncVars,nu):
+def turbulent_BL_ode_function(ozone_vars:ozone.ODEVars,nu):
     theta = ozone_vars.states['theta']
     Ue_H1_theta = ozone_vars.states['Ue_H1_theta']
 

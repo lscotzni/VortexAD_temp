@@ -86,7 +86,8 @@ def compute_vortex_line_ind_vel(p1, p2, p_eval, gamma=1., mode='surface', vc=Non
 
         # Vhat = (f1*f2)/(4*pi)
         rdot = csdl.sum(r1*r2, axes=(xyz_dim,))
-        rdot_exp = csdl.expand(rdot, r1.shape, 'ij->ija')
+        # rdot_exp = csdl.expand(rdot, r1.shape, 'ij->ija')
+        rdot_exp = csdl.expand(rdot, r1.shape, expand_str)
 
         r1s = r1_norm_exp**2
         r2s = r2_norm_exp**2
