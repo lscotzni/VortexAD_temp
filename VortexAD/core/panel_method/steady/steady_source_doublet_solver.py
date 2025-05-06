@@ -10,7 +10,7 @@ from VortexAD.core.panel_method.steady.pre_processor_patches import pre_processo
 from VortexAD.core.panel_method.steady.mu_sigma_solver_patches import mu_sigma_solver_patches
 from VortexAD.core.panel_method.steady.post_processor_patches import post_processor_patches
 
-def source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, Cp_cutoff, boundary_condition, patch_flag, ROM=False):
+def source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, batch_size, Cp_cutoff, boundary_condition, patch_flag, ROM=False):
     if not patch_flag: # both structured and unstructured grids
         print('running pre-processing')
         mesh_dict = pre_processor(exp_orig_mesh_dict, mode=mesh_mode)
@@ -23,7 +23,7 @@ def source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, Cp_cuto
         # return AIC_mu
     
         # mu, sigma, wake_dict, AIC_mu, AIC_sigma, AIC_mu_orig = mu_sigma_solver(num_nodes, mesh_dict, mode=mesh_mode, bc=boundary_condition)
-        mu, sigma, wake_dict, AIC_mu, AIC_sigma, RHS = mu_sigma_solver(num_nodes, mesh_dict, mode=mesh_mode, bc=boundary_condition, ROM=ROM)
+        mu, sigma, wake_dict, AIC_mu, AIC_sigma, RHS = mu_sigma_solver(num_nodes, mesh_dict, mode=mesh_mode, batch_size=batch_size, bc=boundary_condition, ROM=ROM)
         # return mu
         print('running post-processor')
         if mesh_mode == 'structured':

@@ -12,6 +12,7 @@ from VortexAD.utils.cell_adjacency import find_cell_adjacency
 from VortexAD.utils.TE_detection import TE_detection
 from VortexAD.utils.get_TE_data import get_TE_data
 import meshio
+import time
 
 alpha_deg = 0.
 alpha = np.deg2rad(alpha_deg) # aoa
@@ -73,26 +74,41 @@ element_colors = np.zeros(shape=(triangles.shape[0],))
 points = np.zeros((num_nodes, ) + points_orig.shape)
 for i in range(num_nodes):
     points[i,:] = points_orig
+points_orig = points
 
-V_rot_mat = np.zeros((3,3))
-V_rot_mat[1,1] = 1.
-V_rot_mat[0,0] = V_rot_mat[2,2] = np.cos(alpha)
-V_rot_mat[2,0] = np.sin(alpha)
-V_rot_mat[0,2] = -np.sin(alpha)
-V_inf_rot = np.matmul(V_rot_mat, V_inf)
-
-point_velocities = np.zeros_like(points)
-for i in range(num_nodes):
-    point_velocities[i,:] = V_inf_rot
 # exit()
 recorder = csdl.Recorder(inline=False, debug=True)
 recorder.start()
-dummy_input = csdl.Variable(value=1.)
-points = csdl.Variable(value=points) * dummy_input
-point_velocities = csdl.Variable(value=point_velocities)
+
+x_scaler = csdl.Variable(value=np.array([1.]))
+y_scaler = csdl.Variable(value=np.array([1.]))
+z_scaler = csdl.Variable(value=np.array([1.]))
+
+points = csdl.Variable(value=points_orig)
+points = points.set(csdl.slice[:,:,0], points_orig[:,:,0]*x_scaler)
+points = points.set(csdl.slice[:,:,1], points_orig[:,:,1]*y_scaler)
+points = points.set(csdl.slice[:,:,2], points_orig[:,:,2]*z_scaler)
+
+V_inf = csdl.Variable(value=np.array([-100.]))
+pitch = csdl.Variable(value=np.array([0.0]))
+pitch_rad = pitch*np.pi/180
+
+V_vec = csdl.Variable(value=0., shape=(3,))
+V_vec = V_vec.set(csdl.slice[0], value=V_inf)
+
+V_rot_mat = csdl.Variable(value=0., shape=(3,3))
+V_rot_mat = V_rot_mat.set(csdl.slice[1,1], value=1.)
+V_rot_mat = V_rot_mat.set(csdl.slice[0,0], value=csdl.cos(pitch_rad))
+V_rot_mat = V_rot_mat.set(csdl.slice[2,2], value=csdl.cos(pitch_rad))
+V_rot_mat = V_rot_mat.set(csdl.slice[2,0], value=csdl.sin(pitch_rad))
+V_rot_mat = V_rot_mat.set(csdl.slice[0,2], value=-csdl.sin(pitch_rad))
+
+V_vec_rot = csdl.matvec(V_rot_mat, V_vec)
+
+point_velocities = csdl.expand(V_vec_rot, points.shape, 'i->abi')
+
 # TE_data = [TE_node_indices, TE_edges, (upper_TE_cells, lower_TE_cells)]
 TE_data = [TE_node_indices, TE_edges, (lower_TE_cells, upper_TE_cells)]
-
 connectivity_data = [triangles, cell_adjacency, points2cells]
 
 output_dict, mesh_dict, mu, sigma = steady_panel_solver(
@@ -105,39 +121,79 @@ output_dict, mesh_dict, mu, sigma = steady_panel_solver(
 
 CL = output_dict['CL']
 CDi = output_dict['CDi']
+Di = output_dict['Di']
+L = output_dict['L']
 coll_points = mesh_dict['panel_center']
 Cp = output_dict['Cp']
 # AIC_mu_orig = output_dict['AIC_mu_orig']
 AIC_mu = output_dict['AIC_mu']
-use_jax = True
-if use_jax:
-    recorder.print_largest_variables()
-    # exit()
-    jax_sim = csdl.experimental.JaxSimulator(
-        recorder=recorder,
-        additional_inputs=[points],
-        # additional_inputs=[dummy_input],
-        additional_outputs = [mu, Cp, CL, CDi]
-        # additional_outputs = [CL, CDi]
-        # additional_outputs = [Cp]
-    )
-    # exit()
-    jax_sim.run()
-    # jax_sim.check_totals(step_size=1.e-3)
-    # exit()
-    CL = jax_sim[CL]
-    CDi = jax_sim[CDi]
-    points = jax_sim[points]
-    Cp = jax_sim[Cp]
-    mu = jax_sim[mu]
-    # AIC_mu_orig = jax_sim[AIC_mu_orig]
+
+
+recorder.print_largest_variables()
+# exit()
+
+inputs = [
+    x_scaler,
+    y_scaler,
+    z_scaler,
+    pitch,
+    V_inf
+]
+
+check_derivatives = False
+if check_derivatives:
+    outputs = [L]
 else:
-    points = points.value
-    coll_points = coll_points.value
-    CL = CL.value
-    CDi = CDi.value
-    mu = mu.value
-    Cp = Cp.value
+    outputs = [points, mu, Cp, L, Di]
+
+jax_sim = csdl.experimental.JaxSimulator(
+    recorder=recorder,
+    additional_inputs=inputs,
+    additional_outputs=outputs
+)
+
+# jaxified_panel_func = csdl.jax.create_jax_function(
+#     graph = recorder.get_root_graph(),
+#     outputs = outputs,
+#     inputs = [dummy_input]
+# )
+# import jax.numpy as jnp
+# import jax
+# jax.config.update("jax_enable_x64", True)
+# jax_out = jax.jit(jaxified_panel_func)(jnp.array([1.0]))
+
+# jax_derivatives = jax.jit(jax.jacrev(jaxified_panel_func))(jnp.array([1.0]))
+
+# exit()
+print('dummy compile + run of forward evaluation')
+jax_sim.run()
+print('end dummy run')
+
+print('running forward eval')
+start_time = time.time()
+jax_sim.run()
+end_time = time.time()
+print(f'forward eval run time: {end_time-start_time} seconds')
+
+if check_derivatives:
+    print('dummy compile + run of derivatives')
+    jax_sim.compute_totals()
+    print('end dummy run')
+
+    print('running derivatives')
+    start_time = time.time()
+    # jax_sim.check_totals(step_size=1.e-3)
+    jax_sim.compute_totals()
+    end_time = time.time()
+    print(f'derivative run time: {end_time-start_time} seconds')
+    exit()
+
+L = jax_sim[L]
+Di = jax_sim[Di]
+points = jax_sim[points]
+Cp = jax_sim[Cp]
+mu = jax_sim[mu]
+# AIC_mu_orig = jax_sim[AIC_mu_orig]
 
 
 print('doublet distribution:')
