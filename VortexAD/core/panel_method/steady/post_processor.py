@@ -174,10 +174,18 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225, Cp_c
     CL = L/(0.5*rho*ref_area*Q_inf**2)
     CDi = Di/(0.5*rho*ref_area*Q_inf**2)
 
+    ref_point = csdl.Variable(value=np.array([30., 0., 0.,]))
+    ref_pt_exp = ref_point.expand(dF.shape, 'i->abi')
+    panel_center = mesh_dict['panel_center']
+    panel_moment_arm = panel_center-ref_pt_exp
+    panel_moment = csdl.cross(dF, panel_moment_arm, axis=2)
+    moment = csdl.sum(panel_moment, axes=(1,))
+
     output_dict['CL'] = CL
     output_dict['CDi'] = CDi
     output_dict['Cp'] = Cp
     output_dict['panel_forces'] = dF
+    output_dict['M'] = moment
     output_dict['Qn'] = Qn
     # output_dict['Ql'] = Ql
     output_dict['L'] = L

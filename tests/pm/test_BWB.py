@@ -116,7 +116,8 @@ output_dict, mesh_dict, mu, sigma = steady_panel_solver(
     connectivity_data, 
     TE_data, 
     point_velocities, 
-    mesh_mode='unstructured'
+    mesh_mode='unstructured',
+    batch_size=1
 )
 
 CL = output_dict['CL']
@@ -128,6 +129,11 @@ Cp = output_dict['Cp']
 # AIC_mu_orig = output_dict['AIC_mu_orig']
 AIC_mu = output_dict['AIC_mu']
 
+moment = output_dict['M']
+
+pitch_moment = moment[:,1]
+
+dM_dpitch = csdl.derivative(pitch_moment, pitch)
 
 recorder.print_largest_variables()
 # exit()
@@ -140,9 +146,12 @@ inputs = [
     V_inf
 ]
 
-check_derivatives = False
+inputs = [pitch]
+
+check_derivatives = True
 if check_derivatives:
     outputs = [L]
+    outputs = [moment, dM_dpitch]
 else:
     outputs = [points, mu, Cp, L, Di]
 
@@ -182,8 +191,8 @@ if check_derivatives:
 
     print('running derivatives')
     start_time = time.time()
-    # jax_sim.check_totals(step_size=1.e-3)
-    jax_sim.compute_totals()
+    jax_sim.check_totals(step_size=1.e-3)
+    # jax_sim.compute_totals()
     end_time = time.time()
     print(f'derivative run time: {end_time-start_time} seconds')
     exit()
