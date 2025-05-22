@@ -6,7 +6,8 @@ from VortexAD.core.panel_method.steady.higher_order.linear_doublet_solver import
 
 # def steady_panel_solver(mesh_list, mesh_velocity_list, patches=False, coll_vel_list=False):
 def steady_panel_solver(*args, rho=1.225, mesh_mode='structured', batch_size=None, 
-                        Cp_cutoff=-100., patches=False, higher_order=False, boundary_condition='Dirichlet', ROM=False):
+                        Cp_cutoff=-100., patches=False, higher_order=False, boundary_condition='Dirichlet', 
+                        iterative=False, ROM=False):
     '''
     mesh_list: list of lists
         - each entry represents a surface
@@ -129,7 +130,7 @@ def steady_panel_solver(*args, rho=1.225, mesh_mode='structured', batch_size=Non
         # mu = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, boundary_condition, patch_flag)
         # return mu
 
-        outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, batch_size, Cp_cutoff, boundary_condition, patch_flag, ROM)
+        outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, batch_size, Cp_cutoff, boundary_condition, patch_flag, iterative, ROM)
         output_dict = outputs[0]
         mesh_dict = outputs[1]
         mu = outputs[2]
