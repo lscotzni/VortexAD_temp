@@ -148,12 +148,12 @@ inputs = [
 
 inputs = [pitch]
 
-check_derivatives = True
+check_derivatives = False
 if check_derivatives:
     outputs = [L]
     outputs = [moment, dM_dpitch]
 else:
-    outputs = [points, mu, Cp, L, Di]
+    outputs = [points, mu, sigma, Cp, L, Di]
 
 jax_sim = csdl.experimental.JaxSimulator(
     recorder=recorder,

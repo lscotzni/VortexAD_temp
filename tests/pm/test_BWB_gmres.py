@@ -119,7 +119,8 @@ output_dict, mesh_dict, mu, sigma = steady_panel_solver(
     TE_data, 
     point_velocities, 
     mesh_mode='unstructured',
-    batch_size=1
+    batch_size=3,
+    iterative=True
 )
 
 CL = output_dict['CL']
@@ -128,8 +129,6 @@ Di = output_dict['Di']
 L = output_dict['L']
 coll_points = mesh_dict['panel_center']
 Cp = output_dict['Cp']
-# AIC_mu_orig = output_dict['AIC_mu_orig']
-AIC_mu = output_dict['AIC_mu']
 
 moment = output_dict['M']
 
@@ -150,12 +149,12 @@ inputs = [
 
 inputs = [pitch]
 
-check_derivatives = True
+check_derivatives = False
 if check_derivatives:
     outputs = [L]
     outputs = [moment, dM_dpitch]
 else:
-    outputs = [points, mu, Cp, L, Di]
+    outputs = [points, mu, sigma, Cp, L, Di]
 
 jax_sim = csdl.experimental.JaxSimulator(
     recorder=recorder,
@@ -237,9 +236,3 @@ Cp_good_bad = np.zeros(shape=Cp_abs.shape)
 Cp_good_bad[list(error_ind)] = 1
 if True:
     plot_pressure_distribution(points[0,:], Cp_good_bad, connectivity=triangles, interactive=True, top_view=False, cmap='cool')
-
-'''
-NOTE-s:
-- can plot pressure values in a histogram with "n" bins
-    - good way to quantify how much of the simulation is in the right ballpark
-'''

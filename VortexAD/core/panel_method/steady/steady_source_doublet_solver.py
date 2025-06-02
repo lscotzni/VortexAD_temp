@@ -28,6 +28,8 @@ def source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, batch_s
             mu, sigma, wake_dict, AIC_mu, AIC_sigma, RHS = mu_sigma_solver(num_nodes, mesh_dict, mode=mesh_mode, batch_size=batch_size, bc=boundary_condition, ROM=ROM)
         else:
             mu, sigma, wake_dict = mu_sigma_solver_iterative(num_nodes, mesh_dict, mode=mesh_mode, batch_size=batch_size, bc=boundary_condition, ROM=ROM)
+            mu = mu.reshape((1,) + mu.shape)
+            sigma = sigma.reshape((1,) + sigma.shape)
         # return mu
         print('running post-processor')
         if mesh_mode == 'structured':
@@ -36,10 +38,11 @@ def source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, rho, batch_s
             output_dict = unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho, Cp_cutoff)
 
         output_dict['wake_dict'] = wake_dict
-        output_dict['AIC_mu'] = AIC_mu
-        # output_dict['AIC_mu_orig'] = AIC_mu_orig
-        output_dict['AIC_sigma'] = AIC_sigma
-        output_dict['RHS'] = RHS
+        if not iterative:
+            output_dict['AIC_mu'] = AIC_mu
+            # output_dict['AIC_mu_orig'] = AIC_mu_orig
+            output_dict['AIC_sigma'] = AIC_sigma
+            output_dict['RHS'] = RHS
 
     elif patch_flag: # only structured sub grids
         print('running pre-processing')
