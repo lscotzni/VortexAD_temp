@@ -6,12 +6,12 @@ from VortexAD.core.panel_method.steady.compute_source_strength import compute_so
 
 from VortexAD.core.panel_method.source_doublet.source_functions import compute_source_influence_new 
 from VortexAD.core.panel_method.source_doublet.doublet_functions import compute_doublet_influence_new
-from VortexAD.core.panel_method.vortex_ring.vortex_line_functions import compute_vortex_line_ind_vel
+# from VortexAD.core.panel_method.vortex_ring.vortex_line_functions import compute_vortex_line_ind_vel
 
 from csdl_alpha.src.operations.linalg.linear_solvers.krylov_solver import solve_gmres
 
 
-def mu_sigma_solver_iterative(num_nodes, mesh_dict, mode='structured', batch_size=None, bc='Dirichlet', ROM=False):
+def mu_sigma_solver_iterative(num_nodes, mesh_dict, mode='structured', batch_size=None, bc='Dirichlet', warm_start=None, ROM=False):
     '''
     This method solves for the doublet strengths using an iterative approach.
     The iterative approach solves the AIC linear system uses GMRES with 
@@ -115,8 +115,70 @@ def mu_sigma_solver_iterative(num_nodes, mesh_dict, mode='structured', batch_siz
         Av_LHS = Av_mu+Av_mu_wake
         Av_LHS = Av_LHS.reshape((num_tot_panels,1))
         return Av_LHS
+    
+    # NOTE: make a new function for the transpose solve, where you assemble A^T with batching
+    mu_batched_func_transpose = csdl.experimental.batch_function(compute_aic_transpose_mat_vec, batch_size=batch_size, batch_dims=[None]+[1]*8+[None,None])
+    mu_wake_batched_func_transpose = csdl.experimental.batch_function(compute_aic_transpose_mat_vec, batch_size=2, batch_dims=[None]+[1]*8+[None,None])
+    # NOTE: THE BATCH SIZE FOR THE WAKE IN THE TRANSPOSE IS DIFFERENT
+    def AIC_mu_matvec_gmres_transpose(vec):
+        Av_mu = mu_batched_func_transpose(
+            coll_point_eval,
+            coll_point_mesh,
+            panel_corners,
+            panel_x_dir,
+            panel_y_dir,
+            panel_normal,
+            S_j,
+            SL_j,
+            SM_j,
+            vec,
+            'doublet'
+        )
+        Av_mu = Av_mu.reshape((num_tot_panels,1))
+        # return Av_mu
+        nw = len(upper_TE_cell_ind)
+        # v_upper = vec[upper_TE_cell_ind]
+        # v_lower = vec[lower_TE_cell_ind]
+        # v_wake = v_upper - v_lower
+        # v_wake_exp = csdl.Variable(value=np.zeros(shape=vec.shape))
+        # v_wake_exp = v_wake_exp.set(csdl.slice[:nw], value=v_wake)
 
-    mu = solve_gmres(AIC_mu_matvec_gmres, RHS, transpose_solve=lambda x: solve_gmres(AIC_mu_matvec_gmres, x))
+        Av_mu_wake = mu_wake_batched_func_transpose(
+            coll_point_eval,
+            coll_point_wake,
+            panel_corners_wake,
+            panel_x_dir_wake,
+            panel_y_dir_wake,
+            panel_normal_wake,
+            S_j_wake,
+            SL_j_wake,
+            SM_j_wake,
+            vec,
+            'wake'
+        )
+        # print(vec.shape)
+        # print(Av_mu.shape)
+        # print(Av_mu_wake.shape)
+        # exit()
+        Av_mu_wake = Av_mu_wake.reshape((nw,1))
+        Av_mu_wake_exp = csdl.Variable(value=np.zeros(shape=Av_mu.shape))
+        Av_mu_wake_exp = Av_mu_wake_exp.set(
+            csdl.slice[lower_TE_cell_ind],
+            value=Av_mu_wake*-1.
+        )
+        Av_mu_wake_exp = Av_mu_wake_exp.set(
+            csdl.slice[upper_TE_cell_ind],
+            value=Av_mu_wake
+        )
+
+        Av_LHS = Av_mu+Av_mu_wake_exp
+        Av_LHS = Av_LHS.reshape((num_tot_panels,1))
+        return Av_LHS
+    
+    if warm_start is None:
+        warm_start = np.zeros(shape=RHS.shape)
+    # mu = solve_gmres(AIC_mu_matvec_gmres, RHS, warm_start, transpose_solve=lambda x: solve_gmres(AIC_mu_matvec_gmres, x, warm_start))
+    mu = solve_gmres(AIC_mu_matvec_gmres, RHS, warm_start, transpose_solve=lambda x: solve_gmres(AIC_mu_matvec_gmres_transpose, x, warm_start))
 
     return mu, sigma, wake_mesh_dict
 
@@ -141,11 +203,11 @@ def compute_aic_mat_vec(coll_point, panel_center, panel_corners, panel_x_dir, pa
     vectorized_shape = (num_nodes, num_interactions, num_corners, 3)
 
     # ============ expanding across columns ============
-    coll_point_exp = csdl.expand(coll_point, expanded_shape, 'ijk->ijabk')
+    coll_point_exp = csdl.expand(coll_point, expanded_shape, 'ijk->ijabk') # constant along a row
     coll_point_exp_vec = coll_point_exp.reshape(vectorized_shape)
 
     # ============ expanding across rows ============
-    coll_point_j_exp = csdl.expand(panel_center, expanded_shape, 'ijk->iajbk')
+    coll_point_j_exp = csdl.expand(panel_center, expanded_shape, 'ijk->iajbk') # constant along a column
     coll_point_j_exp_vec = coll_point_j_exp.reshape(vectorized_shape)
 
     panel_corners_exp = csdl.expand(panel_corners, expanded_shape, 'ijkl->iajkl')
@@ -229,6 +291,122 @@ def compute_aic_mat_vec(coll_point, panel_center, panel_corners, panel_x_dir, pa
     # A = AIC_vec.reshape((num_nodes, num_eval_pts, num_induced_pts))
     # Av = csdl.einsum(A,v,action='ijk,ik->ij')
     A_out = AIC_vec.reshape((num_eval_pts, num_induced_pts))
+    print(v.shape)
+    print(A_out.shape)
+    # exit()
+    Av = csdl.einsum(A_out,v,action='jk,k->j')
+    # Av_no_num_nodes = Av[0,:]
+    return Av
+
+def compute_aic_transpose_mat_vec(coll_point, panel_center, panel_corners, panel_x_dir, panel_y_dir,
+                        panel_normal, S_j, SL_j, SM_j, v, mode='doublet'):
+    '''
+    This function computes the matrix vector product Av, where A is the 
+    AIC matrix for the doublets, and v represents the vector that converges
+    to the doublet strengths
+
+    The three modes are doublet, source, and wake (corresponding to which AIC matrix to compute)
+    '''
+    num_nodes = coll_point.shape[0]
+    num_eval_pts = coll_point.shape[1]
+    num_induced_pts = panel_center.shape[1]
+    
+    num_interactions = num_eval_pts*num_induced_pts
+    num_corners = 3
+    if mode == 'wake':
+        num_corners = 4
+    expanded_shape = (num_nodes, num_induced_pts, num_eval_pts, num_corners, 3)
+    vectorized_shape = (num_nodes, num_interactions, num_corners, 3)
+
+    # ============ expanding across rows ============
+    coll_point_exp = csdl.expand(coll_point, expanded_shape, 'ijk->iajbk')
+    coll_point_exp_vec = coll_point_exp.reshape(vectorized_shape)
+
+    # ============ expanding across columns ============
+    coll_point_j_exp = csdl.expand(panel_center, expanded_shape, 'ijk->ijabk')
+    coll_point_j_exp_vec = coll_point_j_exp.reshape(vectorized_shape)
+
+    panel_corners_exp = csdl.expand(panel_corners, expanded_shape, 'ijkl->ijakl')
+    panel_corners_exp_vec = panel_corners_exp.reshape(vectorized_shape)
+
+    panel_x_dir_exp = csdl.expand(panel_x_dir, expanded_shape, 'ijk->ijabk')
+    panel_x_dir_exp_vec = panel_x_dir_exp.reshape(vectorized_shape)
+    panel_y_dir_exp = csdl.expand(panel_y_dir, expanded_shape, 'ijk->ijabk')
+    panel_y_dir_exp_vec = panel_y_dir_exp.reshape(vectorized_shape)
+    panel_normal_exp = csdl.expand(panel_normal, expanded_shape, 'ijk->ijabk')
+    panel_normal_exp_vec = panel_normal_exp.reshape(vectorized_shape)
+
+    S_j_exp = csdl.expand(S_j, expanded_shape[:-1] , 'ijk->ijak')
+    S_j_exp_vec = S_j_exp.reshape(vectorized_shape[:-1])
+
+    SL_j_exp = csdl.expand(SL_j, expanded_shape[:-1], 'ijk->ijak')
+    SL_j_exp_vec = SL_j_exp.reshape(vectorized_shape[:-1])
+
+    SM_j_exp = csdl.expand(SM_j, expanded_shape[:-1], 'ijk->ijak')
+    SM_j_exp_vec = SM_j_exp.reshape(vectorized_shape[:-1])
+
+    a = coll_point_exp_vec - panel_corners_exp_vec # Rc - Ri
+    P_JK = coll_point_exp_vec - coll_point_j_exp_vec # RcJ - RcK
+    sum_ind = len(a.shape) - 1
+
+    A = csdl.norm(a, axes=(sum_ind,)) # norm of distance from CP of i to corners of j
+    AL = csdl.sum(a*panel_x_dir_exp_vec, axes=(sum_ind,))
+    AM = csdl.sum(a*panel_y_dir_exp_vec, axes=(sum_ind,)) # m-direction projection 
+    PN = csdl.sum(P_JK*panel_normal_exp_vec, axes=(sum_ind,)) # normal projection of CP
+    print(A.shape)
+    B = csdl.Variable(shape=A.shape, value=0.)
+    B = B.set(csdl.slice[:,:,:-1], value=A[:,:,1:])
+    B = B.set(csdl.slice[:,:,-1], value=A[:,:,0])
+
+    BL = csdl.Variable(shape=AL.shape, value=0.)
+    BL = BL.set(csdl.slice[:,:,:-1], value=BL[:,:,1:])
+    BL = BL.set(csdl.slice[:,:,-1], value=BL[:,:,0])
+
+    BM = csdl.Variable(shape=AM.shape, value=0.)
+    BM = BM.set(csdl.slice[:,:,:-1], value=AM[:,:,1:])
+    BM = BM.set(csdl.slice[:,:,-1], value=AM[:,:,0])
+
+    A1 = AM*SL_j_exp_vec - AL*SM_j_exp_vec
+
+    A_list = [A[:,:,ind] for ind in range(num_corners)]
+    AM_list = [AM[:,:,ind] for ind in range(num_corners)]
+    B_list = [B[:,:,ind] for ind in range(num_corners)]
+    BM_list = [BM[:,:,ind] for ind in range(num_corners)]
+    SL_list = [SL_j_exp_vec[:,:,ind] for ind in range(num_corners)]
+    SM_list = [SM_j_exp_vec[:,:,ind] for ind in range(num_corners)]
+    A1_list = [A1[:,:,ind] for ind in range(num_corners)]
+    PN_list = [PN[:,:,ind] for ind in range(num_corners)]
+    S_list = [S_j_exp_vec[:,:,ind] for ind in range(num_corners)]
+
+    if mode == 'doublet' or mode == 'wake':
+        AIC_vec = compute_doublet_influence_new(
+            A_list, 
+            AM_list, 
+            B_list, 
+            BM_list, 
+            SL_list, 
+            SM_list, 
+            A1_list, 
+            PN_list, 
+            mode='potential'
+        )
+    elif mode == 'source':
+        AIC_vec = compute_source_influence_new(
+            A_list, 
+            AM_list, 
+            B_list, 
+            BM_list, 
+            SL_list, 
+            SM_list, 
+            A1_list, 
+            PN_list, 
+            S_list, 
+            mode='potential'
+        )
+
+    # A = AIC_vec.reshape((num_nodes, num_eval_pts, num_induced_pts))
+    # Av = csdl.einsum(A,v,action='ijk,ik->ij')
+    A_out = AIC_vec.reshape((num_induced_pts, num_eval_pts))
     Av = csdl.einsum(A_out,v,action='jk,k->j')
     # Av_no_num_nodes = Av[0,:]
     return Av
@@ -429,6 +607,9 @@ def compute_aic_mat_vec_sigma(coll_point, panel_center, panel_corners, panel_x_d
     Av = csdl.einsum(A_out,v,action='jk,k->j')
     # Av_no_num_nodes = Av[0,:]
     return Av
+
+def compute_aic_mat_vec_POD():
+    return
 
 '''
 import csdl_alpha as csdl

@@ -1,8 +1,6 @@
 import csdl_alpha as csdl
 import numpy as np 
 from VortexAD import steady_panel_solver
-import jax
-jax.config.update("jax_enable_x64", True)
 
 # plotting functions
 import matplotlib.pyplot as plt
@@ -15,6 +13,9 @@ from VortexAD.utils.TE_detection import TE_detection
 from VortexAD.utils.get_TE_data import get_TE_data
 import meshio
 import time
+import pickle
+import jax
+jax.config.update("jax_enable_x64", True)
 
 alpha_deg = 0.
 alpha = np.deg2rad(alpha_deg) # aoa
@@ -79,7 +80,12 @@ for i in range(num_nodes):
 points_orig = points
 
 # exit()
-recorder = csdl.Recorder(inline=False, debug=True)
+run_inline=False
+run_iterative=True
+batch_size=48
+use_gpu=False
+
+recorder = csdl.Recorder(inline=run_inline, debug=True)
 recorder.start()
 
 x_scaler = csdl.Variable(value=np.array([1.]))
@@ -92,7 +98,7 @@ points = points.set(csdl.slice[:,:,1], points_orig[:,:,1]*y_scaler)
 points = points.set(csdl.slice[:,:,2], points_orig[:,:,2]*z_scaler)
 
 V_inf = csdl.Variable(value=np.array([-100.]))
-pitch = csdl.Variable(value=np.array([0.0]))
+pitch = csdl.Variable(value=np.array([alpha_deg]))
 pitch_rad = pitch*np.pi/180
 
 V_vec = csdl.Variable(value=0., shape=(3,))
@@ -113,14 +119,22 @@ point_velocities = csdl.expand(V_vec_rot, points.shape, 'i->abi')
 TE_data = [TE_node_indices, TE_edges, (lower_TE_cells, upper_TE_cells)]
 connectivity_data = [triangles, cell_adjacency, points2cells]
 
+file_name = 'true_data_mu_Cp_BWB'
+
+with open(file_name, 'rb') as file:
+    true_data = pickle.load(file)
+mu_warm_start = true_data['mu'].reshape((triangles.shape[0], 1))
+
 output_dict, mesh_dict, mu, sigma = steady_panel_solver(
     points, 
     connectivity_data, 
     TE_data, 
     point_velocities, 
     mesh_mode='unstructured',
-    batch_size=3,
-    iterative=True
+    batch_size=batch_size,
+    iterative=run_iterative,
+    # warm_start=mu_warm_start,
+    Cp_cutoff=-10
 )
 
 CL = output_dict['CL']
@@ -130,11 +144,9 @@ L = output_dict['L']
 coll_points = mesh_dict['panel_center']
 Cp = output_dict['Cp']
 
-moment = output_dict['M']
-
-pitch_moment = moment[:,1]
-
-dM_dpitch = csdl.derivative(pitch_moment, pitch)
+# moment = output_dict['M']
+# pitch_moment = moment[:,1]
+# dM_dpitch = csdl.derivative(pitch_moment, pitch)
 
 recorder.print_largest_variables()
 # exit()
@@ -148,33 +160,16 @@ inputs = [
 ]
 
 inputs = [pitch]
+outputs = [points, mu, sigma, Cp, L, Di]
 
-check_derivatives = False
-if check_derivatives:
-    outputs = [L]
-    outputs = [moment, dM_dpitch]
-else:
-    outputs = [points, mu, sigma, Cp, L, Di]
-
+jax.config.update("jax_enable_x64", True)
 jax_sim = csdl.experimental.JaxSimulator(
     recorder=recorder,
     additional_inputs=inputs,
-    additional_outputs=outputs
+    additional_outputs=outputs,
+    gpu=use_gpu
 )
-
-# jaxified_panel_func = csdl.jax.create_jax_function(
-#     graph = recorder.get_root_graph(),
-#     outputs = outputs,
-#     inputs = [dummy_input]
-# )
-# import jax.numpy as jnp
-# import jax
-# jax.config.update("jax_enable_x64", True)
-# jax_out = jax.jit(jaxified_panel_func)(jnp.array([1.0]))
-
-# jax_derivatives = jax.jit(jax.jacrev(jaxified_panel_func))(jnp.array([1.0]))
-
-# exit()
+exit()
 print('dummy compile + run of forward evaluation')
 jax_sim.run()
 print('end dummy run')
@@ -185,31 +180,66 @@ jax_sim.run()
 end_time = time.time()
 print(f'forward eval run time: {end_time-start_time} seconds')
 
-if check_derivatives:
-    print('dummy compile + run of derivatives')
-    jax_sim.compute_totals()
-    print('end dummy run')
-
-    print('running derivatives')
-    start_time = time.time()
-    jax_sim.check_totals(step_size=1.e-3)
-    # jax_sim.compute_totals()
-    end_time = time.time()
-    print(f'derivative run time: {end_time-start_time} seconds')
-    exit()
-
-L = jax_sim[L]
+L_val = jax_sim[L]
 Di = jax_sim[Di]
 points = jax_sim[points]
 Cp = jax_sim[Cp]
 mu = jax_sim[mu]
 # AIC_mu_orig = jax_sim[AIC_mu_orig]
 
+file_name = 'true_data_mu_Cp'
+if not run_iterative:
+    output_data = {
+        'mu': mu,
+        'Cp': Cp,
+        'lift': L_val
+    }
+    with open(file_name, 'wb') as file:
+        pickle.dump(output_data, file)
+else:
+    with open(file_name, 'rb') as file:
+        true_data = pickle.load(file)
+    Cp_true = true_data['Cp']
+    mu_true = true_data['mu']
+    L_true = true_data['lift']
+
+    mu_error = np.linalg.norm(mu_true-mu)/np.linalg.norm(mu_true)
+    Cp_error = np.linalg.norm(Cp_true-Cp)/np.linalg.norm(Cp_true)
+    L_error = np.linalg.norm(L_true-L_val)/np.linalg.norm(L_true)
+
+    print(f'mu error percent: {mu_error*100}')
+    print(f'Cp error percent: {Cp_error*100}')
+    print(f'Lift error percent: {L_error*100}')
 
 print('doublet distribution:')
 print(mu)
 print(f'CL: {CL}')
 print(f'CDi: {CDi}')
+
+# derivatives
+inputs = [pitch]
+outputs = [L]
+
+jax_sim_deriv = csdl.experimental.JaxSimulator(
+    recorder=recorder,
+    additional_inputs=inputs,
+    additional_outputs=outputs,
+    gpu=use_gpu
+)
+
+print('dummy compile + run of derivatives')
+jax_sim_deriv.compute_totals()
+# jax_sim_deriv.check_totals(step_size=1.e-6)
+print('end dummy run')
+# exit()
+print('running derivatives')
+start_time = time.time()
+# jax_sim_deriv.check_totals(step_size=1.e-3)
+jax_sim_deriv.compute_totals()
+end_time = time.time()
+print(f'derivative run time: {end_time-start_time} seconds')
+
+exit()
 
 if True:
     plot_pressure_distribution(points[0,:], Cp[0,:], bounds=[-2, 1], connectivity=triangles, interactive=True, top_view=False)

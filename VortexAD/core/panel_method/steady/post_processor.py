@@ -120,7 +120,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225, Cp_cutoff=-100.):
     return output_dict
 
 
-def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225, Cp_cutoff=-100.):
+def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, M_inf=False, rho=1.225, Cp_cutoff=-100., constant_geometry=False):
     x_dir_global = np.array([1., 0., 0.])
     z_dir_global = np.array([0., 0., 1.])
     output_dict = {}
@@ -129,16 +129,31 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225, Cp_c
     delta_coll_point = mesh_dict['delta_coll_point']
     cell_adjacency = mesh_dict['cell_adjacency']
 
-    ql, qm = unstructured_least_squares_velocity(mu, delta_coll_point, cell_adjacency)
+    ql, qm = unstructured_least_squares_velocity(mu, delta_coll_point, cell_adjacency, constant_geometry)
+    # ql = qn*mu
+    # qm = qn*mu
 
     panel_x_dir = mesh_dict['panel_x_dir']
     panel_y_dir = mesh_dict['panel_y_dir']
     panel_normal = mesh_dict['panel_normal']
+    panel_area = mesh_dict['panel_area']
+    panel_center = mesh_dict['panel_center']
     coll_vel = mesh_dict['coll_point_velocity']
 
-    free_stream_l = csdl.einsum(coll_vel, panel_x_dir, action='jkl,jkl->jk')
-    free_stream_m = csdl.einsum(coll_vel, panel_y_dir, action='jkl,jkl->jk')
-    free_stream_n = csdl.einsum(coll_vel, panel_normal, action='jkl,jkl->jk')
+    if constant_geometry:
+        panel_x_dir = csdl.expand(panel_x_dir.reshape(panel_x_dir.shape[1:]), (num_nodes,) + panel_x_dir.shape[1:], 'ij->aij')
+        panel_y_dir = csdl.expand(panel_y_dir.reshape(panel_y_dir.shape[1:]), (num_nodes,) + panel_y_dir.shape[1:], 'ij->aij')
+        panel_normal = csdl.expand(panel_normal.reshape(panel_normal.shape[1:]), (num_nodes,) + panel_normal.shape[1:], 'ij->aij')
+        panel_area = csdl.expand(panel_area.reshape(panel_area.shape[1:]), (num_nodes,) + panel_area.shape[1:], 'i->ai')
+        panel_center = csdl.expand(panel_center.reshape(panel_center.shape[1:]), (num_nodes,) + panel_center.shape[1:], 'ij->aij')
+
+    # free_stream_l = csdl.einsum(coll_vel, panel_x_dir, action='jkl,jkl->jk')
+    # free_stream_m = csdl.einsum(coll_vel, panel_y_dir, action='jkl,jkl->jk')
+    # free_stream_n = csdl.einsum(coll_vel, panel_normal, action='jkl,jkl->jk')
+
+    free_stream_l = csdl.sum(coll_vel*panel_x_dir, axes=(2,))
+    free_stream_m = csdl.sum(coll_vel*panel_y_dir, axes=(2,))
+    free_stream_n = csdl.sum(coll_vel*panel_normal, axes=(2,))
 
     Ql = free_stream_l + ql
     Qm = free_stream_m + qm
@@ -149,10 +164,23 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225, Cp_c
     Cp_static = 1 - perturbed_vel_mag**2/Q_inf_norm**2
     # Cp_dynamic = -dmu_dt*2./Q_inf_norm**2
     Cp = Cp_static
+    if M_inf:
+        # sos = 340.3
+        # M_inf = perturbed_vel_mag/sos
+        # von KArman and Tsien correction --> better at M=0.7-0.8
+        beta = (1-M_inf**2)**0.5
+        # denom = beta + (M_inf**2/(1+beta))*Cp/2
+        # Cp = Cp/denom
+
+        denom = 1 + M_inf**2/(1+beta)*Cp/2
+        # Cp = Cp/beta/denom
+
+        Cp = Cp/beta
+
+
     Cp_cutoff_exp = csdl.expand(Cp_cutoff, Cp.shape)
     Cp = csdl.maximum(Cp, Cp_cutoff_exp, rho=100)
 
-    panel_area = mesh_dict['panel_area']
     dF_no_normal = -0.5*rho*Q_inf_norm**2*panel_area*Cp
     dF = csdl.expand(dF_no_normal, panel_normal.shape, 'jk->jka')*panel_normal
     Fz_panel = csdl.tensordot(dF, z_dir_global, axes=([2],[0]))
@@ -174,9 +202,9 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225, Cp_c
     CL = L/(0.5*rho*ref_area*Q_inf**2)
     CDi = Di/(0.5*rho*ref_area*Q_inf**2)
 
-    ref_point = csdl.Variable(value=np.array([30., 0., 0.,]))
+    ref_point = csdl.Variable(value=np.array([0., 0., 0.,]))
     ref_pt_exp = ref_point.expand(dF.shape, 'i->abi')
-    panel_center = mesh_dict['panel_center']
+    
     panel_moment_arm = panel_center-ref_pt_exp
     panel_moment = csdl.cross(dF, panel_moment_arm, axis=2)
     moment = csdl.sum(panel_moment, axes=(1,))
@@ -191,5 +219,7 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225, Cp_c
     output_dict['L'] = L
     output_dict['Di'] = Di
     output_dict['V_mag'] = perturbed_vel_mag
+    output_dict['L_panel'] = panel_L
+    output_dict['Di_panel'] = panel_Di
 
     return output_dict

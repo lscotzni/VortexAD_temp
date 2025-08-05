@@ -1,7 +1,7 @@
 import numpy as np
 import csdl_alpha as csdl
 
-def fixed_wake_representation(mesh_dict, num_nodes, wake_propagation_dt=100., mesh_mode='structured'):
+def fixed_wake_representation(mesh_dict, num_nodes, wake_propagation_dt=100., mesh_mode='structured', constant_geometry=False):
     # wake propagation dt: time elapsed to propagate wake back (dx = V_inf*dt)
     if mesh_mode == 'structured':
         surface_names = list(mesh_dict.keys())
@@ -17,7 +17,8 @@ def fixed_wake_representation(mesh_dict, num_nodes, wake_propagation_dt=100., me
             ns = surface_mesh.shape[2]
             
             TE = (surface_mesh[:,0,:,:] + surface_mesh[:,-1,:,:])/2.
-            wake_end = TE + mesh_velocity[:,-1,:,:]*wake_propagation_dt
+            # wake_end = TE + mesh_velocity[:,-1,:,:]*wake_propagation_dt
+            wake_end = TE + 500
 
             wake_mesh = csdl.Variable(value=np.zeros((num_nodes, 2, ns, 3))) # only 2 nodes in the "chordwise" direction
             wake_mesh = wake_mesh.set(csdl.slice[:,0,:,:], value=TE)
@@ -104,13 +105,21 @@ def fixed_wake_representation(mesh_dict, num_nodes, wake_propagation_dt=100., me
 
         mesh = mesh_dict['points']
         nodal_vel = mesh_dict['nodal_velocity']
+        if constant_geometry:
+            num_nodes = 1
 
         ns = len(TE_node_indices)
         num_TE_edges = len(TE_edges)
         nc_w = 2
         TE = mesh[:,list(TE_node_indices),:]
-        TE_vel = nodal_vel[:,list(TE_node_indices),:]
-        wake_end = TE + TE_vel*wake_propagation_dt
+        
+        if constant_geometry: # propagating back at 0 aoa essentially
+            wake_disp = np.zeros(TE.shape)
+            wake_disp[:,:,0] = 500.
+            wake_end = TE + wake_disp
+        else: # account for aoa in wake
+            TE_vel = nodal_vel[:,list(TE_node_indices),:]
+            wake_end = TE + TE_vel*wake_propagation_dt
 
         # creating unstructured wake mesh using TE points
         TE_node_ind_zeroed = list(np.arange(ns)) # corresponds to indices in TE and TE_vel

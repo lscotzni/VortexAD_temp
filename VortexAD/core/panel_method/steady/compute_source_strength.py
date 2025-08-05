@@ -1,7 +1,7 @@
 import numpy as np
 import csdl_alpha as csdl 
 
-def compute_source_strength(mesh_dict, num_nodes, num_panels, mesh_mode='structured'):
+def compute_source_strength(mesh_dict, num_nodes, num_panels, mesh_mode='structured', constant_geometry=False):
     if mesh_mode == 'structured':
         surface_names = list(mesh_dict.keys())
 
@@ -29,9 +29,22 @@ def compute_source_strength(mesh_dict, num_nodes, num_panels, mesh_mode='structu
     elif mesh_mode == 'unstructured':
         coll_point_velocity = mesh_dict['coll_point_velocity']
         panel_normal = mesh_dict['panel_normal']
-        sigma = -csdl.sum(
-            coll_point_velocity*panel_normal,
-            axes=(2,)
-        )
+        if constant_geometry: # num_nodes on panel normal is 1
+            loop_vals = np.arange(num_nodes).tolist()
+            with csdl.experimental.enter_loop(vals=[loop_vals]) as loop_builder:
+                n = loop_builder.get_loop_indices()
+                sigma = -csdl.sum(
+                    coll_point_velocity[n,:]*panel_normal[0,:],
+                    axes=(1,)
+                )
+            sigma = loop_builder.add_stack(sigma) # 
+            loop_builder.finalize()
+        else: # same shape
+            print(coll_point_velocity.shape)
+            print(panel_normal.shape)
+            sigma = -csdl.sum(
+                coll_point_velocity*panel_normal,
+                axes=(2,)
+            )
 
     return sigma # VECTORIZED in shape=(num_nodes, nt, num_surf_panels)

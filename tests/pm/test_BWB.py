@@ -16,10 +16,10 @@ import time
 
 alpha_deg = 0.
 alpha = np.deg2rad(alpha_deg) # aoa
-mach = 0.4
+mach = 0.8
 sos = 340.3
 # V_inf = np.array([-sos*mach, 0., 0.])
-V_inf = np.array([-100., 0., 0.])
+V_inf = np.array([-212., 0., 0.])
 num_nodes = 1
 
 # file_name = str(SAMPLE_GEOMETRY_PATH) + '/pm/naca0012_LE_TE_cluster.stl'
@@ -89,12 +89,13 @@ points = points.set(csdl.slice[:,:,0], points_orig[:,:,0]*x_scaler)
 points = points.set(csdl.slice[:,:,1], points_orig[:,:,1]*y_scaler)
 points = points.set(csdl.slice[:,:,2], points_orig[:,:,2]*z_scaler)
 
-V_inf = csdl.Variable(value=np.array([-100.]))
+V_inf = csdl.Variable(value=np.array([mach*sos]))
+V_inf = csdl.Variable(value=np.array([100.]))
 pitch = csdl.Variable(value=np.array([0.0]))
 pitch_rad = pitch*np.pi/180
 
 V_vec = csdl.Variable(value=0., shape=(3,))
-V_vec = V_vec.set(csdl.slice[0], value=V_inf)
+V_vec = V_vec.set(csdl.slice[0], value=-V_inf)
 
 V_rot_mat = csdl.Variable(value=0., shape=(3,3))
 V_rot_mat = V_rot_mat.set(csdl.slice[1,1], value=1.)
@@ -107,8 +108,8 @@ V_vec_rot = csdl.matvec(V_rot_mat, V_vec)
 
 point_velocities = csdl.expand(V_vec_rot, points.shape, 'i->abi')
 
-# TE_data = [TE_node_indices, TE_edges, (upper_TE_cells, lower_TE_cells)]
-TE_data = [TE_node_indices, TE_edges, (lower_TE_cells, upper_TE_cells)]
+TE_data = [TE_node_indices, TE_edges, (upper_TE_cells, lower_TE_cells)]
+# TE_data = [TE_node_indices, TE_edges, (lower_TE_cells, upper_TE_cells)]
 connectivity_data = [triangles, cell_adjacency, points2cells]
 
 output_dict, mesh_dict, mu, sigma = steady_panel_solver(
@@ -117,7 +118,9 @@ output_dict, mesh_dict, mu, sigma = steady_panel_solver(
     TE_data, 
     point_velocities, 
     mesh_mode='unstructured',
-    batch_size=1
+    batch_size=1,
+    Cp_cutoff=-5,
+    # M_inf=mach
 )
 
 CL = output_dict['CL']
@@ -126,8 +129,9 @@ Di = output_dict['Di']
 L = output_dict['L']
 coll_points = mesh_dict['panel_center']
 Cp = output_dict['Cp']
-# AIC_mu_orig = output_dict['AIC_mu_orig']
+AIC_mu_orig = output_dict['AIC_mu_orig']
 AIC_mu = output_dict['AIC_mu']
+RHS = output_dict['RHS']
 
 moment = output_dict['M']
 
@@ -153,12 +157,19 @@ if check_derivatives:
     outputs = [L]
     outputs = [moment, dM_dpitch]
 else:
-    outputs = [points, mu, sigma, Cp, L, Di]
+    outputs = [points, coll_points, mu, sigma, Cp, L, Di, AIC_mu_orig, AIC_mu, RHS]
+
+# recorder.print_graph_structure()
+# recorder.visualize_graph(filename='test_graph')
+# # recorder.visualize_graph(filename='test_graph', visualize_style='hierarchical')
+
+# exit()
 
 jax_sim = csdl.experimental.JaxSimulator(
     recorder=recorder,
     additional_inputs=inputs,
-    additional_outputs=outputs
+    additional_outputs=outputs,
+    gpu=False
 )
 
 # jaxified_panel_func = csdl.jax.create_jax_function(
@@ -191,18 +202,21 @@ if check_derivatives:
 
     print('running derivatives')
     start_time = time.time()
-    jax_sim.check_totals(step_size=1.e-3)
-    # jax_sim.compute_totals()
+    # jax_sim.check_totals(step_size=1.e-3)
+    jax_sim.compute_totals()
     end_time = time.time()
     print(f'derivative run time: {end_time-start_time} seconds')
     exit()
 
-L = jax_sim[L]
-Di = jax_sim[Di]
-points = jax_sim[points]
-Cp = jax_sim[Cp]
-mu = jax_sim[mu]
-# AIC_mu_orig = jax_sim[AIC_mu_orig]
+L_val = jax_sim[L]
+Di_val = jax_sim[Di]
+points_val = jax_sim[points]
+Cp_val = jax_sim[Cp]
+mu_val = jax_sim[mu]
+AIC_mu_orig_val = jax_sim[AIC_mu_orig]
+AIC_mu_val = jax_sim[AIC_mu]
+RHS_val = jax_sim[RHS]
+
 
 
 print('doublet distribution:')
@@ -211,7 +225,7 @@ print(f'CL: {CL}')
 print(f'CDi: {CDi}')
 
 if True:
-    plot_pressure_distribution(points[0,:], Cp[0,:], bounds=[-2, 1], connectivity=triangles, interactive=True, top_view=False)
+    plot_pressure_distribution(points_val[0,:], Cp_val[0,:], bounds=[-2, 1], connectivity=triangles, interactive=True, top_view=False)
     # plot_pressure_distribution(points[0,:], Cp[0,:], connectivity=triangles, interactive=True, top_view=False)
 exit()
 num_panels = triangles.shape[0]

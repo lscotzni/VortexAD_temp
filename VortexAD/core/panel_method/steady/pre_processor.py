@@ -1,7 +1,7 @@
 import numpy as np 
 import csdl_alpha as csdl
 
-def pre_processor(mesh_dict, mode='structured'):
+def pre_processor(mesh_dict, mode='structured', constant_geometry=False):
     '''
     NOTE: ADD UNSTRUCTURED STUFF IN HERE
     '''
@@ -126,7 +126,10 @@ def pre_processor(mesh_dict, mode='structured'):
         cell_adjacency = mesh_dict['cell_adjacency']
         mesh_shape = mesh.shape
         num_nodes = mesh_shape[0]
-
+        if constant_geometry:
+            num_nodes = 1
+        else:
+            num_nodes=mesh.shape[0]
         num_panels = cell_point_indices.shape[0]
 
         # ==== WITH DUPLICATE INDICES ====
@@ -155,21 +158,29 @@ def pre_processor(mesh_dict, mode='structured'):
         #     p3 = p3.set(csdl.slice[:,cell_ind,:], value=mesh[:,ind3,:])
 
         # ==== USING STACK VIA LOOP BUILDER ====
+        nn_loop_vals = [np.arange(num_nodes).tolist()]
         loop_vals = [p1_indices, p2_indices, p3_indices]
+        with csdl.experimental.enter_loop(vals=nn_loop_vals) as nn_loop_builder:
+            n = nn_loop_builder.get_loop_indices()
+            with csdl.experimental.enter_loop(vals=loop_vals) as loop_builder:
+                j,k,l = loop_builder.get_loop_indices()
+                p1 = mesh[n,j,:]
+                p2 = mesh[n,k,:]
+                p3 = mesh[n,l,:]
 
-        with csdl.experimental.enter_loop(vals=loop_vals) as loop_builder:
-            j,k,l = loop_builder.get_loop_indices()
-            p1 = mesh[:,j,:]
-            p2 = mesh[:,k,:]
-            p3 = mesh[:,l,:]
+            p1 = loop_builder.add_stack(p1)
+            p2 = loop_builder.add_stack(p2)
+            p3 = loop_builder.add_stack(p3)
+            loop_builder.finalize()
 
-        p1 = loop_builder.add_stack(p1)
-        p2 = loop_builder.add_stack(p2)
-        p3 = loop_builder.add_stack(p3)
-        loop_builder.finalize()
-        p1 = p1.reshape((num_nodes, num_panels, 3))
-        p2 = p2.reshape((num_nodes, num_panels, 3))
-        p3 = p3.reshape((num_nodes, num_panels, 3))
+        p1 = nn_loop_builder.add_stack(p1)
+        p2 = nn_loop_builder.add_stack(p2)
+        p3 = nn_loop_builder.add_stack(p3)
+        nn_loop_builder.finalize()
+
+        # p1 = p1.reshape((num_nodes, num_panels, 3))
+        # p2 = p2.reshape((num_nodes, num_panels, 3))
+        # p3 = p3.reshape((num_nodes, num_panels, 3))
         
         panel_center = (p1+p2+p3)/3.
         mesh_dict['panel_center'] = panel_center
@@ -247,18 +258,25 @@ def pre_processor(mesh_dict, mode='structured'):
         
         # ==== USING STACK VIA LOOP BUILDER ====
         loop_vals = [panel_indices, cp_delta_1_ind, cp_delta_2_ind, cp_delta_3_ind]
-        with csdl.experimental.enter_loop(vals=loop_vals) as loop_builder:
-            i,a,b,c = loop_builder.get_loop_indices()
-            cp_delta_1 = panel_center[:,a,:] - panel_center[:,i,:]
-            cp_delta_2 = panel_center[:,b,:] - panel_center[:,i,:]
-            cp_delta_3 = panel_center[:,c,:] - panel_center[:,i,:]
-        cp_delta_1 = loop_builder.add_stack(cp_delta_1)
-        cp_delta_2 = loop_builder.add_stack(cp_delta_2)
-        cp_delta_3 = loop_builder.add_stack(cp_delta_3)
-        loop_builder.finalize()
-        cp_delta_1 = cp_delta_1.reshape((num_nodes, num_panels, 3))
-        cp_delta_2 = cp_delta_2.reshape((num_nodes, num_panels, 3))
-        cp_delta_3 = cp_delta_3.reshape((num_nodes, num_panels, 3))
+        with csdl.experimental.enter_loop(vals=nn_loop_vals) as nn_loop_builder:
+            n = nn_loop_builder.get_loop_indices()
+            with csdl.experimental.enter_loop(vals=loop_vals) as loop_builder:
+                i,a,b,c = loop_builder.get_loop_indices()
+                cp_delta_1 = panel_center[n,a,:] - panel_center[n,i,:]
+                cp_delta_2 = panel_center[n,b,:] - panel_center[n,i,:]
+                cp_delta_3 = panel_center[n,c,:] - panel_center[n,i,:]
+            cp_delta_1 = loop_builder.add_stack(cp_delta_1)
+            cp_delta_2 = loop_builder.add_stack(cp_delta_2)
+            cp_delta_3 = loop_builder.add_stack(cp_delta_3)
+            loop_builder.finalize()
+
+        cp_delta_1 = nn_loop_builder.add_stack(cp_delta_1)
+        cp_delta_2 = nn_loop_builder.add_stack(cp_delta_2)
+        cp_delta_3 = nn_loop_builder.add_stack(cp_delta_3)
+        nn_loop_builder.finalize()
+        # cp_delta_1 = cp_delta_1.reshape((num_nodes, num_panels, 3))
+        # cp_delta_2 = cp_delta_2.reshape((num_nodes, num_panels, 3))
+        # cp_delta_3 = cp_delta_3.reshape((num_nodes, num_panels, 3))
 
         cp_deltas = csdl.Variable(shape=panel_corners.shape, value=0.)
         cp_deltas = cp_deltas.set(csdl.slice[:,:,0,:], value=cp_delta_1)
@@ -295,8 +313,10 @@ def pre_processor(mesh_dict, mode='structured'):
 
         mesh_dict['delta_coll_point'] = cell_deltas
         # NOTE: CHECK IF AXIS ON THESE LINES ABOVE SHOULD BE 2 OR 3
-        nodal_vel = mesh_dict['nodal_velocity']
 
+        nodal_vel = mesh_dict['nodal_velocity']
+        # num_nodes = nodal_vel.shape[0]
+        nn_loop_vals = np.arange(nodal_vel.shape[0]).tolist()
         # ==== WITH DUPLICATE NODES ====
         # v1 = nodal_vel[:,list(cell_point_indices[:,0]),:]
         # v2 = nodal_vel[:,list(cell_point_indices[:,1]),:]
@@ -314,18 +334,24 @@ def pre_processor(mesh_dict, mode='structured'):
 
         # ==== USING STACK VIA LOOP BUILDER ====
         loop_vals = [p1_indices, p2_indices, p3_indices]
-        with csdl.experimental.enter_loop(vals=loop_vals) as loop_builder:
-            i,j,k = loop_builder.get_loop_indices()
-            v1 = nodal_vel[:,i,:]
-            v2 = nodal_vel[:,j,:]
-            v3 = nodal_vel[:,k,:]
-        v1 = loop_builder.add_stack(v1)
-        v2 = loop_builder.add_stack(v2)
-        v3 = loop_builder.add_stack(v3)
-        loop_builder.finalize()
-        v1 = v1.reshape((num_nodes, num_panels, 3))
-        v2 = v2.reshape((num_nodes, num_panels, 3))
-        v3 = v3.reshape((num_nodes, num_panels, 3))
+        with csdl.experimental.enter_loop(vals=[nn_loop_vals]) as nn_loop_builder:
+            n = nn_loop_builder.get_loop_indices()
+            with csdl.experimental.enter_loop(vals=loop_vals) as loop_builder:
+                i,j,k = loop_builder.get_loop_indices()
+                v1 = nodal_vel[n,i,:]
+                v2 = nodal_vel[n,j,:]
+                v3 = nodal_vel[n,k,:]
+            v1 = loop_builder.add_stack(v1)
+            v2 = loop_builder.add_stack(v2)
+            v3 = loop_builder.add_stack(v3)
+            loop_builder.finalize()
+        v1 = nn_loop_builder.add_stack(v1)
+        v2 = nn_loop_builder.add_stack(v2)
+        v3 = nn_loop_builder.add_stack(v3)
+        nn_loop_builder.finalize()
+        # v1 = v1.reshape((num_nodes, num_panels, 3))
+        # v2 = v2.reshape((num_nodes, num_panels, 3))
+        # v3 = v3.reshape((num_nodes, num_panels, 3))
         
         mesh_dict['coll_point_velocity'] = (v1+v2+v3)/3.
     return mesh_dict

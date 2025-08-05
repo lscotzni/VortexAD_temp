@@ -75,9 +75,50 @@ def TE_detection(points, cells, edges2cells, threshold_theta=75, use_caddee=Fals
             upper_TE_cells.append(int(cell_2))
             lower_TE_cells.append(int(cell_1))
 
-        TE_edges.append(edge)
-        node_TE_indices.extend(edge)
+        edge_pt_0 = points[edge[0],:]
+        edge_pt_1 = points[edge[1],:]
+
+        # if edge_pt_0[1] > edge_pt_1[1]-0.2:
+        if edge_pt_0[1] > edge_pt_1[1]:
+            TE_edges.append(edge[::-1])
+            node_TE_indices.extend(edge[::-1])
+        elif edge_pt_0[1] < edge_pt_1[1]:
+            TE_edges.append(edge)
+            node_TE_indices.extend(edge)
+        else:
+            TE_edges.append(edge)
+            node_TE_indices.extend(edge)
+
+        # NOTE: add a loop here that checks the ordering of the TE edges
+        #   - we need to make sure that the node indices in the edge 
+        #   preserve the proper ordering for the correct normal vector
 
     node_TE_indices = list(set(node_TE_indices))
 
     return upper_TE_cells, lower_TE_cells, TE_edges, node_TE_indices
+
+
+
+
+'''
+TODO:
+We need an even more general approach to computing trailing edges locations and edges
+
+
+Steps:
+- gather all of the trailing edge data like above (does not need to be clean in any way)
+    - the code above can be used to figure out the TE elements and edges, but we need a 
+        better way to deduce which element is UPPER and which is LOWER
+- partition the trailing edges to figure out where the TE discontinuities occur
+    - this could be between wing, tail, rotors, etc.
+    - we can do this by looping through the edge indices and figuring out where edges are
+        connected by looking at node indices, etc. (could we use a KDTree or a tree of some kind?)
+- we can then loop from the -y to +y direction along each subdivision of the trailing edges to 
+    figure out which trailing edge surface is upper or lower
+    - we can use a greedy nearest neighbor walk to traverse from one end to the other
+    - still unsure about how to determine the ordering; options are:
+        - look at relative OOM of normal vector; upper surface will likely have more of a 
+            component in the streamwise direction
+            - can't always order from -y to +y bc upper and lower more or less refer to whichever
+                sides refer to suction or pressure. 
+'''
