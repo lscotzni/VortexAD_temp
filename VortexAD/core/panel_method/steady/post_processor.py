@@ -120,7 +120,7 @@ def post_processor(mesh_dict, mu, sigma, num_nodes, rho=1.225, Cp_cutoff=-100.):
     return output_dict
 
 
-def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, M_inf=False, rho=1.225, Cp_cutoff=-100., constant_geometry=False):
+def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, M_inf=False, rho=1.225, Cp_cutoff=-100., constant_geometry=False, ref_point=np.zeros(3)):
     x_dir_global = np.array([1., 0., 0.])
     z_dir_global = np.array([0., 0., 1.])
     output_dict = {}
@@ -202,8 +202,8 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, M_inf=False, rh
     CL = L/(0.5*rho*ref_area*Q_inf**2)
     CDi = Di/(0.5*rho*ref_area*Q_inf**2)
 
-    ref_point = csdl.Variable(value=np.array([0., 0., 0.,]))
-    ref_pt_exp = ref_point.expand(dF.shape, 'i->abi')
+    # ref_point = csdl.Variable(value=np.array([0., 0., 0.,]))
+    ref_pt_exp = csdl.expand(ref_point, dF.shape, 'i->abi')
     
     panel_moment_arm = panel_center-ref_pt_exp
     panel_moment = csdl.cross(dF, panel_moment_arm, axis=2)

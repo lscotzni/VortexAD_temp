@@ -1,6 +1,10 @@
 import numpy as np
 import csdl_alpha as csdl 
 
+from VortexAD.utils.jax_atan2 import Custom_Atan2_Jax
+import jax
+jax.config.update("jax_enable_x64", True)
+
 def compute_source_strengths(mesh_dict, num_nodes, nt, num_panels, mesh_mode='structured'):
     
     if mesh_mode == 'structured':
@@ -154,14 +158,25 @@ def compute_source_influence_new(A, AM, B, BM, SL, SM, A1, PN, S, l=None, m=None
 
             PA = PN[i]**2*SL[i] + A1[i]*AM[i]
             PB = PN[i]**2*SL[i] + A1[i]*BM[i]
+
+            ## ==== WITH NUMERICAL SOFTENING ====
+            # RNUM = SM[i]*PN[i]*(B[i]*PA - A[i]*PB) + 1.e-24
+            # DNOM = PA*PB + PN[i]**2*A[i]*B[i]*SM[i]**2 + 1.e-24
     
+            # atan_term = csdl.arctan(RNUM/DNOM) # NOTE: add some numerical softening here
+            # atan_term = 2*csdl.arctan(((RNUM**2 + DNOM**2)**0.5 - DNOM) / (RNUM+1.e-24)) # half angle formula
+            # ========
+
+            ## ==== WITHOUT NUMERICAL SOFTENING ====
             RNUM = SM[i]*PN[i]*(B[i]*PA - A[i]*PB) + 1.e-24
             DNOM = PA*PB + PN[i]**2*A[i]*B[i]*SM[i]**2 + 1.e-24
     
-            atan_term = csdl.arctan(RNUM/DNOM) # NOTE: add some numerical softening here
-            atan_term = 2*csdl.arctan(((RNUM**2 + DNOM**2)**0.5 - DNOM) / (RNUM+1.e-24)) # half angle formula
+            # atan_term = 2*csdl.arctan(((RNUM**2 + DNOM**2)**0.5 - DNOM) / (RNUM+1.e-24)) # half angle formula
 
-            GL = (1/(S[i]+1.e-12)) * csdl.log((A[i]+B[i]+S[i])/(A[i]+B[i]-S[i]))
+            atan_term = csdl.arctan2(RNUM, DNOM)
+            # ========
+
+            GL = (1/(S[i]+1.e-12)) * csdl.log((A[i]+B[i]+(S[i]+1.e-12))/(A[i]+B[i]-(S[i]+1.e-12)))
 
             side_potential = A1[i]*GL - PN[i]*atan_term
 

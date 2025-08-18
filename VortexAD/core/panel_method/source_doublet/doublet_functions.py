@@ -1,7 +1,8 @@
 import numpy as np 
 import csdl_alpha as csdl
 
-from VortexAD.utils.atan2_switch import atan2_switch
+import jax
+jax.config.update("jax_enable_x64", True)
 
 def compute_doublet_influence(dpij, mij, ek, hk, rk, dx, dy, dz, mu=1., mode='potential'):
     # each input is a list of length 4, holding the values for the corners
@@ -162,20 +163,35 @@ def compute_doublet_influence_new(A, AM, B, BM, SL, SM, A1, PN, mode='potential'
             PA = PN[i]**2*SL[i] + A1[i]*AM[i]
             PB = PN[i]**2*SL[i] + A1[i]*BM[i]
 
+            ## ==== WITH NUMERICAL SOFTENING ====
+            # RNUM = SM[i]*PN[i]*(B[i]*PA - A[i]*PB) + 1.e-24
+            # DNOM = PA*PB + PN[i]**2*A[i]*B[i]*SM[i]**2 + 1.e-24
+    
+            # # asdf = csdl.arctan(RNUM/(DNOM)) # NOTE: add some numerical softening here
+            # # asdf = 2*csdl.arctan(((RNUM**2 + DNOM**2+1.e-12)**0.5 - DNOM) / (RNUM+1.e-24)) # half angle formula
+            # # asdf = 2*csdl.arctan((RNUM/((RNUM**2+DNOM**2)**0.5+DNOM)))]
+
+            # atan2_num = (RNUM**2 + DNOM**2)**0.5 - DNOM
+            # atan2_den = RNUM+1.e-24
+            # asdf = 2*csdl.arctan(atan2_num/atan2_den)
+            # ========
+
+            ## ==== WITHOUT NUMERICAL SOFTENING ====
             RNUM = SM[i]*PN[i]*(B[i]*PA - A[i]*PB) + 1.e-24
             DNOM = PA*PB + PN[i]**2*A[i]*B[i]*SM[i]**2 + 1.e-24
     
             # asdf = csdl.arctan(RNUM/(DNOM)) # NOTE: add some numerical softening here
-
-            atan2_num = (RNUM**2 + DNOM**2)**0.5 - DNOM
-            atan2_den = RNUM+1.e-24
-            asdf = 2*csdl.arctan(atan2_num/atan2_den)
-
             # asdf = 2*csdl.arctan(((RNUM**2 + DNOM**2+1.e-12)**0.5 - DNOM) / (RNUM+1.e-24)) # half angle formula
-            # asdf = 2*csdl.arctan((RNUM/((RNUM**2+DNOM**2)**0.5+DNOM)))
+            # asdf = 2*csdl.arctan((RNUM/((RNUM**2+DNOM**2)**0.5+DNOM)))]
+
+            # atan2_num = (RNUM**2 + DNOM**2)**0.5 - DNOM
+            # atan2_den = RNUM+1.e-24
+            # asdf = 2*csdl.arctan(atan2_num/atan2_den)
+            asdf = csdl.arctan2(RNUM,DNOM)
+            # ========
 
             panel_segment_potential.append(asdf)
-        # exit()
+        
         doublet_potential = mu/(4*np.pi) * sum(panel_segment_potential)
 
         return doublet_potential

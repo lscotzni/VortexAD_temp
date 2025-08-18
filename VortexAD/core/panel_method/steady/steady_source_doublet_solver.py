@@ -1,3 +1,4 @@
+import numpy as np 
 import csdl_alpha as csdl
 
 # NO PATCHES
@@ -11,7 +12,7 @@ from VortexAD.core.panel_method.steady.pre_processor_patches import pre_processo
 from VortexAD.core.panel_method.steady.mu_sigma_solver_patches import mu_sigma_solver_patches
 from VortexAD.core.panel_method.steady.post_processor_patches import post_processor_patches
 
-def source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, constant_geometry, M_inf, rho, batch_size, Cp_cutoff, boundary_condition, patch_flag, iterative=False, warm_start=None, ROM=False):
+def source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, constant_geometry, M_inf, rho, batch_size, Cp_cutoff, boundary_condition, patch_flag, iterative=False, warm_start=None, ROM=False, ref_point=np.zeros(3)):
     if not patch_flag: # both structured and unstructured grids
         print('running pre-processing')
         mesh_dict = pre_processor(exp_orig_mesh_dict, mode=mesh_mode, constant_geometry=constant_geometry)
@@ -37,7 +38,7 @@ def source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, constant_geo
         if mesh_mode == 'structured':
             output_dict = post_processor(mesh_dict, mu, sigma, num_nodes, rho, Cp_cutoff)
         elif mesh_mode == 'unstructured':
-            output_dict = unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, M_inf, rho, Cp_cutoff, constant_geometry)
+            output_dict = unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, M_inf, rho, Cp_cutoff, constant_geometry, ref_point=ref_point)
 
         output_dict['wake_dict'] = wake_dict
         if not iterative:

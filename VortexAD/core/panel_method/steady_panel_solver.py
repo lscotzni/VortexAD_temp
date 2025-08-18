@@ -7,7 +7,7 @@ from VortexAD.core.panel_method.steady.higher_order.linear_doublet_solver import
 # def steady_panel_solver(mesh_list, mesh_velocity_list, patches=False, coll_vel_list=False):
 def steady_panel_solver(*args, M_inf=False, rho=1.225, mesh_mode='structured', batch_size=None, 
                         Cp_cutoff=-7., patches=False, higher_order=False, boundary_condition='Dirichlet', 
-                        iterative=False, warm_start=None, ROM=False, constant_geometry=False):
+                        iterative=False, warm_start=None, ROM=False, constant_geometry=False, ref_point=np.zeros(3)):
     '''
     mesh_list: list of lists
         - each entry represents a surface
@@ -130,7 +130,7 @@ def steady_panel_solver(*args, M_inf=False, rho=1.225, mesh_mode='structured', b
         # mu = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, constant_geometry, M_inf, rho, batch_size, Cp_cutoff, boundary_condition, patch_flag, iterative, warm_start, ROM)
         # return mu
 
-        outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, constant_geometry, M_inf, rho, batch_size, Cp_cutoff, boundary_condition, patch_flag, iterative, warm_start, ROM)
+        outputs = source_doublet_solver(exp_orig_mesh_dict, num_nodes, mesh_mode, constant_geometry, M_inf, rho, batch_size, Cp_cutoff, boundary_condition, patch_flag, iterative, warm_start, ROM, ref_point)
         output_dict = outputs[0]
         mesh_dict = outputs[1]
         mu = outputs[2]

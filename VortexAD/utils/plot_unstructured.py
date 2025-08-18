@@ -28,6 +28,7 @@ def plot_pressure_distribution(mesh, Cp, connectivity, panel_center=None, bounds
 
     # vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.).linecolor('black')
     vps = Mesh([np.reshape(mesh_points, (-1, 3)), connectivity], c=surface_color, alpha=1.)
+    # vps.phong()
     Cp_color = np.reshape(Cp, (-1,1))
     if bounds:
         Cp_min, Cp_max = bounds[0], bounds[1]
@@ -39,7 +40,14 @@ def plot_pressure_distribution(mesh, Cp, connectivity, panel_center=None, bounds
     vps.cmap(cmap, Cp_color, on=on, vmin=Cp_min, vmax=Cp_max)
     vps.add_scalarbar()
     vp += vps
-    # vp += __doc__
+
+    # iso = vps.isolines(n=10).color('w')
+    # vp += iso
+    # isob = vps.isobands(n=25).add_scalarbar()
+    # # isob.cmap(cmap, Cp_color, on=on, vmin=Cp_min, vmax=Cp_max)
+    # vp += isob
+
+    vp += __doc__
     # nl = NormalLines(vps, on=on, scale=0.1)
     # vp += nl
     # if panel_center is not None:
