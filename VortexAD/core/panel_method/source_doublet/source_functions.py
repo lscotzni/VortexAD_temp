@@ -1,7 +1,6 @@
 import numpy as np
 import csdl_alpha as csdl 
 
-from VortexAD.utils.jax_atan2 import Custom_Atan2_Jax
 import jax
 jax.config.update("jax_enable_x64", True)
 
