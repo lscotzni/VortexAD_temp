@@ -181,7 +181,10 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, M_inf=False, rh
     Cp_cutoff_exp = csdl.expand(Cp_cutoff, Cp.shape)
     Cp = csdl.maximum(Cp, Cp_cutoff_exp, rho=100)
 
-    dF_no_normal = -0.5*rho*Q_inf_norm**2*panel_area*Cp
+    if rho.shape[0] == num_nodes:
+        rho_exp = csdl.expand(rho, panel_area.shape, 'i->ia')
+
+    dF_no_normal = -0.5*rho_exp*Q_inf_norm**2*panel_area*Cp
     dF = csdl.expand(dF_no_normal, panel_normal.shape, 'jk->jka')*panel_normal
     Fz_panel = csdl.tensordot(dF, z_dir_global, axes=([2],[0]))
     Fx_panel = csdl.tensordot(dF, x_dir_global, axes=([2],[0]))
@@ -206,7 +209,7 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, M_inf=False, rh
     ref_pt_exp = csdl.expand(ref_point, dF.shape, 'i->abi')
     
     panel_moment_arm = panel_center-ref_pt_exp
-    panel_moment = csdl.cross(dF, panel_moment_arm, axis=2)
+    panel_moment = csdl.cross(panel_moment_arm, dF, axis=2)
     moment = csdl.sum(panel_moment, axes=(1,))
 
     output_dict['CL'] = CL

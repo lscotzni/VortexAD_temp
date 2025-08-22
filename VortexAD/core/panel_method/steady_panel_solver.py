@@ -24,6 +24,8 @@ def steady_panel_solver(*args, M_inf=False, rho=1.225, mesh_mode='structured', b
                 - for kutta condition, we take final entry of both patches 
 
     '''
+    if isinstance(rho, float):
+        rho = csdl.Variable(value=np.array([rho]))
     patch_flag = False # done by default
     if mesh_mode == 'structured':
         mesh_list = args[0]
