@@ -161,6 +161,7 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, M_inf=False, rh
     Q_inf_norm = csdl.norm(coll_vel, axes=(2,))
     
     perturbed_vel_mag = (Ql**2 + Qm**2 + Qn**2)**0.5
+
     Cp_static = 1 - perturbed_vel_mag**2/Q_inf_norm**2
     # Cp_dynamic = -dmu_dt*2./Q_inf_norm**2
     Cp = Cp_static
@@ -225,4 +226,13 @@ def unstructured_post_processor(mesh_dict, mu, sigma, num_nodes, M_inf=False, rh
     output_dict['L_panel'] = panel_L
     output_dict['Di_panel'] = panel_Di
 
+    # velocities:
+    V_global = (
+        csdl.expand(Ql, panel_x_dir.shape, 'jk->jka') * panel_x_dir
+        + csdl.expand(Qm, panel_y_dir.shape, 'jk->jka') * panel_y_dir
+        + csdl.expand(Qn, panel_normal.shape, 'jk->jka') * panel_normal
+    )
+    output_dict['Vx'] = V_global[:, :, 0]
+    output_dict['Vy'] = V_global[:, :, 1]
+    output_dict['Vz'] = V_global[:, :, 2]
     return output_dict

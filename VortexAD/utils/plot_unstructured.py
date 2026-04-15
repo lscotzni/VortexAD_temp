@@ -5,7 +5,75 @@ from vedo import *
 import matplotlib.pyplot as plt
 plt.rcParams.update(plt.rcParamsDefault)
 
-def plot_pressure_distribution(mesh, Cp, connectivity, panel_center=None, bounds=None, on='cells', surface_color='white', cmap='jet', interactive=False, top_view=False, front_top_view=False):
+import pyvista as pv
+
+available_cameras = {
+    'pos_2':{
+        'position':  [(1.37402, 47.2993, 34.1624), (20.2279, 14.4275, 3.39566), (0.434551, -0.469903, 0.768346)],
+        'view_angle': 30,
+        'clipping_range': (1.71497, 1714.97),
+    },
+}
+
+def plot_pressure_distribution(mesh, Cp, connectivity, panel_center=None, bounds=None, on='cells', surface_color='white', cmap='jet', interactive=False, show = False):
+    points = np.reshape(mesh, (-1, 3))
+    Cp_color = np.reshape(Cp, (-1,))
+
+    if bounds:
+        Cp_min, Cp_max = bounds[0], bounds[1]
+    else:
+        Cp_min, Cp_max = np.min(Cp_color), np.max(Cp_color)
+
+    # PyVista faces format:
+    # [n0, p0, p1, ..., n1, p0, p1, ...]
+    faces = np.hstack([[len(cell), *cell] for cell in connectivity]).astype(np.int64)
+
+    surf = pv.PolyData(points, faces)
+
+    if on == "cells":
+        surf.cell_data["Cp"] = Cp_color
+    else:
+        surf.point_data["Cp"] = Cp_color
+
+    pl = pv.Plotter(
+        window_size=(2500, 2500),
+        off_screen=False,
+    )
+    pl.set_background("white")
+
+    pl.add_mesh(
+        surf,
+        scalars="Cp",
+        cmap=cmap,
+        clim=(Cp_min, Cp_max),
+        show_scalar_bar=True,
+    )
+
+    # Camera/view setup
+    # pl.reset_camera()
+
+    pl.camera_position = available_cameras['pos_2']['position']
+    pl.camera.view_angle = available_cameras['pos_2']['view_angle']
+    pl.camera.clipping_range = available_cameras['pos_2']['clipping_range']
+
+    # if top_view:
+    #     pl.view_xy()
+    #     pl.camera.roll = 90
+    # elif front_top_view:
+    #     pl.camera.elevation = 0
+    #     pl.camera.azimuth = -45
+    #     pl.camera.roll = 90
+    # else:
+    #     pl.camera.elevation = -45
+    #     pl.camera.azimuth = -45
+    #     pl.camera.roll = 45
+
+    if show:
+        pl.show(interactive=interactive)
+    return pl
+
+
+def plot_pressure_distribution_old(mesh, Cp, connectivity, panel_center=None, bounds=None, on='cells', surface_color='white', cmap='jet', interactive=False, top_view=False, front_top_view=False):
     vedo.settings.default_backend = 'vtk'
     axs = Axes(
         xrange=(0,3),
